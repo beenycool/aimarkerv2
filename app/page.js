@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import DOMPurify from 'dompurify';
 import { 
   Upload, 
   FileText, 
@@ -36,7 +37,7 @@ import {
   Key
 } from 'lucide-react';
 
-const apiKey = ""; // Your Gemini API key. If empty, the app will ask the user to input one.
+const apiKey = process.env.NEXT_PUBLIC_GEMINI_KEY || ""; // Your Gemini API key. If empty, the app will ask the user to input one.
 const hackClubApiKeyDefault = process.env.NEXT_PUBLIC_HACKCLUB_KEY || ""; // Optional default for Hack Club API (marking).
 
 // --- FILE TO BASE64 HELPER ---
@@ -68,12 +69,16 @@ function cleanGeminiJSON(text) {
 const MarkdownText = ({ text, className = "" }) => {
   if (!text) return null;
 
-  let html = text
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+  const sanitized = DOMPurify.sanitize(text, {
+    ALLOWED_TAGS: ['strong', 'em', 'span', 'br'],
+    ALLOWED_ATTR: ['class']
+  });
+
+  let html = sanitized
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/\$(.*?)\$/g, "<span class='font-mono bg-slate-100 text-indigo-700 px-1 rounded text-xs'>$1</span>")
-    .replace(/\\n/g, "<br/>") 
+    .replace(/\\n/g, "<br/>")
     .replace(/\n/g, "<br/>");
 
   return (
@@ -268,7 +273,7 @@ async function callHackClub(messages, keyToUse, modelOverride) {
   const model = modelOverride || "qwen/qwen3-32b";
 
   try {
-    const response = await fetch("https://ai.hackclub.com/proxy/v1/chat/completions", {
+    const response = await fetch(process.env.NEXT_PUBLIC_HACKCLUB_API_URL || "https://ai.hackclub.com/proxy/v1/chat/completions", {
       method: "POST",
       headers: {
           "Content-Type": "application/json",
@@ -465,10 +470,14 @@ const GraphCanvas = ({ config, value, onChange }) => {
   const [startPoint, setStartPoint] = useState(null);
 
   const state = value || { points: [], lines: [] };
-  const xMin = config?.xMin ?? 0;
-  const xMax = config?.xMax ?? 10;
-  const yMin = config?.yMin ?? 0;
-  const yMax = config?.yMax ?? 10;
+  const rawXMin = config?.xMin ?? 0;
+  const rawXMax = config?.xMax ?? 10;
+  const rawYMin = config?.yMin ?? 0;
+  const rawYMax = config?.yMax ?? 10;
+  const xMin = rawXMin;
+  const xMax = rawXMax > rawXMin ? rawXMax : rawXMin + 1;
+  const yMin = rawYMin;
+  const yMax = rawYMax > rawYMin ? rawYMax : rawYMin + 1;
   const xLabel = config?.xLabel ?? "X Axis";
   const yLabel = config?.yLabel ?? "Y Axis";
 
@@ -1009,17 +1018,21 @@ export default function GCSEMarkerApp() {
 
   useEffect(() => {
     if (phase === 'exam' && activeQuestions.length > 0 && typeof window !== 'undefined') {
-      window.localStorage.setItem('gcse_marker_state', JSON.stringify({
-        activeQuestions,
-        userAnswers,
-        feedbacks,
-        insertContent,
-        currentQIndex,
-        skippedQuestions: Array.from(skippedQuestions),
-        followUpChats,
-        timestamp: Date.now()
-      }));
-      setHasSavedSession(true);
+      try {
+        window.localStorage.setItem('gcse_marker_state', JSON.stringify({
+          activeQuestions,
+          userAnswers,
+          feedbacks,
+          insertContent,
+          currentQIndex,
+          skippedQuestions: Array.from(skippedQuestions),
+          followUpChats,
+          timestamp: Date.now()
+        }));
+        setHasSavedSession(true);
+      } catch (err) {
+        console.error('Failed to persist session', err);
+      }
     }
   }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, phase, skippedQuestions, followUpChats]);
 
@@ -1175,7 +1188,7 @@ export default function GCSEMarkerApp() {
       try { parsedGrader = JSON.parse(cleanedGrader); } catch (e) {}
 
       const numericScore = Math.min(q.marks, Number(parsedGrader.score ?? localEval.score ?? 0));
-      const primaryFlaw = parsedGrader.primary_flaw || parsedGrader.primaryFlaw || "Missing analysis or contextual insight.";
+      const primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw ?? "Missing analysis or contextual insight.";
 
       // STEP 2: tutor (Gemini)
       const tutorPrompt = `You are an expert English Literature tutor.\n\nSTUDENT SCORE: ${numericScore}/${q.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${q.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write a short Model Paragraph that fixes the flaw.\n4) Keep it concise, encouraging, Markdown formatted.`;
@@ -1519,7 +1532,9 @@ export default function GCSEMarkerApp() {
   if (phase === 'summary') {
     const totalScore = Object.values(feedbacks).reduce((acc, curr) => acc + curr.score, 0);
     const totalPossible = activeQuestions.reduce((acc, curr) => acc + curr.marks, 0);
-    const percentage = Math.round((totalScore / totalPossible) * 100);
+    const percentage = totalPossible > 0
+      ? Math.round((totalScore / totalPossible) * 100)
+      : 0;
     let grade = 'U'; if (percentage >= 90) grade = '9'; else if (percentage >= 80) grade = '8'; else if (percentage >= 70) grade = '7'; else if (percentage >= 50) grade = '5'; else if (percentage >= 40) grade = '4';
     const weaknessCounts = Object.values(feedbacks || {}).reduce((acc, fb) => {
       if (fb?.primaryFlaw) acc[fb.primaryFlaw] = (acc[fb.primaryFlaw] || 0) + 1;
