@@ -252,10 +252,12 @@ export default function GCSEMarkerApp() {
 
     try {
       const scheme = exam.parsedMarkScheme[q.id];
-      const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
-      if (!keyToUse) throw new Error("Hack Club API key missing for marking.");
+      // If a server-side key exists we can omit the client key (BYOK).
+      if (!hasHackClubServerKey && !hackClubApiKey) {
+        throw new Error("Hack Club API key missing for marking.");
+      }
 
-      const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel);
+      const feedback = await AIService.markQuestion(q, answer, scheme, hackClubApiKey, customApiKey, selectedModel);
       exam.setQuestionFeedback(q.id, feedback);
     } catch (err) {
       const scheme = exam.parsedMarkScheme[q.id];
@@ -287,14 +289,14 @@ export default function GCSEMarkerApp() {
     const q = exam.currentQuestion;
     setHintData({ loading: true, text: null });
     const scheme = exam.parsedMarkScheme[q.id];
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
 
-    if (!keyToUse) {
+    if (!hasKey) {
       setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
       return;
     }
     try {
-      const response = await AIService.getHint(q, scheme, keyToUse);
+      const response = await AIService.getHint(q, scheme, hackClubApiKey);
       setHintData({ loading: false, text: response });
     } catch (e) {
       setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
@@ -308,14 +310,14 @@ export default function GCSEMarkerApp() {
     const feedback = exam.feedbacks[q.id];
     setExplanationData({ loading: true, text: null });
     const scheme = exam.parsedMarkScheme[q.id];
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
 
-    if (!keyToUse) {
+    if (!hasKey) {
       setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
       return;
     }
     try {
-      const response = await AIService.explainFeedback(q, answer, feedback, scheme, keyToUse);
+      const response = await AIService.explainFeedback(q, answer, feedback, scheme, hackClubApiKey);
       setExplanationData({ loading: false, text: response });
     } catch (e) {
       setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
@@ -330,9 +332,9 @@ export default function GCSEMarkerApp() {
     setSendingFollowUp(true);
 
     const feedback = exam.feedbacks[q.id] || {};
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
 
-    if (!keyToUse) {
+    if (!hasKey) {
       const response = buildFollowUpReply(userText, q, feedback);
       exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
       setSendingFollowUp(false);
@@ -340,7 +342,7 @@ export default function GCSEMarkerApp() {
     }
     try {
       const newChat = [...currentChat, { role: 'user', text: userText }];
-      const response = await AIService.followUp(q, exam.userAnswers[q.id], feedback, newChat, keyToUse);
+      const response = await AIService.followUp(q, exam.userAnswers[q.id], feedback, newChat, hackClubApiKey);
       exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
     } catch (e) {
       exam.addFollowUpMessage(q.id, { role: 'ai', text: buildFollowUpReply(userText, q, feedback) });
@@ -352,14 +354,14 @@ export default function GCSEMarkerApp() {
   const handleGenerateStudyPlan = async (percentage) => {
     setStudyPlan({ loading: true, content: null });
     const stats = exam.getSummaryStats();
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
 
-    if (!keyToUse) {
+    if (!hasKey) {
       setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });
       return;
     }
     try {
-      const response = await AIService.generateStudyPlan(percentage, stats.weaknessCounts, exam.activeQuestions.length, keyToUse);
+      const response = await AIService.generateStudyPlan(percentage, stats.weaknessCounts, exam.activeQuestions.length, hackClubApiKey);
       setStudyPlan({ loading: false, content: response });
     } catch (e) {
       setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });
