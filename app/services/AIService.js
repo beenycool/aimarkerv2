@@ -2,11 +2,24 @@
 
 /**
  * AI Service abstraction layer
- * Centralizes all API calls, making it easy to swap models or providers
+ * Centralizes all API calls using server-side API routes for security
+ * Supports user-configurable models
  */
 
-const apiKey = process.env.NEXT_PUBLIC_GEMINI_KEY || "";
 const hackClubApiKeyDefault = process.env.NEXT_PUBLIC_HACKCLUB_KEY || "";
+
+// Default model for tasks
+export const DEFAULT_MODELS = {
+    vision: "google/gemini-2.0-flash-001",  // For PDF parsing (needs vision capability)
+    chat: "google/gemini-2.0-flash-001",    // For text-only tasks
+};
+
+// Check if server has API key configured (set via env var on server)
+export const hasServerApiKey = () => {
+    // This will be true if the server has OPENROUTER_API_KEY set
+    // We can't check directly from client, but we can try the API and see
+    return true; // Assume server might have key, let the API route handle it
+};
 
 // --- HELPER: CLEAN AI JSON ---
 export function cleanGeminiJSON(text) {
@@ -99,123 +112,34 @@ OUTPUT JSON ONLY:
 };
 
 /**
- * Core Gemini API call with file support
+ * Call OpenRouter via server-side API route (secure)
+ * @param {string} prompt - The prompt text
+ * @param {Array} files - Optional array of {mimeType, data} objects
+ * @param {string} apiKey - Optional client-provided API key (if server key not set)
+ * @param {string} model - Model ID
+ * @param {number} temperature - Temperature setting
  */
-async function callGeminiWithFiles(prompt, files, keyToUse) {
-    const effectiveKey = keyToUse || apiKey;
-    if (!effectiveKey) throw new Error("API Key is missing. Please enter your Google Gemini API Key.");
-
-    try {
-        const parts = [{ text: prompt }];
-        files.forEach(file => {
-            parts.push({
-                inlineData: {
-                    mimeType: file.mimeType || 'application/pdf',
-                    data: file.data
-                }
-            });
-        });
-
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${effectiveKey}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts }],
-                    generationConfig: {
-                        temperature: 0.2,
-                        maxOutputTokens: 16384
-                    }
-                })
-            }
-        );
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Gemini API Error ${response.status}: ${errorText}`);
-        }
-
-        const text = await response.text();
-        const data = JSON.parse(text);
-        return data.candidates?.[0]?.content?.parts?.[0]?.text;
-    } catch (error) {
-        console.error("Gemini API Call Failed:", error);
-        throw error;
-    }
-}
-
-/**
- * PDF extraction with Flash Lite (lower temperature for accuracy)
- */
-async function parsePdfWithGeminiLite(prompt, files, keyToUse) {
-    const effectiveKey = keyToUse || apiKey;
-    if (!effectiveKey) throw new Error("API Key is missing. Please enter your Google Gemini API Key.");
-
-    const parts = [{ text: prompt }];
-    files.forEach(file => {
-        parts.push({
-            inlineData: {
-                mimeType: file.mimeType || 'application/pdf',
-                data: file.data
-            }
-        });
+async function callOpenRouterAPI(prompt, files = [], apiKey = null, model = null, temperature = 0.2) {
+    const response = await fetch('/api/openrouter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            prompt,
+            files,
+            apiKey, // Will use server key if null
+            model: model || DEFAULT_MODELS.vision,
+            temperature,
+            maxTokens: 16384
+        })
     });
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${effectiveKey}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts }],
-                generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 16384
-                }
-            })
-        }
-    );
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API Error ${response.status}: ${errorText}`);
-    }
-
-    const text = await response.text();
-    const data = JSON.parse(text);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text;
-}
-
-/**
- * Simple text-only Gemini call (for tutor responses)
- */
-async function callGemini(prompt, keyToUse, model = "gemini-2.0-flash") {
-    const effectiveKey = keyToUse || apiKey;
-    if (!effectiveKey) throw new Error("API Key is missing. Please enter your Google Gemini API Key.");
-
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${effectiveKey}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.3,
-                    maxOutputTokens: 1024
-                }
-            })
-        }
-    );
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API Error ${response.status}: ${errorText}`);
-    }
-
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!response.ok) {
+        throw new Error(data.error || `API Error ${response.status}`);
+    }
+
+    return data.text;
 }
 
 /**
@@ -258,9 +182,27 @@ async function callHackClub(messages, keyToUse, modelOverride) {
  */
 export const AIService = {
     /**
+     * Check if server has API key configured
+     */
+    checkServerKey: async () => {
+        try {
+            const response = await fetch('/api/openrouter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: 'test', apiKey: null })
+            });
+            const data = await response.json();
+            // If we get a 400 with "not configured" message, server key is not set
+            return !(response.status === 400 && data.error?.includes('not configured'));
+        } catch {
+            return false;
+        }
+    },
+
+    /**
      * Extract questions from PDF files
      */
-    extractQuestions: async (paperFile, insertFile, customApiKey) => {
+    extractQuestions: async (paperFile, insertFile, customApiKey, model) => {
         const paperBase64 = await fileToBase64(paperFile);
         let insertBase64 = null;
 
@@ -276,7 +218,7 @@ export const AIService = {
             filesToSend.push({ mimeType: insertFile.type || 'application/pdf', data: insertBase64 });
         }
 
-        const responseText = await parsePdfWithGeminiLite(extractionPrompt, filesToSend, customApiKey);
+        const responseText = await callOpenRouterAPI(extractionPrompt, filesToSend, customApiKey, model, 0.1);
         if (!responseText) throw new Error('No response from AI.');
 
         const cleanedJson = cleanGeminiJSON(responseText);
@@ -287,24 +229,28 @@ export const AIService = {
     /**
      * Extract insert content for student reference
      */
-    extractInsertContent: async (insertFile, customApiKey) => {
+    extractInsertContent: async (insertFile, customApiKey, model) => {
         const insertBase64 = await fileToBase64(insertFile);
-        return await parsePdfWithGeminiLite(
+        return await callOpenRouterAPI(
             "Extract ALL text from this insert/source PDF so a student can quote from it. Output plain text only.",
             [{ mimeType: insertFile.type || 'application/pdf', data: insertBase64 }],
-            customApiKey
+            customApiKey,
+            model,
+            0.1
         );
     },
 
     /**
      * Parse mark scheme PDF
      */
-    parseMarkScheme: async (schemeFile, customApiKey) => {
+    parseMarkScheme: async (schemeFile, customApiKey, model) => {
         const schemeBase64 = await fileToBase64(schemeFile);
-        const schemeRes = await callGeminiWithFiles(
+        const schemeRes = await callOpenRouterAPI(
             PROMPTS.MARK_SCHEME,
             [{ mimeType: schemeFile.type || 'application/pdf', data: schemeBase64 }],
-            customApiKey
+            customApiKey,
+            model,
+            0.2
         );
         const cleanedScheme = cleanGeminiJSON(schemeRes);
         const parsed = JSON.parse(cleanedScheme);
@@ -314,7 +260,7 @@ export const AIService = {
     /**
      * Grade a student's answer
      */
-    markQuestion: async (question, answer, scheme, hackClubKey, customApiKey) => {
+    markQuestion: async (question, answer, scheme, hackClubKey, customApiKey, model) => {
         const studentAnswerText = stringifyAnswer(answer);
 
         // STEP 1: Strict grader (Kimi/Qwen)
@@ -337,12 +283,12 @@ export const AIService = {
         const numericScore = Math.min(question.marks, Number(parsedGrader.score ?? 0));
         const primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw ?? "Missing analysis or contextual insight.";
 
-        // STEP 2: Tutor (Gemini for explanation)
+        // STEP 2: Tutor (OpenRouter for explanation)
         const tutorPrompt = `You are an expert English Literature tutor.\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write a short Model Paragraph that fixes the flaw.\n4) Keep it concise, encouraging, Markdown formatted.`;
 
         let tutorText = "";
         try {
-            tutorText = await callGemini(tutorPrompt, customApiKey);
+            tutorText = await callOpenRouterAPI(tutorPrompt, [], customApiKey, model, 0.3);
         } catch (tutorErr) {
             tutorText = `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`;
         }
