@@ -101,9 +101,16 @@ export const PaperLibrary = ({ onSelectPaper }) => {
                                     <FileText className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors line-clamp-1">{paper.name}</h4>
+                                    <h4 className="font-semibold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors line-clamp-1">
+                                        {paper.subject && paper.subject !== 'Unknown Subject'
+                                            ? `${paper.subject} - ${paper.section}`
+                                            : paper.name}
+                                    </h4>
                                     <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {paper.year || 'Unknown Year'}</span>
+                                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {paper.year} {paper.season || ''}</span>
+                                        {paper.board && paper.board !== 'Unknown Board' && (
+                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">{paper.board}</span>
+                                        )}
                                         {paper.scheme_path && <span className="flex items-center gap-1 text-green-600"><Check className="w-3 h-3" /> Scheme</span>}
                                         {paper.insert_path && <span className="flex items-center gap-1 text-amber-600"><Check className="w-3 h-3" /> Insert</span>}
                                     </div>

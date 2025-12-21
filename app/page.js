@@ -145,7 +145,9 @@ export default function GCSEMarkerApp() {
         if (!data) return null;
         const res = await fetch(data.url);
         const blob = await res.blob();
-        return new File([blob], data.name, { type: 'application/pdf' });
+        const file = new File([blob], data.name, { type: 'application/pdf' });
+        file.fromLibrary = true;
+        return file;
       };
 
       const [p, s, i] = await Promise.all([
@@ -172,7 +174,7 @@ export default function GCSEMarkerApp() {
 
     try {
       setParsingStatus('AI analyzing exam paper...');
-      const questions = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel);
+      const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel);
       if (questions.length === 0) throw new Error('No questions were extracted.');
 
       if (files.insert) {
@@ -198,6 +200,23 @@ export default function GCSEMarkerApp() {
       }
 
       setParsingStatus('Ready!');
+
+      // Auto-save to library if not already saved
+      if (!files.paper.fromLibrary) {
+        setParsingStatus('Saving to cloud library...');
+        try {
+          // Fire and forget - or await if you want to ensure it's saved before starting
+          // Awaiting ensures we don't navigate away while uploading
+          await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
+            name: files.paper.name.replace(/\.pdf$/i, ''),
+            ...metadata // Spread AI-extracted metadata (subject, board, year, etc)
+          });
+        } catch (storageErr) {
+          console.error("Failed to auto-save paper:", storageErr);
+          // We don't stop the exam if save fails, just log it
+        }
+      }
+
       await new Promise(r => setTimeout(r, 300));
       setPhase('exam');
       if (questions[0]?.pageNumber) setPdfPage(questions[0].pageNumber);

@@ -81,7 +81,19 @@ CRITICAL RULES:
 2. **pageNumber**: The PDF page number where this question appears.
 3. **context**: When an extract is referenced, capture a short snippet + line numbers so students can quote evidence.
 4. **markingRegex**: If a 1-mark question has a definitive simple answer, provide a Javascript-compatible Regex.
-5. Return ONLY the JSON object. Do NOT use markdown formatting blocks.`,
+5. Return ONLY the JSON object. Do NOT use markdown formatting blocks.
+
+Also extract the PAPER METADATA in the root object:
+{
+  "metadata": {
+    "subject": "English Literature",
+    "board": "AQA",
+    "year": 2023,
+    "season": "June",
+    "paperNumber": "Paper 1"
+  },
+  "questions": [...]
+}`,
 
     MARK_SCHEME: `Analyze this mark scheme PDF and extract marking criteria for each question.
 Output JSON: { "markScheme": { "1": { "totalMarks": 4, "criteria": ["Point 1"], "acceptableAnswers": ["Ans 1"] } } }
@@ -214,7 +226,10 @@ export const AIService = {
 
         const cleanedJson = cleanGeminiJSON(responseText);
         const parsed = JSON.parse(cleanedJson);
-        return parsed.questions || [];
+        return {
+            questions: parsed.questions || [],
+            metadata: parsed.metadata || {}
+        };
     },
 
     /**

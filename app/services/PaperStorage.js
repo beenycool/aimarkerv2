@@ -44,8 +44,11 @@ export const PaperStorage = {
             .from('papers')
             .insert({
                 name: metadata.name || file.name,
-                section: metadata.section || 'Paper 1',
-                year: metadata.year || new Date().getFullYear(),
+                section: metadata.section || metadata.paperNumber || 'Paper 1',
+                year: metadata.year ? parseInt(metadata.year) : new Date().getFullYear(),
+                subject: metadata.subject || 'Unknown Subject',
+                board: metadata.board || 'Unknown Board',
+                season: metadata.season || 'June',
                 pdf_path: pdfPath,
                 scheme_path: schemePath,
                 insert_path: insertPath
