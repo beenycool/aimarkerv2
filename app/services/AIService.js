@@ -6,19 +6,10 @@
  * Supports user-configurable models
  */
 
-const hackClubApiKeyDefault = process.env.NEXT_PUBLIC_HACKCLUB_KEY || "";
-
 // Default model for tasks
 export const DEFAULT_MODELS = {
     vision: "google/gemini-2.0-flash-001",  // For PDF parsing (needs vision capability)
     chat: "google/gemini-2.0-flash-001",    // For text-only tasks
-};
-
-// Check if server has API key configured (set via env var on server)
-export const hasServerApiKey = () => {
-    // This will be true if the server has OPENROUTER_API_KEY set
-    // We can't check directly from client, but we can try the API and see
-    return true; // Assume server might have key, let the API route handle it
 };
 
 // --- HELPER: CLEAN AI JSON ---
@@ -113,11 +104,6 @@ OUTPUT JSON ONLY:
 
 /**
  * Call OpenRouter via server-side API route (secure)
- * @param {string} prompt - The prompt text
- * @param {Array} files - Optional array of {mimeType, data} objects
- * @param {string} apiKey - Optional client-provided API key (if server key not set)
- * @param {string} model - Model ID
- * @param {number} temperature - Temperature setting
  */
 async function callOpenRouterAPI(prompt, files = [], apiKey = null, model = null, temperature = 0.2) {
     const response = await fetch('/api/openrouter', {
@@ -143,38 +129,27 @@ async function callOpenRouterAPI(prompt, files = [], apiKey = null, model = null
 }
 
 /**
- * Hack Club Chat Completions API
+ * Call Hack Club via server-side API route (secure)
  */
-async function callHackClub(messages, keyToUse, modelOverride) {
-    const effectiveKey = keyToUse || hackClubApiKeyDefault;
-    if (!effectiveKey) throw new Error("Hack Club API Key is missing. Please enter your key to enable marking.");
-    const model = modelOverride || "qwen/qwen3-32b";
+async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b") {
+    const response = await fetch('/api/hackclub', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            messages,
+            apiKey, // Will use server key if null
+            model,
+            temperature: 0.2
+        })
+    });
 
-    try {
-        const response = await fetch(process.env.NEXT_PUBLIC_HACKCLUB_API_URL || "https://ai.hackclub.com/proxy/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${effectiveKey}`
-            },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature: 0.2
-            })
-        });
+    const data = await response.json();
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Hack Club API Error ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || "";
-    } catch (error) {
-        console.error("Hack Club API Call Failed:", error);
-        throw error;
+    if (!response.ok) {
+        throw new Error(data.error || `API Error ${response.status}`);
     }
+
+    return data.content;
 }
 
 /**
@@ -182,7 +157,7 @@ async function callHackClub(messages, keyToUse, modelOverride) {
  */
 export const AIService = {
     /**
-     * Check if server has API key configured
+     * Check if server has OpenRouter API key configured
      */
     checkServerKey: async () => {
         try {
@@ -192,7 +167,23 @@ export const AIService = {
                 body: JSON.stringify({ prompt: 'test', apiKey: null })
             });
             const data = await response.json();
-            // If we get a 400 with "not configured" message, server key is not set
+            return !(response.status === 400 && data.error?.includes('not configured'));
+        } catch {
+            return false;
+        }
+    },
+
+    /**
+     * Check if server has Hack Club API key configured
+     */
+    checkHackClubServerKey: async () => {
+        try {
+            const response = await fetch('/api/hackclub', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: [{ role: 'user', content: 'test' }], apiKey: null })
+            });
+            const data = await response.json();
             return !(response.status === 400 && data.error?.includes('not configured'));
         } catch {
             return false;
@@ -263,7 +254,7 @@ export const AIService = {
     markQuestion: async (question, answer, scheme, hackClubKey, customApiKey, model) => {
         const studentAnswerText = stringifyAnswer(answer);
 
-        // STEP 1: Strict grader (Kimi/Qwen)
+        // STEP 1: Strict grader (Kimi/Qwen via Hack Club)
         const graderMessages = [
             { role: "system", content: PROMPTS.GRADER_SYSTEM },
             { role: "user", content: `Question (${question.marks} marks): ${question.question}\nScheme: ${JSON.stringify(scheme)}\nStudent: ${studentAnswerText}` }
@@ -271,9 +262,9 @@ export const AIService = {
 
         let graderResponseText = "";
         try {
-            graderResponseText = await callHackClub(graderMessages, hackClubKey, "moonshotai/kimi-k2-thinking");
+            graderResponseText = await callHackClubAPI(graderMessages, hackClubKey, "moonshotai/kimi-k2-thinking");
         } catch (primaryErr) {
-            graderResponseText = await callHackClub(graderMessages, hackClubKey); // fallback
+            graderResponseText = await callHackClubAPI(graderMessages, hackClubKey); // fallback
         }
 
         const cleanedGrader = cleanGeminiJSON(graderResponseText);
@@ -312,7 +303,7 @@ export const AIService = {
             { role: "system", content: "Provide a short, exam-specific hint. Do NOT give the full answer." },
             { role: "user", content: `Question: ${question.question}\nContext: ${question.context?.content || 'N/A'}\nMark scheme: ${JSON.stringify(scheme)}` }
         ];
-        return await callHackClub(messages, hackClubKey);
+        return await callHackClubAPI(messages, hackClubKey);
     },
 
     /**
@@ -323,7 +314,7 @@ export const AIService = {
             { role: "system", content: "Explain the marking decision briefly in Markdown. Focus on what was missing relative to the mark scheme." },
             { role: "user", content: `Question: ${question.question}\nStudent answer: ${stringifyAnswer(answer)}\nFeedback: ${feedback.text}\nMark scheme: ${JSON.stringify(scheme)}\nScore: ${feedback.score}/${feedback.totalMarks}` }
         ];
-        return await callHackClub(messages, hackClubKey);
+        return await callHackClubAPI(messages, hackClubKey);
     },
 
     /**
@@ -335,7 +326,7 @@ export const AIService = {
             { role: "system", content: "Act as a friendly tutor. Keep replies concise and practical." },
             { role: "user", content: `Question: ${question.question}\nStudent answer: ${stringifyAnswer(answer)}\nFeedback: ${feedback.text}\nChat so far:\n${history}` }
         ];
-        return await callHackClub(messages, hackClubKey);
+        return await callHackClubAPI(messages, hackClubKey);
     },
 
     /**
@@ -347,7 +338,7 @@ export const AIService = {
             { role: "system", content: "Create a concise 3-step revision plan in Markdown that targets the repeated weaknesses listed." },
             { role: "user", content: `Student scored ${percentage}%. Repeated weaknesses: ${weaknessSummary || 'Not enough data yet.'}. Total questions: ${questionCount}.` }
         ];
-        return await callHackClub(messages, hackClubKey);
+        return await callHackClubAPI(messages, hackClubKey);
     }
 };
 

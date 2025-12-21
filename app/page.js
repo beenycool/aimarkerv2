@@ -12,8 +12,6 @@ import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock }
 import useExamLogic from './hooks/useExamLogic';
 import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from './services/AIService';
 
-const hackClubApiKeyDefault = process.env.NEXT_PUBLIC_HACKCLUB_KEY || "";
-
 export default function GCSEMarkerApp() {
   // Phase management
   const [phase, setPhase] = useState('upload');
@@ -28,10 +26,11 @@ export default function GCSEMarkerApp() {
 
   // API keys and model selection
   const [customApiKey, setCustomApiKey] = useState("");
-  const [hackClubApiKey, setHackClubApiKey] = useState(hackClubApiKeyDefault);
+  const [hackClubApiKey, setHackClubApiKey] = useState("");
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODELS.vision);
   const [hasSavedSession, setHasSavedSession] = useState(false);
-  const [hasServerKey, setHasServerKey] = useState(true); // Assume server has key initially
+  const [hasServerKey, setHasServerKey] = useState(true); // Assume server has OpenRouter key initially
+  const [hasHackClubServerKey, setHasHackClubServerKey] = useState(true); // Assume server has Hack Club key initially
 
   // Loading states
   const [loadingFeedback, setLoadingFeedback] = useState(false);
@@ -44,7 +43,7 @@ export default function GCSEMarkerApp() {
   // Use custom exam logic hook
   const exam = useExamLogic();
 
-  // Load API keys and model from localStorage, check server key
+  // Load API keys and model from localStorage, check server keys
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedKey = window.localStorage.getItem('openrouter_api_key');
@@ -58,8 +57,9 @@ export default function GCSEMarkerApp() {
     const savedData = window.localStorage.getItem('gcse_marker_state');
     if (savedData) setHasSavedSession(true);
 
-    // Check if server has API key configured
+    // Check if server has API keys configured
     AIService.checkServerKey().then(hasKey => setHasServerKey(hasKey));
+    AIService.checkHackClubServerKey().then(hasKey => setHasHackClubServerKey(hasKey));
   }, []);
 
   // Auto-restore session on mount
@@ -343,13 +343,15 @@ export default function GCSEMarkerApp() {
             </div>
             <p className="mt-1 text-xs text-slate-500">Enter any OpenRouter model ID. Browse models at <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">openrouter.ai/models</a></p>
           </div>
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-slate-700 mb-2">Hack Club API Key (Marking)</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Key className="h-5 w-5 text-slate-400" /></div>
-              <input type="password" value={hackClubApiKey} onChange={(e) => updateHackClubKey(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Enter Hack Club key for marking" />
+          {!hasHackClubServerKey && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-2">Hack Club API Key (Marking)</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Key className="h-5 w-5 text-slate-400" /></div>
+                <input type="password" value={hackClubApiKey} onChange={(e) => updateHackClubKey(e.target.value)} className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Enter Hack Club key for marking" />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-2"><FileUploadZone label="Question Paper" file={files.paper} onUpload={(f) => setFiles(prev => ({ ...prev, paper: f }))} /><div className="grid grid-cols-2 gap-4"><FileUploadZone label="Mark Scheme" file={files.scheme} onUpload={(f) => setFiles(prev => ({ ...prev, scheme: f }))} /><FileUploadZone label="Insert / Source" file={files.insert} onUpload={(f) => setFiles(prev => ({ ...prev, insert: f }))} /></div></div>
           <button disabled={!files.paper || (!hasServerKey && !customApiKey)} onClick={handleStartParsing} className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all ${files.paper && (hasServerKey || customApiKey) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>Start AI Analysis</button>
