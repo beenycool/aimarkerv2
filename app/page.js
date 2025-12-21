@@ -6,11 +6,12 @@ import {
 } from 'lucide-react';
 
 // Import modular components
-import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock } from './components';
+import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, PaperLibrary } from './components';
 
 // Import custom hooks and services
 import useExamLogic from './hooks/useExamLogic';
 import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from './services/AIService';
+import { PaperStorage } from './services/PaperStorage';
 
 export default function GCSEMarkerApp() {
   // Phase management
@@ -39,6 +40,7 @@ export default function GCSEMarkerApp() {
   const [studyPlan, setStudyPlan] = useState({ loading: false, content: null });
   const [sendingFollowUp, setSendingFollowUp] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Use custom exam logic hook
   const exam = useExamLogic();
@@ -118,6 +120,48 @@ export default function GCSEMarkerApp() {
       exam.handleAnswerChange(exam.currentQuestion.id, val);
     }
   }, [exam.currentQuestion, exam.handleAnswerChange]);
+
+  const handleSavePaper = async () => {
+    if (!files.paper) return;
+    setIsSaving(true);
+    try {
+      await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
+        name: files.paper.name.replace('.pdf', ''),
+        year: new Date().getFullYear()
+      });
+      alert("Paper saved to library!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save paper: " + e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSelectPaper = async (paperData) => {
+    setParsingStatus("Loading paper from library...");
+    try {
+      const loadFile = async (data) => {
+        if (!data) return null;
+        const res = await fetch(data.url);
+        const blob = await res.blob();
+        return new File([blob], data.name, { type: 'application/pdf' });
+      };
+
+      const [p, s, i] = await Promise.all([
+        loadFile(paperData.paper),
+        loadFile(paperData.scheme),
+        loadFile(paperData.insert)
+      ]);
+
+      setFiles({ paper: p, scheme: s, insert: i });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to load paper.");
+    } finally {
+      setParsingStatus("");
+    }
+  };
 
   // Start parsing PDFs
   const handleStartParsing = async () => {
@@ -353,7 +397,28 @@ export default function GCSEMarkerApp() {
             </div>
           )}
 
-          <div className="space-y-2"><FileUploadZone label="Question Paper" file={files.paper} onUpload={(f) => setFiles(prev => ({ ...prev, paper: f }))} /><div className="grid grid-cols-2 gap-4"><FileUploadZone label="Mark Scheme" file={files.scheme} onUpload={(f) => setFiles(prev => ({ ...prev, scheme: f }))} /><FileUploadZone label="Insert / Source" file={files.insert} onUpload={(f) => setFiles(prev => ({ ...prev, insert: f }))} /></div></div>
+          <div className="space-y-2">
+            <FileUploadZone label="Question Paper" file={files.paper} onUpload={(f) => setFiles(prev => ({ ...prev, paper: f }))} />
+            <div className="grid grid-cols-2 gap-4">
+              <FileUploadZone label="Mark Scheme" file={files.scheme} onUpload={(f) => setFiles(prev => ({ ...prev, scheme: f }))} />
+              <FileUploadZone label="Insert / Source" file={files.insert} onUpload={(f) => setFiles(prev => ({ ...prev, insert: f }))} />
+            </div>
+            {files.paper && (
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSavePaper}
+                  disabled={isSaving}
+                  className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold"
+                >
+                  {isSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />} Save to Library
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="my-6 border-t border-slate-100 pt-6">
+            <PaperLibrary onSelectPaper={handleSelectPaper} />
+          </div>
           <button disabled={!files.paper || (!hasServerKey && !customApiKey)} onClick={handleStartParsing} className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all ${files.paper && (hasServerKey || customApiKey) ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-400'}`}>Start AI Analysis</button>
         </div>
       </div>
