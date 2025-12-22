@@ -9,6 +9,20 @@
 
 const buckets = new Map();
 
+// Periodically prune stale bucket entries to prevent unbounded growth in long-running processes.
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamps] of buckets.entries()) {
+    const fresh = timestamps.filter((t) => now - t < 60 * 60 * 1000); // drop entries inactive for >1h
+    if (fresh.length === 0) {
+      buckets.delete(key);
+    } else if (fresh.length !== timestamps.length) {
+      buckets.set(key, fresh);
+    }
+  }
+}, CLEANUP_INTERVAL_MS).unref();
+
 export function getClientIp(request) {
   // Common proxy headers on Vercel / Cloudflare / Nginx
   const forwarded = request.headers.get('x-forwarded-for');

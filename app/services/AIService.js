@@ -322,7 +322,7 @@ async function postJsonWithRetries(url, body, { retries = 2, retryBaseMs = 700 }
     } catch (err) {
       lastErr = err;
       if (attempt < retries) {
-        const wait = retryBaseMs * Math.pow(2, attempt);
+        const wait = retryBaseMs * Math.pow(2, attempt) + Math.floor(Math.random() * 120);
         await sleep(wait);
         continue;
       }
@@ -359,7 +359,11 @@ async function callHackClubAPI({ messages, apiKey = null, model = 'qwen/qwen3-32
 
   const res = await postJsonWithRetries('/api/hackclub', body, { retries: 2 });
   if (!res.ok) throw new Error(res.error || 'Hack Club request failed');
-  return res.data;
+  return {
+    text: res.data.content,
+    usage: res.data.usage,
+    requestId: res.data.requestId,
+  };
 }
 
 // ---- NORMALIZATION / VALIDATION ----
@@ -682,7 +686,7 @@ export const AIService = {
       });
     }
 
-    const graderText = grader?.content || '';
+    const graderText = grader?.text || '';
     const graderJson = parseJsonWithFixes(graderText);
 
     const maxMark = question.marks;
@@ -772,8 +776,8 @@ FORMAT:
       },
     ];
 
-    const { content } = await callHackClubAPI({ messages, apiKey: hackClubKey });
-    return content;
+    const { text } = await callHackClubAPI({ messages, apiKey: hackClubKey });
+    return text;
   },
 
   explainFeedback: async (question, answer, feedback, scheme, hackClubKey) => {
@@ -791,8 +795,8 @@ FORMAT:
       },
     ];
 
-    const { content } = await callHackClubAPI({ messages, apiKey: hackClubKey });
-    return content;
+    const { text } = await callHackClubAPI({ messages, apiKey: hackClubKey });
+    return text;
   },
 
   followUp: async (question, answer, feedback, chatHistory, hackClubKey) => {
@@ -805,8 +809,8 @@ FORMAT:
       },
     ];
 
-    const { content } = await callHackClubAPI({ messages, apiKey: hackClubKey });
-    return content;
+    const { text } = await callHackClubAPI({ messages, apiKey: hackClubKey });
+    return text;
   },
 
   generateStudyPlan: async (percentage, weaknessCounts, questionCount, hackClubKey) => {
@@ -825,8 +829,8 @@ FORMAT:
       },
     ];
 
-    const { content } = await callHackClubAPI({ messages, apiKey: hackClubKey });
-    return content;
+    const { text } = await callHackClubAPI({ messages, apiKey: hackClubKey });
+    return text;
   },
 };
 

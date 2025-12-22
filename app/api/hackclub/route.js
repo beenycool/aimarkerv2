@@ -40,6 +40,16 @@ export async function POST(request) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
+        const payload = {
+            model,
+            messages,
+            temperature,
+        };
+
+        if (responseFormat && typeof responseFormat === 'object') {
+            payload.response_format = responseFormat;
+        }
+
         const response = await fetch(HACKCLUB_API_URL, {
             method: "POST",
             headers: {
@@ -47,12 +57,7 @@ export async function POST(request) {
                 "Authorization": `Bearer ${apiKey}`,
                 "X-Request-Id": requestId,
             },
-            body: JSON.stringify({
-                model,
-                messages,
-                temperature,
-                ...(responseFormat && typeof responseFormat === 'object' ? { response_format: responseFormat } : {})
-            }),
+            body: JSON.stringify(payload),
             signal: controller.signal,
         });
 
@@ -73,6 +78,6 @@ export async function POST(request) {
             : (error.message || "Internal server error");
 
         console.error("Hack Club API route error:", error);
-        return jsonError(message, 500);
+        return jsonError(message, 500, { requestId: requestId ?? undefined });
     }
 }

@@ -11,6 +11,8 @@ import useExamLogic from './hooks/useExamLogic';
 import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from './services/AIService';
 import { PaperStorage } from './services/PaperStorage';
 
+const libraryFiles = new WeakSet();
+
 export default function GCSEMarkerApp() {
   // Phase management
   const [phase, setPhase] = useState('upload');
@@ -69,13 +71,15 @@ export default function GCSEMarkerApp() {
       setHasSavedSession(true);
       setPhase('exam');
     }
-  }, [exam.restoreSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Persist session on changes
   useEffect(() => {
     exam.saveSession(phase);
     if (phase === 'exam' && exam.activeQuestions.length > 0) setHasSavedSession(true);
-  }, [exam.activeQuestions, exam.userAnswers, exam.feedbacks, exam.currentQIndex, phase, exam.saveSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam.activeQuestions, exam.userAnswers, exam.feedbacks, exam.currentQIndex, phase]);
 
   // Timer
   useEffect(() => {
@@ -144,7 +148,7 @@ export default function GCSEMarkerApp() {
         const res = await fetch(data.url);
         const blob = await res.blob();
         const file = new File([blob], data.name, { type: 'application/pdf' });
-        file.fromLibrary = true;
+        libraryFiles.add(file);
         return file;
       };
 
@@ -200,19 +204,14 @@ export default function GCSEMarkerApp() {
       setParsingStatus('Ready!');
 
       // Auto-save to library if not already saved
-      if (!files.paper.fromLibrary) {
+      if (!libraryFiles.has(files.paper)) {
         setParsingStatus('Saving to cloud library...');
-        try {
-          // Fire and forget - or await if you want to ensure it's saved before starting
-          // Awaiting ensures we don't navigate away while uploading
-          await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
-            name: files.paper.name.replace(/\.pdf$/i, ''),
-            ...metadata // Spread AI-extracted metadata (subject, board, year, etc)
-          });
-        } catch (storageErr) {
+        PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
+          name: files.paper.name.replace(/\.pdf$/i, ''),
+          ...metadata // Spread AI-extracted metadata (subject, board, year, etc)
+        }).catch((storageErr) => {
           console.error("Failed to auto-save paper:", storageErr);
-          // We don't stop the exam if save fails, just log it
-        }
+        });
       }
 
       await new Promise(r => setTimeout(r, 300));

@@ -112,6 +112,6 @@ export async function POST(request) {
             : (error.message || 'Internal server error');
 
         console.error("OpenRouter API route error:", error);
-        return jsonError(message, 500);
+        return jsonError(message, 500, { requestId: requestId ?? undefined });
     }
 }
