@@ -5,6 +5,11 @@ export const PaperStorage = {
      * Upload a paper to Supabase Storage and save metadata to the DB
      */
     async uploadPaper(file, schemeFile, insertFile, metadata) {
+        if (!supabase) {
+            throw new Error(
+                'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable the paper library.'
+            );
+        }
         if (!file) throw new Error("Question paper is required");
 
         const timestamp = Date.now();
@@ -63,6 +68,11 @@ export const PaperStorage = {
      * Fetch all saved papers
      */
     async listPapers() {
+        if (!supabase) {
+            throw new Error(
+                'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable the paper library.'
+            );
+        }
         const { data, error } = await supabase
             .from('papers')
             .select('*')
@@ -76,6 +86,7 @@ export const PaperStorage = {
      * Get public URL for a file
      */
     getPublicUrl(path) {
+        if (!supabase) return null;
         if (!path) return null;
         const { data } = supabase.storage
             .from('exam-papers')
@@ -87,6 +98,11 @@ export const PaperStorage = {
      * Delete a paper
      */
     async deletePaper(id, paths) {
+        if (!supabase) {
+            throw new Error(
+                'Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to enable the paper library.'
+            );
+        }
         // 1. Delete files from storage
         const filesToDelete = [paths.pdf_path, paths.scheme_path, paths.insert_path].filter(Boolean);
         if (filesToDelete.length > 0) {

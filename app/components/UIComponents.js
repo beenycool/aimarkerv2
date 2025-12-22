@@ -78,6 +78,40 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                     <div className="text-slate-700 text-sm"><MarkdownText text={feedback.text} /></div>
                 </div>
 
+                {(feedback.primaryFlaw || feedback.aoBreakdown || feedback.audit) && (
+                    <details className="bg-white border border-slate-200 rounded-lg p-3">
+                        <summary className="cursor-pointer text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-indigo-500" /> Examiner details
+                        </summary>
+                        <div className="mt-3 space-y-2 text-sm text-slate-700">
+                            {feedback.primaryFlaw && (
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Primary weakness</div>
+                                    <div>{feedback.primaryFlaw}</div>
+                                </div>
+                            )}
+
+                            {feedback.aoBreakdown && (
+                                <div>
+                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AO breakdown</div>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        {Object.entries(feedback.aoBreakdown).map(([k, v]) => (
+                                            <li key={k}><span className="font-mono">{k}</span>: {String(v)}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {feedback.audit && (
+                                <div className="text-xs text-slate-500">
+                                    {feedback.audit.graderModel && <div>Grader model: <span className="font-mono">{feedback.audit.graderModel}</span></div>}
+                                    {feedback.audit.tutorModel && <div>Tutor model: <span className="font-mono">{feedback.audit.tutorModel}</span></div>}
+                                </div>
+                            )}
+                        </div>
+                    </details>
+                )}
+
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Improved Answer (Changes in Bold)</h4>
                     <div className="text-slate-800 font-serif text-sm"><MarkdownText text={feedback.rewrite} /></div>
