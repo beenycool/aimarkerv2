@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRight, RefreshCw, CheckCircle2, Shuffle, Sparkles } from 'lucide-react';
@@ -103,7 +103,7 @@ function buildDailyItems({ subjectName, attempts }) {
   return items.slice(0, 5);
 }
 
-export default function DailyPage() {
+function DailyPageContent() {
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subject');
 
@@ -387,5 +387,22 @@ export default function DailyPage() {
         <Link href="/dashboard" className="font-bold text-indigo-600 hover:text-indigo-800">← Back to dashboard</Link>
       </div>
     </div>
+  );
+}
+
+export default function DailyPage() {
+  return (
+    <Suspense
+      fallback={(
+        <div className="space-y-6">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wide">Daily</div>
+          <Card>
+            <div className="p-5 text-sm text-slate-500">Loading your daily pack…</div>
+          </Card>
+        </div>
+      )}
+    >
+      <DailyPageContent />
+    </Suspense>
   );
 }
