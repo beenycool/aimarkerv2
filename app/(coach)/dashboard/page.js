@@ -118,6 +118,7 @@ export default function DashboardPage() {
 
   const nextMock = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const upcoming = (assessments || [])
       .filter((a) => a?.date && new Date(a.date + 'T00:00:00') >= today)
       .sort((a, b) => new Date(a.date) - new Date(b.date));

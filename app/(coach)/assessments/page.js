@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Target } from 'lucide-react';
 import { getOrCreateStudentId } from '../../services/studentId';
@@ -37,7 +37,7 @@ export default function AssessmentsPage() {
     setStudentId(getOrCreateStudentId());
   }, []);
 
-  const reload = async (sid) => {
+  const reload = useCallback(async (sid) => {
     setLoading(true);
     setError(null);
     try {
@@ -52,16 +52,16 @@ export default function AssessmentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!studentId) return;
     reload(studentId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentId]);
+  }, [studentId, reload]);
 
   const upcoming = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     return (assessments || [])
       .filter((a) => a?.date && new Date(a.date + 'T00:00:00') >= today)
       .sort((a, b) => new Date(a.date) - new Date(b.date));

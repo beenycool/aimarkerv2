@@ -295,8 +295,8 @@ export default function GCSEMarkerApp() {
 
     try {
       const scheme = exam.parsedMarkScheme[q.id];
-      const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
-      if (!keyToUse) throw new Error("Hack Club API key missing for marking.");
+      const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
+      if (!keyToUse && !hasHackClubServerKey) throw new Error("Hack Club API key missing for marking.");
 
       const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel);
       exam.setQuestionFeedback(q.id, feedback);
@@ -368,9 +368,9 @@ export default function GCSEMarkerApp() {
     const q = exam.currentQuestion;
     setHintData({ loading: true, text: null });
     const scheme = exam.parsedMarkScheme[q.id];
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!keyToUse) {
+    if (!keyToUse && !hasHackClubServerKey) {
       setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
       return;
     }
@@ -389,9 +389,9 @@ export default function GCSEMarkerApp() {
     const feedback = exam.feedbacks[q.id];
     setExplanationData({ loading: true, text: null });
     const scheme = exam.parsedMarkScheme[q.id];
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!keyToUse) {
+    if (!keyToUse && !hasHackClubServerKey) {
       setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
       return;
     }
@@ -411,9 +411,9 @@ export default function GCSEMarkerApp() {
     setSendingFollowUp(true);
 
     const feedback = exam.feedbacks[q.id] || {};
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!keyToUse) {
+    if (!keyToUse && !hasHackClubServerKey) {
       const response = buildFollowUpReply(userText, q, feedback);
       exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
       setSendingFollowUp(false);
@@ -433,9 +433,9 @@ export default function GCSEMarkerApp() {
   const handleGenerateStudyPlan = async (percentage) => {
     setStudyPlan({ loading: true, content: null });
     const stats = exam.getSummaryStats();
-    const keyToUse = hackClubApiKey || hackClubApiKeyDefault;
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!keyToUse) {
+    if (!keyToUse && !hasHackClubServerKey) {
       setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });
       return;
     }

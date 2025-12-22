@@ -87,7 +87,7 @@ export default function SubjectDetailPage() {
   }, [attempts]);
 
   const nextActions = useMemo(() => {
-    // Simple rule: pick top 3 weaknesses and turn into “revise next”.
+    // Simple rule: pick top 5 weaknesses and turn into “revise next”.
     return topWeaknesses.slice(0, 5).map((w) => ({
       title: w.label,
       hint: `Fix this by doing one timed question + a short checklist.`,

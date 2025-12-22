@@ -281,8 +281,10 @@ export default function DailyPage() {
             </div>
 
             <div className="p-5 space-y-3">
-              {items.map((it, idx) => (
-                <div key={it.id || idx} className="rounded-xl border border-slate-200 p-4">
+              {items.map((it, idx) => {
+                const itemKey = it.id || String(idx);
+                return (
+                  <div key={itemKey} className="rounded-xl border border-slate-200 p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -296,19 +298,20 @@ export default function DailyPage() {
                     </div>
 
                     <button
-                      onClick={() => toggleItem(it.id || String(idx))}
+                      onClick={() => toggleItem(itemKey)}
                       disabled={isDone}
                       className={[
                         'rounded-xl px-3 py-2 text-sm font-extrabold border',
-                        checked[it.id] ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50',
+                        checked[itemKey] ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50',
                         isDone ? 'opacity-50 cursor-not-allowed' : ''
                       ].join(' ')}
                     >
-                      {checked[it.id] ? 'Done' : 'Mark done'}
+                      {checked[itemKey] ? 'Done' : 'Mark done'}
                     </button>
                   </div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </Card>
 

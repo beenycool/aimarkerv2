@@ -224,8 +224,12 @@ function MemoryRow({ item, onSave, onArchive, disabled }) {
   }, [item]);
 
   const save = async () => {
-    await onSave(draft);
-    setEditing(false);
+    try {
+      await onSave(draft);
+      setEditing(false);
+    } catch {
+      // Parent handles error; keep editing so user can retry
+    }
   };
 
   return (
