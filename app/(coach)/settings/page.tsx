@@ -27,7 +27,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { getOrCreateStudentId } from '../../services/studentId';
-import { getSettings, updateSettings, DEFAULT_SETTINGS } from '../../services/studentOS';
+import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS } from '../../services/studentOS';
 
 interface UserSettings {
     name: string;
@@ -64,7 +64,7 @@ export default function SettingsPage() {
         const loadSettings = async () => {
             setLoading(true);
             try {
-                const data = await getSettings(studentId);
+                const data = await getOrCreateSettings(studentId);
                 if (data) {
                     setSettings({
                         name: data.name || '',

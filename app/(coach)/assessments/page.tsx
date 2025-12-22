@@ -153,7 +153,7 @@ export default function AssessmentsPage() {
         const subjectName = subjects.find(s => s.id === formSubject)?.name || '';
         const topics = suggestedTopics[subjectName] || suggestedTopics.default;
         const randomTopics = topics.sort(() => 0.5 - Math.random()).slice(0, 4);
-        setFormTopics(prev => [...new Set([...prev, ...randomTopics])]);
+        setFormTopics(prev => Array.from(new Set([...prev, ...randomTopics])));
 
         setIsAiLoading(false);
     };

@@ -64,6 +64,7 @@ export default function DailyPage() {
 
                 // Try to get or create today's session
                 try {
+                    // @ts-expect-error - JS function parameter typed as never[]
                     const todaySession = await getOrCreateTodayDailySession(studentId, { items: dailyItems });
                     setSession({
                         id: todaySession.id,
@@ -178,8 +179,8 @@ export default function DailyPage() {
                                 <div
                                     key={item.id}
                                     className={`flex items-start gap-4 p-4 rounded-lg border transition-colors cursor-pointer ${item.completed
-                                            ? 'bg-success/5 border-success/20'
-                                            : 'bg-card hover:bg-secondary/50'
+                                        ? 'bg-success/5 border-success/20'
+                                        : 'bg-card hover:bg-secondary/50'
                                         }`}
                                     onClick={() => toggleItem(item.id)}
                                 >
