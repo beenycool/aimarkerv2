@@ -1,0 +1,19 @@
+import './globals.css';
+import { ThemeProvider } from 'next-themes';
+
+export const metadata = {
+    title: 'GCSE Planner + AI Marker',
+    description: 'A calm GCSE study planner with an AI-powered paper marker.',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <html lang="en" suppressHydrationWarning>
+            <body className="bg-background text-foreground">
+                <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+                    {children}
+                </ThemeProvider>
+            </body>
+        </html>
+    );
+}
