@@ -1,15 +1,19 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, BookOpen, ImageIcon
 } from 'lucide-react';
 
 // Import modular components
-import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, PaperLibrary } from './components';
+import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, PaperLibrary } from '../../components';
 
 // Import custom hooks and services
-import useExamLogic from './hooks/useExamLogic';
-import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from './services/AIService';
-import { PaperStorage } from './services/PaperStorage';
+import useExamLogic from '../../hooks/useExamLogic';
+import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from '../../services/AIService';
+import { PaperStorage } from '../../services/PaperStorage';
+import { getOrCreateStudentId } from '../../services/studentId';
+import { ensureSubjectForStudent, logQuestionAttemptSafe } from '../../services/studentOS';
 
 export default function GCSEMarkerApp() {
   // Phase management
@@ -17,6 +21,11 @@ export default function GCSEMarkerApp() {
   const [files, setFiles] = useState({ paper: null, scheme: null, insert: null });
   const [error, setError] = useState(null);
   const [parsingStatus, setParsingStatus] = useState('');
+
+  // Student OS identity + attempt logging
+  const [studentId, setStudentId] = useState(null);
+  const [paperMeta, setPaperMeta] = useState(null);
+  const [subjectId, setSubjectId] = useState(null);
 
   // PDF viewer state
   const [activePdfTab, setActivePdfTab] = useState('paper');
@@ -46,6 +55,8 @@ export default function GCSEMarkerApp() {
   // Load API keys and model from localStorage, check server keys
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // Student OS: stable ID per device
+    setStudentId(getOrCreateStudentId());
     const storedKey = window.localStorage.getItem('openrouter_api_key');
     if (storedKey) setCustomApiKey(storedKey);
     const storedHackKey = window.localStorage.getItem('hackclub_api_key');
@@ -173,6 +184,19 @@ export default function GCSEMarkerApp() {
     try {
       setParsingStatus('AI analyzing exam paper...');
       const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel);
+      setPaperMeta(metadata || null);
+
+      // Student OS: link this paper to a Subject (so attempts show on dashboard)
+      const sid = studentId || getOrCreateStudentId();
+      if (sid && metadata?.subject) {
+        setStudentId(sid);
+        try {
+          const subj = await ensureSubjectForStudent(sid, { name: metadata.subject, exam_board: metadata.board });
+          if (subj?.id) setSubjectId(subj.id);
+        } catch (e) {
+          console.warn('ensureSubjectForStudent failed:', e);
+        }
+      }
       if (questions.length === 0) throw new Error('No questions were extracted.');
 
       if (files.insert) {
@@ -240,7 +264,28 @@ export default function GCSEMarkerApp() {
     // Regex check for simple answers
     if (q.markingRegex && (typeof answer === 'string' || typeof answer === 'number')) {
       if (checkRegex(q.markingRegex, String(answer).trim())) {
-        exam.setQuestionFeedback(q.id, { score: q.marks, totalMarks: q.marks, text: "Correct! (Auto-verified)", rewrite: `**${answer}**` });
+        const autoFeedback = { score: q.marks, totalMarks: q.marks, text: "Correct! (Auto-verified)", rewrite: `**${answer}**` };
+        exam.setQuestionFeedback(q.id, autoFeedback);
+
+        // Student OS: log attempt (non-blocking)
+        const sid = studentId || getOrCreateStudentId();
+        if (sid && subjectId) {
+          setStudentId(sid);
+          logQuestionAttemptSafe({
+            student_id: sid,
+            subject_id: subjectId,
+            question_id: String(q.id),
+            question_text: q.question,
+            answer_text: stringifyAnswer(answer),
+            marks_awarded: q.marks,
+            marks_total: q.marks,
+            primary_flaw: null,
+            feedback_md: autoFeedback.text,
+            model_answer_md: autoFeedback.rewrite,
+            source: 'auto_regex',
+          });
+        }
+
         return;
       }
     }
@@ -250,18 +295,54 @@ export default function GCSEMarkerApp() {
 
     try {
       const scheme = exam.parsedMarkScheme[q.id];
-      // If a server-side key exists we can omit the client key (BYOK).
-      if (!hasHackClubServerKey && !hackClubApiKey) {
-        throw new Error("Hack Club API key missing for marking.");
-      }
+      const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
+      if (!keyToUse && !hasHackClubServerKey) throw new Error("Hack Club API key missing for marking.");
 
-      const feedback = await AIService.markQuestion(q, answer, scheme, hackClubApiKey, customApiKey, selectedModel);
+      const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel);
       exam.setQuestionFeedback(q.id, feedback);
+
+      // Student OS: log attempt (non-blocking)
+      const sid = studentId || getOrCreateStudentId();
+      if (sid && subjectId) {
+        setStudentId(sid);
+        logQuestionAttemptSafe({
+          student_id: sid,
+          subject_id: subjectId,
+          question_id: String(q.id),
+          question_text: q.question,
+          answer_text: stringifyAnswer(answer),
+          marks_awarded: Number(feedback?.score ?? 0),
+          marks_total: Number(q.marks ?? feedback?.totalMarks ?? 0),
+          primary_flaw: feedback?.primaryFlaw || null,
+          feedback_md: feedback?.text || null,
+          model_answer_md: feedback?.rewrite || null,
+          source: 'ai',
+        });
+      }
     } catch (err) {
       const scheme = exam.parsedMarkScheme[q.id];
       const fallback = evaluateAnswerLocally(q, answer, scheme);
       const message = err?.message?.includes("Hack Club") ? "Add a Hack Club API key for marking. Local estimate:" : "Marking failed. Local estimate:";
       exam.setQuestionFeedback(q.id, { score: Math.min(fallback.score || 0, q.marks), totalMarks: q.marks, text: `${message} ${fallback.text}`, rewrite: fallback.rewrite });
+
+      // Student OS: log attempt (non-blocking)
+      const sid = studentId || getOrCreateStudentId();
+      if (sid && subjectId) {
+        setStudentId(sid);
+        logQuestionAttemptSafe({
+          student_id: sid,
+          subject_id: subjectId,
+          question_id: String(q.id),
+          question_text: q.question,
+          answer_text: stringifyAnswer(answer),
+          marks_awarded: Math.min(Number(fallback?.score ?? 0), Number(q.marks ?? 0)),
+          marks_total: Number(q.marks ?? 0),
+          primary_flaw: null,
+          feedback_md: `${message} ${fallback.text}`,
+          model_answer_md: fallback.rewrite || null,
+          source: 'fallback',
+        });
+      }
     }
     setLoadingFeedback(false);
   };
@@ -287,14 +368,14 @@ export default function GCSEMarkerApp() {
     const q = exam.currentQuestion;
     setHintData({ loading: true, text: null });
     const scheme = exam.parsedMarkScheme[q.id];
-    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!hasKey) {
+    if (!keyToUse && !hasHackClubServerKey) {
       setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
       return;
     }
     try {
-      const response = await AIService.getHint(q, scheme, hackClubApiKey);
+      const response = await AIService.getHint(q, scheme, keyToUse);
       setHintData({ loading: false, text: response });
     } catch (e) {
       setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
@@ -308,14 +389,14 @@ export default function GCSEMarkerApp() {
     const feedback = exam.feedbacks[q.id];
     setExplanationData({ loading: true, text: null });
     const scheme = exam.parsedMarkScheme[q.id];
-    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!hasKey) {
+    if (!keyToUse && !hasHackClubServerKey) {
       setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
       return;
     }
     try {
-      const response = await AIService.explainFeedback(q, answer, feedback, scheme, hackClubApiKey);
+      const response = await AIService.explainFeedback(q, answer, feedback, scheme, keyToUse);
       setExplanationData({ loading: false, text: response });
     } catch (e) {
       setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
@@ -330,9 +411,9 @@ export default function GCSEMarkerApp() {
     setSendingFollowUp(true);
 
     const feedback = exam.feedbacks[q.id] || {};
-    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!hasKey) {
+    if (!keyToUse && !hasHackClubServerKey) {
       const response = buildFollowUpReply(userText, q, feedback);
       exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
       setSendingFollowUp(false);
@@ -340,7 +421,7 @@ export default function GCSEMarkerApp() {
     }
     try {
       const newChat = [...currentChat, { role: 'user', text: userText }];
-      const response = await AIService.followUp(q, exam.userAnswers[q.id], feedback, newChat, hackClubApiKey);
+      const response = await AIService.followUp(q, exam.userAnswers[q.id], feedback, newChat, keyToUse);
       exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
     } catch (e) {
       exam.addFollowUpMessage(q.id, { role: 'ai', text: buildFollowUpReply(userText, q, feedback) });
@@ -352,14 +433,14 @@ export default function GCSEMarkerApp() {
   const handleGenerateStudyPlan = async (percentage) => {
     setStudyPlan({ loading: true, content: null });
     const stats = exam.getSummaryStats();
-    const hasKey = hasHackClubServerKey || Boolean(hackClubApiKey);
+    const keyToUse = hackClubApiKey || (hasHackClubServerKey ? null : undefined);
 
-    if (!hasKey) {
+    if (!keyToUse && !hasHackClubServerKey) {
       setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });
       return;
     }
     try {
-      const response = await AIService.generateStudyPlan(percentage, stats.weaknessCounts, exam.activeQuestions.length, hackClubApiKey);
+      const response = await AIService.generateStudyPlan(percentage, stats.weaknessCounts, exam.activeQuestions.length, keyToUse);
       setStudyPlan({ loading: false, content: response });
     } catch (e) {
       setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });
