@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'AI GCSE Marker',
-  description: 'Upload papers and mark answers with AI assistance.',
+  title: 'GCSE Planner + AI Marker',
+  description: 'A calm GCSE study planner with an AI-powered paper marker.',
 };
 
 export default function RootLayout({ children }) {
