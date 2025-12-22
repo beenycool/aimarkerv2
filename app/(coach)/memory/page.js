@@ -65,7 +65,7 @@ export default function MemoryPage() {
       await upsertMemoryItem(studentId, {
         category: form.category,
         content: form.content.trim(),
-        confidence: Number(form.confidence) || 50,
+        confidence: form.confidence === '' ? 50 : Number(form.confidence),
         source: form.source,
         last_confirmed: new Date().toISOString(),
         archived: false,
