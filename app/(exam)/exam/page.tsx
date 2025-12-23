@@ -22,7 +22,7 @@ import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, 
 import useExamLogic from '../../hooks/useExamLogic';
 import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from '../../services/AIService';
 import { PaperStorage } from '../../services/PaperStorage';
-import { useStudentId } from '../../components/AuthProvider';
+import { useAuth, useStudentId } from '../../components/AuthProvider';
 import { ensureSubjectForStudent, logQuestionAttemptSafe } from '../../services/studentOS';
 
 export default function GCSEMarkerApp() {
@@ -33,6 +33,7 @@ export default function GCSEMarkerApp() {
     const [parsingStatus, setParsingStatus] = useState('');
 
     // Student OS identity + attempt logging
+    const { user, signInAnonymously } = useAuth();
     const studentId = useStudentId();
     const [paperMeta, setPaperMeta] = useState(null);
     const [subjectId, setSubjectId] = useState(null);
@@ -138,10 +139,32 @@ export default function GCSEMarkerApp() {
         if (!files.paper) return;
         setIsSaving(true);
         try {
+            // Ensure auth and capture the result
+            let authResult = null;
+            if (!user) {
+                authResult = await signInAnonymously();
+                if (authResult.error) throw new Error("Could not sign in anonymously: " + authResult.error.message);
+            }
+
+            // Determine effectiveStudentId in priority order:
+            // 1. From sign-in result if available
+            // 2. From current auth state via supabase.auth.getUser()
+            // 3. From hook value as fallback
+            let effectiveStudentId = studentId;
+            
+            // Try sign-in result first
+            if (authResult?.data?.user?.id) {
+                effectiveStudentId = authResult.data.user.id;
+            } else if (!user) {
+                // If we attempted sign-in but didn't get user data, or user was null
+                const { data } = await import('../../services/supabaseClient').then(m => m.supabase.auth.getUser());
+                if (data?.user?.id) effectiveStudentId = data.user.id;
+            }
+
             await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
                 name: files.paper.name.replace('.pdf', ''),
                 year: new Date().getFullYear()
-            });
+            }, effectiveStudentId);
             alert("Paper saved to library!");
         } catch (e) {
             console.error(e);
@@ -184,7 +207,7 @@ export default function GCSEMarkerApp() {
 
         try {
             setParsingStatus('AI analyzing exam paper...');
-            const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel);
+            const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel, studentId);
             setPaperMeta(metadata || null);
 
             const sid = studentId;
@@ -201,7 +224,7 @@ export default function GCSEMarkerApp() {
             if (files.insert) {
                 setParsingStatus('Processing source material...');
                 try {
-                    const insertContent = await AIService.extractInsertContent(files.insert, customApiKey, selectedModel);
+                    const insertContent = await AIService.extractInsertContent(files.insert, customApiKey, selectedModel, studentId);
                     exam.setInsertContent(insertContent);
                 } catch (e) { console.error('Insert extraction failed:', e); }
             }
@@ -209,7 +232,7 @@ export default function GCSEMarkerApp() {
             if (files.scheme) {
                 setParsingStatus('Parsing mark scheme...');
                 try {
-                    const markScheme = await AIService.parseMarkScheme(files.scheme, customApiKey, selectedModel);
+                    const markScheme = await AIService.parseMarkScheme(files.scheme, customApiKey, selectedModel, studentId);
                     exam.setParsedMarkScheme(markScheme);
                 } catch (e) { console.error('Mark scheme parsing failed:', e); }
             }
@@ -225,10 +248,31 @@ export default function GCSEMarkerApp() {
             if (!files.paper.fromLibrary) {
                 setParsingStatus('Saving to cloud library...');
                 try {
+                    // Ensure auth for auto-save and capture the result
+                    let authResult = null;
+                    if (!user) {
+                        authResult = await signInAnonymously();
+                    }
+
+                    // Determine effectiveStudentId in priority order:
+                    // 1. From sign-in result if available
+                    // 2. From current auth state via supabase.auth.getUser()
+                    // 3. From hook value as fallback
+                    let effectiveStudentId = studentId;
+                    
+                    // Try sign-in result first
+                    if (authResult?.data?.user?.id) {
+                        effectiveStudentId = authResult.data.user.id;
+                    } else if (!user) {
+                        // If we attempted sign-in but didn't get user data, or user was null
+                        const { data } = await import('../../services/supabaseClient').then(m => m.supabase.auth.getUser());
+                        if (data?.user?.id) effectiveStudentId = data.user.id;
+                    }
+
                     await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
                         name: files.paper.name.replace(/\.pdf$/i, ''),
                         ...metadata
-                    });
+                    }, effectiveStudentId);
                 } catch (storageErr) {
                     console.error("Failed to auto-save paper:", storageErr);
                 }
@@ -286,7 +330,7 @@ export default function GCSEMarkerApp() {
             const keyToUse = hackClubApiKey;
             if (!keyToUse) throw new Error("Hack Club API key missing for marking.");
 
-            const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel);
+            const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel, studentId);
             exam.setQuestionFeedback(q.id, feedback);
 
             const sid = studentId;
@@ -356,7 +400,7 @@ export default function GCSEMarkerApp() {
             return;
         }
         try {
-            const response = await AIService.getHint(q, scheme, keyToUse);
+            const response = await AIService.getHint(q, scheme, keyToUse, studentId);
             setHintData({ loading: false, text: response });
         } catch (e) {
             setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
@@ -376,7 +420,7 @@ export default function GCSEMarkerApp() {
             return;
         }
         try {
-            const response = await AIService.explainFeedback(q, answer, feedback, scheme, keyToUse);
+            const response = await AIService.explainFeedback(q, answer, feedback, scheme, keyToUse, studentId);
             setExplanationData({ loading: false, text: response });
         } catch (e) {
             setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
@@ -400,7 +444,7 @@ export default function GCSEMarkerApp() {
         }
         try {
             const newChat = [...currentChat, { role: 'user', text: userText }];
-            const response = await AIService.followUp(q, exam.userAnswers[q.id], feedback, newChat, keyToUse);
+            const response = await AIService.followUp(q, exam.userAnswers[q.id], feedback, newChat, keyToUse, studentId);
             exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
         } catch (e) {
             exam.addFollowUpMessage(q.id, { role: 'ai', text: buildFollowUpReply(userText, q, feedback) });
@@ -418,7 +462,7 @@ export default function GCSEMarkerApp() {
             return;
         }
         try {
-            const response = await AIService.generateStudyPlan(percentage, stats.weaknessCounts, exam.activeQuestions.length, keyToUse);
+            const response = await AIService.generateStudyPlan(percentage, stats.weaknessCounts, exam.activeQuestions.length, keyToUse, studentId);
             setStudyPlan({ loading: false, content: response });
         } catch (e) {
             setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });

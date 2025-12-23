@@ -1,6 +1,15 @@
 import { supabase } from './supabaseClient';
 import { isoToday } from './dateUtils';
 
+// Default AI preferences for per-feature configuration
+export const DEFAULT_AI_PREFERENCES = {
+  parsing: { enabled: true, provider: "openrouter", model: "google/gemini-2.0-flash-001" },
+  grading: { enabled: true, provider: "hackclub", model: "moonshotai/kimi-k2-thinking" },
+  tutor: { enabled: true, provider: "openrouter", model: "google/gemini-2.0-flash-001" },
+  planning: { enabled: true, provider: "hackclub", model: "moonshotai/kimi-k2-thinking" },
+  hints: { enabled: true, provider: "hackclub", model: "qwen/qwen3-32b" },
+};
+
 export const DEFAULT_SETTINGS = {
   exam_year: 2026,
   timezone: null,
@@ -10,9 +19,16 @@ export const DEFAULT_SETTINGS = {
   light_week: false,
   study_techniques_feed: false,
   nightly_verification: false,
-  // AI API settings
+  // AI API settings (legacy toggles)
   openrouter_enabled: true,
   hackclub_enabled: true,
+  // Custom API Configuration
+  custom_api_config: {
+    openai_endpoint: "",
+    openai_key: ""
+  },
+  // New per-feature AI preferences
+  ai_preferences: DEFAULT_AI_PREFERENCES,
   dark_mode: false,
   name: null,
   target_grade: '7',

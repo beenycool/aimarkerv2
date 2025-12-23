@@ -4,7 +4,7 @@ export const PaperStorage = {
     /**
      * Upload a paper to Supabase Storage and save metadata to the DB
      */
-    async uploadPaper(file, schemeFile, insertFile, metadata) {
+    async uploadPaper(file, schemeFile, insertFile, metadata, studentId = null) {
         if (!file) throw new Error("Question paper is required");
 
         const timestamp = Date.now();
@@ -48,6 +48,7 @@ export const PaperStorage = {
                 subject: metadata.subject || 'Unknown Subject',
                 board: metadata.board || 'Unknown Board',
                 season: metadata.season || 'June',
+                student_id: studentId,
                 pdf_path: pdfPath,
                 scheme_path: schemePath,
                 insert_path: insertPath

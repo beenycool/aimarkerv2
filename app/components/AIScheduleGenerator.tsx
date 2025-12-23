@@ -187,7 +187,7 @@ export function AIScheduleGenerator({
                 })),
             };
 
-            const aiResult = await AIService.generateWeeklySchedule(context, null) as unknown as AIScheduleResult;
+            const aiResult = await AIService.generateWeeklySchedule(context, null, studentId) as unknown as AIScheduleResult;
             setProgress(90);
 
             if (!aiResult?.sessions?.length) {

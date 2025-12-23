@@ -28,11 +28,34 @@ import {
     Sparkles,
     Zap,
     Bot,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react';
 import { useStudentId } from '../../components/AuthProvider';
-import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS } from '../../services/studentOS';
+import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS, DEFAULT_AI_PREFERENCES } from '../../services/studentOS';
 import { clearSettingsCache } from '../../services/AIService';
 import { useTheme } from 'next-themes';
+import AIConfigTable, { CustomAPIConfig } from '../../components/AIConfigTable';
+
+interface FeatureConfig {
+    enabled: boolean;
+    provider: 'openrouter' | 'hackclub' | 'gemini' | 'custom_openai';
+    model: string;
+}
+
+interface AIPreferences {
+    parsing: FeatureConfig;
+    grading: FeatureConfig;
+    tutor: FeatureConfig;
+    planning: FeatureConfig;
+    hints: FeatureConfig;
+}
+
+interface CustomProfile {
+    name: string;
+    config: AIPreferences;
+    createdAt: string;
+}
 
 interface UserSettings {
     name: string;
@@ -63,6 +86,10 @@ export default function SettingsPage() {
         openrouterEnabled: true,
         hackclubEnabled: true,
     });
+    const [aiPreferences, setAiPreferences] = useState<AIPreferences>(DEFAULT_AI_PREFERENCES as AIPreferences);
+    const [customAPIConfig, setCustomAPIConfig] = useState<CustomAPIConfig>({ openai_endpoint: '', openai_key: '', gemini_key: '' });
+    const [customProfiles, setCustomProfiles] = useState<CustomProfile[]>([]);
+    const [showAdvancedAI, setShowAdvancedAI] = useState(false);
 
     useEffect(() => {
         if (!studentId) return;
@@ -83,6 +110,25 @@ export default function SettingsPage() {
                         openrouterEnabled: data.openrouter_enabled ?? true,
                         hackclubEnabled: data.hackclub_enabled ?? true,
                     });
+                    // Load AI preferences
+                    if (data.ai_preferences) {
+                        setAiPreferences({
+                            ...DEFAULT_AI_PREFERENCES,
+                            ...data.ai_preferences,
+                        } as AIPreferences);
+                    }
+                    // Load custom API config
+                    if (data.custom_api_config) {
+                        setCustomAPIConfig({
+                            openai_endpoint: data.custom_api_config.openai_endpoint || '',
+                            openai_key: data.custom_api_config.openai_key || '',
+                            gemini_key: data.custom_api_config.gemini_key || ''
+                        });
+                    }
+                    // Load custom AI profiles
+                    if (data.custom_ai_profiles && Array.isArray(data.custom_ai_profiles)) {
+                        setCustomProfiles(data.custom_ai_profiles);
+                    }
                     // Apply theme from settings
                     setTheme(data.dark_mode ? 'dark' : 'light');
                 }
@@ -111,6 +157,9 @@ export default function SettingsPage() {
                 dark_mode: settings.darkMode,
                 openrouter_enabled: settings.openrouterEnabled,
                 hackclub_enabled: settings.hackclubEnabled,
+                ai_preferences: aiPreferences,
+                custom_api_config: customAPIConfig,
+                custom_ai_profiles: customProfiles,
             });
             clearSettingsCache(); // Clear AI service cache so new settings take effect
             setSaved(true);
@@ -129,6 +178,14 @@ export default function SettingsPage() {
         if (key === 'darkMode') {
             setTheme(value ? 'dark' : 'light');
         }
+    };
+
+    const handleSaveProfile = (profile: CustomProfile) => {
+        setCustomProfiles(prev => [...prev, profile]);
+    };
+
+    const handleDeleteProfile = (profileName: string) => {
+        setCustomProfiles(prev => prev.filter(p => p.name !== profileName));
     };
 
     return (
@@ -365,60 +422,95 @@ export default function SettingsPage() {
                     </Card>
 
                     {/* AI Features */}
-                    <Card className="card-shadow border-purple-500/20">
+                    <Card className="card-shadow border-primary/20">
                         <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-purple-500" />
-                                AI Features
-                            </CardTitle>
-                            <CardDescription>Control which AI services are enabled</CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Sparkles className="h-5 w-5 text-primary" />
+                                        AI Features
+                                    </CardTitle>
+                                    <CardDescription>Configure AI providers and models for each feature</CardDescription>
+                                </div>
+                                <Badge variant="outline" className="text-xs">
+                                    Power User
+                                </Badge>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* OpenRouter Toggle */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Bot className="h-5 w-5 text-blue-500" />
-                                    <div>
-                                        <p className="font-medium">OpenRouter API</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Powers PDF parsing and tutoring feedback
-                                        </p>
+                            {/* Quick Toggles */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                    <div className="flex items-center gap-3">
+                                        <Bot className="h-5 w-5 text-blue-500" />
+                                        <div>
+                                            <p className="font-medium text-sm">OpenRouter</p>
+                                            <p className="text-xs text-muted-foreground">Vision & chat</p>
+                                        </div>
                                     </div>
+                                    <Button
+                                        variant={settings.openrouterEnabled ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => updateSetting('openrouterEnabled', !settings.openrouterEnabled)}
+                                    >
+                                        {settings.openrouterEnabled ? 'On' : 'Off'}
+                                    </Button>
                                 </div>
-                                <Button
-                                    variant={settings.openrouterEnabled ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => updateSetting('openrouterEnabled', !settings.openrouterEnabled)}
-                                >
-                                    {settings.openrouterEnabled ? 'On' : 'Off'}
-                                </Button>
-                            </div>
-
-                            {/* Hack Club Toggle */}
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <Zap className="h-5 w-5 text-amber-500" />
-                                    <div>
-                                        <p className="font-medium">Hack Club API</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Powers AI grading and schedule generation
-                                        </p>
+                                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                                    <div className="flex items-center gap-3">
+                                        <Zap className="h-5 w-5 text-amber-500" />
+                                        <div>
+                                            <p className="font-medium text-sm">Hack Club</p>
+                                            <p className="text-xs text-muted-foreground">Grading & planning</p>
+                                        </div>
                                     </div>
+                                    <Button
+                                        variant={settings.hackclubEnabled ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => updateSetting('hackclubEnabled', !settings.hackclubEnabled)}
+                                    >
+                                        {settings.hackclubEnabled ? 'On' : 'Off'}
+                                    </Button>
                                 </div>
-                                <Button
-                                    variant={settings.hackclubEnabled ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => updateSetting('hackclubEnabled', !settings.hackclubEnabled)}
-                                >
-                                    {settings.hackclubEnabled ? 'On' : 'Off'}
-                                </Button>
                             </div>
 
                             {(!settings.openrouterEnabled || !settings.hackclubEnabled) && (
                                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                                     <p className="text-sm text-amber-600">
-                                        ⚠️ Disabling AI features will limit functionality like auto-marking and AI scheduling.
+                                        ⚠️ Disabling API providers will limit functionality for features that use them.
                                     </p>
+                                </div>
+                            )}
+
+                            {/* Advanced Configuration Toggle */}
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-between"
+                                onClick={() => setShowAdvancedAI(!showAdvancedAI)}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4" />
+                                    Advanced AI Configuration
+                                </span>
+                                {showAdvancedAI ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                )}
+                            </Button>
+
+                            {/* Advanced AI Config Table */}
+                            {showAdvancedAI && (
+                                <div className="pt-2">
+                                    <AIConfigTable
+                                        preferences={aiPreferences}
+                                        onChange={setAiPreferences}
+                                        customAPIConfig={customAPIConfig}
+                                        onCustomAPIConfigChange={setCustomAPIConfig}
+                                        customProfiles={customProfiles}
+                                        onSaveProfile={handleSaveProfile}
+                                        onDeleteProfile={handleDeleteProfile}
+                                    />
                                 </div>
                             )}
                         </CardContent>
