@@ -228,9 +228,14 @@ export function AIScheduleGenerator({
                 const subject = subjects.find(sub =>
                     sub.name.toLowerCase() === s.subjectName.toLowerCase()
                 );
+
+                // FORCE correct date from our local state
+                const matchedDateInfo = weekDates.find(wd => wd.day === s.day);
+                const finalDate = matchedDateInfo ? matchedDateInfo.isoDate : s.date;
+
                 return {
                     subject_id: subject?.id || null,
-                    planned_for: s.date,
+                    planned_for: finalDate,
                     duration_minutes: s.duration,
                     topic: s.topic,
                     notes: s.reason || null,
