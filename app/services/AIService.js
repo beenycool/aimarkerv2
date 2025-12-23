@@ -194,9 +194,9 @@ export async function callAI(provider, messages, model, options = {}) {
         case 'hackclub':
             return callHackClubAPI(messages, apiKey, model);
         case 'gemini':
-            // Merge files into messages for Gemini helper
-            // (Assuming helper handles 'text' prompt conversion, but if 'messages' is robust...)
-            return callGeminiAPI(messages, apiKey, model);
+            // Use gemini_key from customConfig if apiKey not provided
+            const geminiApiKey = apiKey || customConfig?.gemini_key;
+            return callGeminiAPI(messages, geminiApiKey, model);
         case 'custom_openai':
             const { openai_endpoint, openai_key } = customConfig;
             return callCustomOpenAIAPI(messages, openai_endpoint, openai_key, model);
