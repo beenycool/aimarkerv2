@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Progress } from '@/app/components/ui/progress';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import { getGcseDatesForYear } from '../../services/gcseDates';
 import { bandFromPercent, daysUntil, formatShort, pct } from '../../services/dateUtils';
 import {
@@ -99,7 +99,7 @@ interface SubjectStat {
 }
 
 export default function DashboardPage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(false);
     const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -112,10 +112,6 @@ export default function DashboardPage() {
     );
     const [aiInsights, setAiInsights] = useState<AIInsights | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;

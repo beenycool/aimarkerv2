@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -12,9 +13,13 @@ import {
     ArrowRight,
     BookOpen,
     Target,
-    CheckCircle2,
-    Clock
+    Clock,
+    Sparkles,
+    ExternalLink,
+    TrendingUp
 } from 'lucide-react';
+import { TechniqueModal } from '@/app/components/study/TechniqueModal';
+import { useStudyTechniques } from '@/app/hooks/useStudyTechniques';
 
 const techniques = [
     {
@@ -109,6 +114,24 @@ const techniques = [
     },
 ];
 
+const resources = [
+    {
+        title: '📚 Books',
+        description: '"Make It Stick" by Peter Brown',
+        url: 'https://www.amazon.co.uk/Make-Stick-Science-Successful-Learning/dp/0674729013'
+    },
+    {
+        title: '🎥 Videos',
+        description: 'Ali Abdaal\'s study tips on YouTube',
+        url: 'https://www.youtube.com/@aliabdaal'
+    },
+    {
+        title: '🔬 Research',
+        description: 'Learning Scientists resources',
+        url: 'https://www.learningscientists.org/downloadable-materials'
+    }
+];
+
 const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
         case 'Beginner': return 'bg-success/10 text-success';
@@ -119,6 +142,55 @@ const getDifficultyColor = (difficulty: string) => {
 };
 
 export default function StudyTechniquesPage() {
+    const [selectedTechnique, setSelectedTechnique] = useState<typeof techniques[0] | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const { studentData, loading } = useStudyTechniques();
+
+    const handleTryTechnique = (technique: typeof techniques[0]) => {
+        setSelectedTechnique(technique);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedTechnique(null);
+    };
+
+    // Get recommended techniques based on student data
+    const getRecommendedTechniques = () => {
+        const recommended: { id: string; reason: string }[] = [];
+
+        if (studentData.weaknesses.length > 0) {
+            recommended.push({
+                id: 'active-recall',
+                reason: `Practice recalling ${studentData.weaknesses[0]?.label || 'topics'} without notes`
+            });
+            recommended.push({
+                id: 'practice-testing',
+                reason: 'Test yourself on your weak areas'
+            });
+        }
+
+        if (studentData.subjects.length >= 2) {
+            recommended.push({
+                id: 'interleaving',
+                reason: 'Mix your subjects for deeper understanding'
+            });
+        }
+
+        // Always recommend Pomodoro for focus
+        if (recommended.length < 3) {
+            recommended.push({
+                id: 'pomodoro',
+                reason: 'Stay focused with timed study sessions'
+            });
+        }
+
+        return recommended.slice(0, 3);
+    };
+
+    const recommendedTechniques = getRecommendedTechniques();
+
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
             {/* Header */}
@@ -131,6 +203,49 @@ export default function StudyTechniquesPage() {
                     Evidence-based learning strategies to maximise your study time.
                 </p>
             </div>
+
+            {/* AI Recommendations */}
+            {!loading && recommendedTechniques.length > 0 && (
+                <Card className="card-shadow bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                            Recommended for You
+                        </CardTitle>
+                        <CardDescription>
+                            Based on your subjects and practice history
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid sm:grid-cols-3 gap-3">
+                            {recommendedTechniques.map((rec) => {
+                                const technique = techniques.find(t => t.id === rec.id);
+                                if (!technique) return null;
+                                const IconComponent = technique.icon;
+                                return (
+                                    <div
+                                        key={rec.id}
+                                        className="p-4 rounded-lg bg-background/80 backdrop-blur border hover:border-primary/40 transition-colors cursor-pointer"
+                                        onClick={() => handleTryTechnique(technique)}
+                                    >
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <div className={`p-1.5 rounded-md ${technique.color}`}>
+                                                <IconComponent className="h-4 w-4" />
+                                            </div>
+                                            <span className="font-medium text-sm">{technique.name}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">{rec.reason}</p>
+                                        <div className="flex items-center gap-1 mt-2 text-xs text-primary">
+                                            <TrendingUp className="h-3 w-3" />
+                                            Try now
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Quick Tips */}
             <Card className="card-shadow bg-primary/5 border-primary/20">
@@ -193,7 +308,11 @@ export default function StudyTechniquesPage() {
                             </div>
 
                             {/* Action */}
-                            <Button variant="outline" className="w-full gap-2">
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2"
+                                onClick={() => handleTryTechnique(technique)}
+                            >
                                 Try This Technique
                                 <ArrowRight className="h-4 w-4" />
                             </Button>
@@ -212,27 +331,36 @@ export default function StudyTechniquesPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="p-4 rounded-lg bg-secondary/50">
-                            <h4 className="font-medium mb-1">📚 Books</h4>
-                            <p className="text-sm text-muted-foreground">
-                                &quot;Make It Stick&quot; by Peter Brown
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-lg bg-secondary/50">
-                            <h4 className="font-medium mb-1">🎥 Videos</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Ali Abdaal&apos;s study tips on YouTube
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-lg bg-secondary/50">
-                            <h4 className="font-medium mb-1">🔬 Research</h4>
-                            <p className="text-sm text-muted-foreground">
-                                Learning Scientists resources
-                            </p>
-                        </div>
+                        {resources.map((resource, index) => (
+                            <a
+                                key={index}
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-4 rounded-lg bg-secondary/50 hover:bg-secondary/70 transition-colors group"
+                            >
+                                <div className="flex items-center justify-between mb-1">
+                                    <h4 className="font-medium">{resource.title}</h4>
+                                    <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    {resource.description}
+                                </p>
+                            </a>
+                        ))}
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Technique Modal */}
+            {selectedTechnique && (
+                <TechniqueModal
+                    isOpen={isModalOpen}
+                    onClose={handleCloseModal}
+                    techniqueId={selectedTechnique.id}
+                    techniqueName={selectedTechnique.name}
+                />
+            )}
         </div>
     );
 }

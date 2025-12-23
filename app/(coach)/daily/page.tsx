@@ -16,7 +16,7 @@ import {
     Target,
     Clock
 } from 'lucide-react';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import {
     listSubjects,
     pickTopWeaknesses,
@@ -34,14 +34,10 @@ interface DailyItem {
 }
 
 export default function DailyPage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [loading, setLoading] = useState(true);
     const [session, setSession] = useState<{ id: string; items: DailyItem[] } | null>(null);
     const [weaknesses, setWeaknesses] = useState<{ label: string; count: number }[]>([]);
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;

@@ -13,7 +13,7 @@ import {
     Clock,
     Tag
 } from 'lucide-react';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import { listMemoryItems, upsertMemoryItem, archiveMemoryItem } from '../../services/studentOS';
 
 interface MemoryItem {
@@ -25,7 +25,7 @@ interface MemoryItem {
 }
 
 export default function MemoryPage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [items, setItems] = useState<MemoryItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -34,10 +34,6 @@ export default function MemoryPage() {
     const [newBack, setNewBack] = useState('');
     const [newTags, setNewTags] = useState('');
     const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;

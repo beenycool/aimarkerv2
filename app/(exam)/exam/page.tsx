@@ -22,7 +22,7 @@ import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, 
 import useExamLogic from '../../hooks/useExamLogic';
 import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from '../../services/AIService';
 import { PaperStorage } from '../../services/PaperStorage';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import { ensureSubjectForStudent, logQuestionAttemptSafe } from '../../services/studentOS';
 
 export default function GCSEMarkerApp() {
@@ -33,7 +33,7 @@ export default function GCSEMarkerApp() {
     const [parsingStatus, setParsingStatus] = useState('');
 
     // Student OS identity + attempt logging
-    const [studentId, setStudentId] = useState(null);
+    const studentId = useStudentId();
     const [paperMeta, setPaperMeta] = useState(null);
     const [subjectId, setSubjectId] = useState(null);
 
@@ -65,7 +65,7 @@ export default function GCSEMarkerApp() {
     // Load API keys and model from localStorage, check server keys
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        setStudentId(getOrCreateStudentId());
+        // studentId handled by hook
         const storedKey = window.localStorage.getItem('openrouter_api_key');
         if (storedKey) setCustomApiKey(storedKey);
         const storedHackKey = window.localStorage.getItem('hackclub_api_key');
@@ -187,9 +187,8 @@ export default function GCSEMarkerApp() {
             const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel);
             setPaperMeta(metadata || null);
 
-            const sid = studentId || getOrCreateStudentId();
+            const sid = studentId;
             if (sid && metadata?.subject) {
-                setStudentId(sid);
                 try {
                     const subj = await ensureSubjectForStudent(sid, { name: metadata.subject, exam_board: metadata.board });
                     if (subj?.id) setSubjectId(subj.id);
@@ -259,9 +258,8 @@ export default function GCSEMarkerApp() {
             if (checkRegex(q.markingRegex, String(answer).trim())) {
                 const autoFeedback = { score: q.marks, totalMarks: q.marks, text: "Correct! (Auto-verified)", rewrite: `**${answer}**` };
                 exam.setQuestionFeedback(q.id, autoFeedback);
-                const sid = studentId || getOrCreateStudentId();
+                const sid = studentId;
                 if (sid && subjectId) {
-                    setStudentId(sid);
                     logQuestionAttemptSafe({
                         student_id: sid,
                         subject_id: subjectId,
@@ -291,9 +289,8 @@ export default function GCSEMarkerApp() {
             const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel);
             exam.setQuestionFeedback(q.id, feedback);
 
-            const sid = studentId || getOrCreateStudentId();
+            const sid = studentId;
             if (sid && subjectId) {
-                setStudentId(sid);
                 logQuestionAttemptSafe({
                     student_id: sid,
                     subject_id: subjectId,
@@ -314,9 +311,8 @@ export default function GCSEMarkerApp() {
             const message = err?.message?.includes("Hack Club") ? "Add a Hack Club API key for marking. Local estimate:" : "Marking failed. Local estimate:";
             exam.setQuestionFeedback(q.id, { score: Math.min(fallback.score || 0, q.marks), totalMarks: q.marks, text: `${message} ${fallback.text}`, rewrite: fallback.rewrite });
 
-            const sid = studentId || getOrCreateStudentId();
+            const sid = studentId;
             if (sid && subjectId) {
-                setStudentId(sid);
                 logQuestionAttemptSafe({
                     student_id: sid,
                     subject_id: subjectId,

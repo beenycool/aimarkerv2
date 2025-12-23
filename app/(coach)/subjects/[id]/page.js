@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowRight, Flame, Play } from 'lucide-react';
-import { getOrCreateStudentId } from '../../../services/studentId';
+import { useStudentId } from '../../../components/AuthProvider';
 import { bandFromPercent, pct } from '../../../services/dateUtils';
 import {
   getSubject,
@@ -30,15 +30,11 @@ export default function SubjectDetailPage() {
   const params = useParams();
   const subjectId = params?.id;
 
-  const [studentId, setStudentId] = useState(null);
+  const studentId = useStudentId();
   const [subject, setSubject] = useState(null);
   const [attempts, setAttempts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    setStudentId(getOrCreateStudentId());
-  }, []);
 
   useEffect(() => {
     if (!studentId || !subjectId) return;

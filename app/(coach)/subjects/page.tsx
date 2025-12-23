@@ -27,7 +27,7 @@ import {
     BookOpen
 } from 'lucide-react';
 import { AddSubjectDialog } from '@/app/components/subjects/AddSubjectDialog';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import {
     listSubjects,
     createSubject,
@@ -64,16 +64,12 @@ const getConfidenceBg = (confidence: number) => {
 };
 
 export default function SubjectsPage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [subjects, setSubjects] = useState<SubjectWithStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [subjectToDelete, setSubjectToDelete] = useState<SubjectWithStats | null>(null);
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;

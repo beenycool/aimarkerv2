@@ -38,7 +38,7 @@ import {
     Loader2,
     ClipboardCheck
 } from 'lucide-react';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import { listAssessments, createAssessment, listSubjects } from '../../services/studentOS';
 
 interface Assessment {
@@ -73,7 +73,7 @@ const suggestedTopics: Record<string, string[]> = {
 };
 
 export default function AssessmentsPage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [assessments, setAssessments] = useState<Assessment[]>([]);
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [loading, setLoading] = useState(true);
@@ -88,10 +88,6 @@ export default function AssessmentsPage() {
     const [formDate, setFormDate] = useState('');
     const [formTopics, setFormTopics] = useState<string[]>([]);
     const [newTopic, setNewTopic] = useState('');
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;

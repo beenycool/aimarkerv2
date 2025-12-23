@@ -26,7 +26,7 @@ import {
     Check,
     AlertCircle
 } from 'lucide-react';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS } from '../../services/studentOS';
 
 interface UserSettings {
@@ -40,7 +40,7 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -53,10 +53,6 @@ export default function SettingsPage() {
         notifications: true,
         darkMode: false,
     });
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;

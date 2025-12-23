@@ -13,7 +13,7 @@ import {
     Plus,
     BookOpen
 } from 'lucide-react';
-import { getOrCreateStudentId } from '../../services/studentId';
+import { useStudentId } from '../../components/AuthProvider';
 import { listSubjects, listSessions } from '../../services/studentOS';
 
 interface Subject {
@@ -34,15 +34,11 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 8 PM
 
 export default function TimetablePage() {
-    const [studentId, setStudentId] = useState<string | null>(null);
+    const studentId = useStudentId();
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentWeek, setCurrentWeek] = useState(0);
-
-    useEffect(() => {
-        setStudentId(getOrCreateStudentId());
-    }, []);
 
     useEffect(() => {
         if (!studentId) return;
