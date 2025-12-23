@@ -212,7 +212,11 @@ export function AIScheduleGenerator({
     };
 
     const applySchedule = async () => {
-        if (!result?.sessions?.length) return;
+        if (!result?.sessions?.length) {
+            setError('No sessions to save. Please regenerate.');
+            setStep('error');
+            return;
+        }
 
         try {
             setStep('saving');
