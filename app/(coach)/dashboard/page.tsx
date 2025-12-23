@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Progress } from '@/app/components/ui/progress';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { useStudentId } from '../../components/AuthProvider';
+import { useAuth, useStudentId } from '../../components/AuthProvider';
 import { getGcseDatesForYear } from '../../services/gcseDates';
 import { bandFromPercent, daysUntil, formatShort, pct } from '../../services/dateUtils';
 import {
@@ -99,6 +99,7 @@ interface SubjectStat {
 }
 
 export default function DashboardPage() {
+    const { user } = useAuth();
     const studentId = useStudentId();
     const [loading, setLoading] = useState(true);
     const [aiLoading, setAiLoading] = useState(false);
@@ -232,14 +233,14 @@ export default function DashboardPage() {
 
     // Load AI insights after data is ready
     useEffect(() => {
-        if (loading || !studentId || subjects.length === 0) return;
+        if (loading || !studentId) return;
 
         let cancelled = false;
         (async () => {
             setAiLoading(true);
             try {
                 const insights = await generateDashboardInsights({
-                    name: settings?.name || 'Student',
+                    name: settings?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Student',
                     overallPercent: overallReadiness,
                     topWeaknesses,
                     weekStats,
@@ -276,26 +277,37 @@ export default function DashboardPage() {
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
             {/* Header with AI Greeting and Date */}
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pb-2">
                 <div className="space-y-1">
-                    <h1 className="text-2xl lg:text-3xl font-semibold text-foreground">
-                        {aiInsights?.greeting || `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, ${settings?.name || 'Student'}!`} 👋
-                    </h1>
-                    <p className="text-muted-foreground flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {formattedDate}
-                    </p>
-                    {aiInsights?.dailyTip && (
-                        <p className="text-sm text-muted-foreground italic mt-2">💡 {aiInsights.dailyTip}</p>
-                    )}
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-primary/10 text-primary animate-pulse-slow">
+                            <Sparkles className="h-6 w-6" />
+                        </div>
+                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
+                            {aiInsights?.greeting || `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, ${settings?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Student'}!`}
+                        </h1>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {formattedDate}
+                        </p>
+                        {aiInsights?.dailyTip && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary/50 text-xs font-medium text-muted-foreground border border-border/50">
+                                <span className="text-primary">💡</span> {aiInsights.dailyTip}
+                            </div>
+                        )}
+                    </div>
                 </div>
-                <Link href="/daily">
-                    <Button className="gap-2">
-                        <Play className="h-4 w-4" />
-                        Start Next Best Session
-                        <ArrowRight className="h-4 w-4" />
-                    </Button>
-                </Link>
+                <div className="flex items-center gap-3">
+                    <Link href="/daily">
+                        <Button className="gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
+                            <Play className="h-4 w-4" />
+                            Start Revision
+                            <ArrowRight className="h-4 w-4" />
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             {/* Error State */}

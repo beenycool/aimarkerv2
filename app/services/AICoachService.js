@@ -88,7 +88,7 @@ STUDENT DATA:
 
 OUTPUT STRICT JSON (no markdown, no explanation):
 {
-  "greeting": "A warm, personalized greeting using their name and time of day. Max 12 words.",
+  "greeting": "A warm, personalized greeting using their name and time of day. Include a relevant emoji. Max 12 words.",
   "trendInsight": "Brief insight about their week-over-week progress. Max 10 words. Be encouraging.",
   "streakMessage": "Motivational message about their streak. Max 8 words.",
   "nextSession": {
@@ -141,9 +141,9 @@ function generateFallbackInsights(studentData, timeOfDay, trendChange) {
     const { name = 'Student', topWeaknesses = [], subjects = [], streakDays = 0 } = studentData;
 
     const greetings = {
-        morning: `Good morning, ${name}! Ready to learn? 📚`,
-        afternoon: `Good afternoon, ${name}! Let's keep pushing! 💪`,
-        evening: `Good evening, ${name}! Time for some revision! ✨`
+        morning: `Good morning, ${name}! Ready for a great study session? ☀️`,
+        afternoon: `Good afternoon, ${name}! Let's keep that momentum going! 💪`,
+        evening: `Good evening, ${name}! Time for some effective revision! ✨`
     };
 
     return {
