@@ -6,6 +6,7 @@ import {
     Calendar,
     TrendingUp,
     TrendingDown,
+    Minus,
     Flame,
     Zap,
     AlertTriangle,
@@ -17,14 +18,15 @@ import {
     Award,
     ArrowRight,
     Play,
-    CalendarDays
+    CalendarDays,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Progress } from '@/app/components/ui/progress';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { getOrCreateStudentId } from '../../services/studentId';
-import { GCSE_KEY_DATES_2026 } from '../../services/gcseDates';
+import { getGcseDatesForYear } from '../../services/gcseDates';
 import { bandFromPercent, daysUntil, formatShort, pct } from '../../services/dateUtils';
 import {
     listAssessments,
@@ -32,7 +34,11 @@ import {
     listSubjects,
     pickTopWeaknesses,
     weaknessCountsFromAttempts,
+    getOrCreateSettings,
+    getStudyStreak,
+    getWeeklyAttemptStats,
 } from '../../services/studentOS';
+import { generateDashboardInsights } from '../../services/AICoachService';
 
 const today = new Date();
 const formattedDate = today.toLocaleDateString("en-GB", {
@@ -42,11 +48,13 @@ const formattedDate = today.toLocaleDateString("en-GB", {
     year: "numeric",
 });
 
-const countdowns = [
-    { label: "Next Mock", date: "Jan 15", daysLeft: 25, icon: FileText, color: "bg-primary/10 text-primary" },
-    { label: "First Exam", date: "May 12", daysLeft: 142, icon: GraduationCap, color: "bg-accent/10 text-accent" },
-    { label: "Results Day", date: "Aug 22", daysLeft: 244, icon: Award, color: "bg-warning/10 text-warning-foreground" },
-];
+interface AIInsights {
+    greeting: string;
+    trend: { change: number; direction: 'up' | 'down' | 'flat'; insight: string };
+    streak: { days: number; message: string };
+    nextSession: { topic: string; subject: string; reason: string };
+    dailyTip: string;
+}
 
 const getConfidenceColor = (confidence: number) => {
     if (confidence >= 75) return "text-success";
@@ -93,9 +101,16 @@ interface SubjectStat {
 export default function DashboardPage() {
     const [studentId, setStudentId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [aiLoading, setAiLoading] = useState(false);
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [attempts, setAttempts] = useState<Attempt[]>([]);
     const [assessments, setAssessments] = useState<Assessment[]>([]);
+    const [settings, setSettings] = useState<{ name?: string; exam_year?: number } | null>(null);
+    const [streakData, setStreakData] = useState<{ current: number; longest: number }>({ current: 0, longest: 0 });
+    const [weekStats, setWeekStats] = useState<{ thisWeek: { earned: number; total: number }; lastWeek: { earned: number; total: number } }>(
+        { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } }
+    );
+    const [aiInsights, setAiInsights] = useState<AIInsights | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -110,16 +125,22 @@ export default function DashboardPage() {
             setLoading(true);
             setError(null);
             try {
-                const [subs, atts, asses] = await Promise.all([
+                const [subs, atts, asses, userSettings, streak, weeklyStats] = await Promise.all([
                     listSubjects(studentId),
                     listQuestionAttempts(studentId, { limit: 250 }),
                     listAssessments(studentId).catch(() => []),
+                    getOrCreateSettings(studentId).catch(() => null),
+                    getStudyStreak(studentId),
+                    getWeeklyAttemptStats(studentId),
                 ]);
 
                 if (cancelled) return;
                 setSubjects(subs || []);
                 setAttempts(atts || []);
                 setAssessments(asses || []);
+                setSettings(userSettings);
+                setStreakData(streak);
+                setWeekStats(weeklyStats);
             } catch (e: unknown) {
                 if (cancelled) return;
                 setError((e as Error)?.message || 'Failed to load dashboard data.');
@@ -176,18 +197,101 @@ export default function DashboardPage() {
         return upcoming[0] || null;
     }, [assessments]);
 
+    // Dynamic countdown cards based on user's exam year
+    const dynamicCountdowns = useMemo(() => {
+        const examYear = settings?.exam_year || 2026;
+        const gcseDates = getGcseDatesForYear(examYear) as { id: string; label: string; date: string }[];
+        const firstExam = gcseDates.find((d) => d.id === 'first_exam');
+        const resultsDay = gcseDates.find((d) => d.id === 'results');
+
+        return [
+            nextMock ? {
+                label: "Next Mock",
+                date: formatShort(nextMock.date || ''),
+                daysLeft: daysUntil(nextMock.date || ''),
+                icon: FileText,
+                color: "bg-primary/10 text-primary"
+            } : null,
+            firstExam ? {
+                label: "First Exam",
+                date: formatShort(firstExam.date),
+                daysLeft: daysUntil(firstExam.date),
+                icon: GraduationCap,
+                color: "bg-accent/10 text-accent"
+            } : null,
+            resultsDay ? {
+                label: "Results Day",
+                date: formatShort(resultsDay.date),
+                daysLeft: daysUntil(resultsDay.date),
+                icon: Award,
+                color: "bg-warning/10 text-warning-foreground"
+            } : null,
+        ].filter(Boolean) as { label: string; date: string; daysLeft: number; icon: typeof FileText; color: string }[];
+    }, [settings?.exam_year, nextMock]);
+
+    // Get GCSE dates for user's exam year
+    const gcseDatesForYear = useMemo(() => {
+        return getGcseDatesForYear(settings?.exam_year || 2026);
+    }, [settings?.exam_year]);
+
+    // Load AI insights after data is ready
+    useEffect(() => {
+        if (loading || !studentId || subjects.length === 0) return;
+
+        let cancelled = false;
+        (async () => {
+            setAiLoading(true);
+            try {
+                const insights = await generateDashboardInsights({
+                    name: settings?.name || 'Student',
+                    overallPercent: overallReadiness,
+                    topWeaknesses,
+                    weekStats,
+                    streakDays: streakData.current,
+                    subjects
+                });
+                if (!cancelled) setAiInsights(insights as AIInsights);
+            } catch (e) {
+                console.error('Failed to generate AI insights:', e);
+            } finally {
+                if (!cancelled) setAiLoading(false);
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [loading, studentId, subjects, overallReadiness, topWeaknesses, weekStats, streakData.current, settings?.name]);
+
+    // Compute trend data
+    const trendData = useMemo(() => {
+        const thisWeekPct = weekStats.thisWeek.total > 0
+            ? Math.round((weekStats.thisWeek.earned / weekStats.thisWeek.total) * 100)
+            : null;
+        const lastWeekPct = weekStats.lastWeek.total > 0
+            ? Math.round((weekStats.lastWeek.earned / weekStats.lastWeek.total) * 100)
+            : null;
+        const change = (thisWeekPct !== null && lastWeekPct !== null) ? thisWeekPct - lastWeekPct : 0;
+        return {
+            change,
+            direction: change > 0 ? 'up' : change < 0 ? 'down' : 'flat' as const,
+            hasData: thisWeekPct !== null
+        };
+    }, [weekStats]);
+
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
-            {/* Header with Greeting and Date */}
+            {/* Header with AI Greeting and Date */}
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="space-y-1">
                     <h1 className="text-2xl lg:text-3xl font-semibold text-foreground">
-                        Good morning, Student! 👋
+                        {aiInsights?.greeting || `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, ${settings?.name || 'Student'}!`} 👋
                     </h1>
                     <p className="text-muted-foreground flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         {formattedDate}
                     </p>
+                    {aiInsights?.dailyTip && (
+                        <p className="text-sm text-muted-foreground italic mt-2">💡 {aiInsights.dailyTip}</p>
+                    )}
                 </div>
                 <Link href="/daily">
                     <Button className="gap-2">
@@ -218,7 +322,7 @@ export default function DashboardPage() {
 
             {/* Countdown Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {countdowns.map((item) => (
+                {dynamicCountdowns.map((item) => (
                     <Card key={item.label} className="card-shadow hover:card-shadow-hover transition-shadow">
                         <CardContent className="p-4">
                             <div className="flex items-center gap-3">
@@ -230,8 +334,8 @@ export default function DashboardPage() {
                                     <p className="font-semibold">{item.date}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-2xl font-bold">{item.daysLeft}</p>
-                                    <p className="text-xs text-muted-foreground">days</p>
+                                    <p className="text-2xl font-bold">{item.daysLeft > 0 ? item.daysLeft : 'Now'}</p>
+                                    {item.daysLeft > 0 && <p className="text-xs text-muted-foreground">days</p>}
                                 </div>
                             </div>
                         </CardContent>
@@ -266,20 +370,28 @@ export default function DashboardPage() {
                             <div className="text-center sm:text-left">
                                 <p className="text-sm text-muted-foreground mb-1">Weekly Trend</p>
                                 <div className="flex items-center gap-2 justify-center sm:justify-start">
-                                    <TrendingUp className="h-6 w-6 text-success" />
-                                    <span className="text-2xl font-bold text-success">+5%</span>
+                                    {trendData.direction === 'up' && <TrendingUp className="h-6 w-6 text-success" />}
+                                    {trendData.direction === 'down' && <TrendingDown className="h-6 w-6 text-destructive" />}
+                                    {trendData.direction === 'flat' && <Minus className="h-6 w-6 text-muted-foreground" />}
+                                    <span className={`text-2xl font-bold ${trendData.direction === 'up' ? 'text-success' : trendData.direction === 'down' ? 'text-destructive' : ''}`}>
+                                        {trendData.hasData ? `${trendData.change >= 0 ? '+' : ''}${trendData.change}%` : 'N/A'}
+                                    </span>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">vs last week</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    {aiInsights?.trend?.insight || (trendData.hasData ? 'vs last week' : 'Mark more papers!')}
+                                </p>
                             </div>
 
                             {/* Streak */}
                             <div className="text-center sm:text-left">
                                 <p className="text-sm text-muted-foreground mb-1">Study Streak</p>
                                 <div className="flex items-center gap-2 justify-center sm:justify-start">
-                                    <Flame className="h-6 w-6 text-warning" />
-                                    <span className="text-2xl font-bold">7 days</span>
+                                    <Flame className={`h-6 w-6 ${streakData.current > 0 ? 'text-warning' : 'text-muted-foreground'}`} />
+                                    <span className="text-2xl font-bold">{streakData.current} {streakData.current === 1 ? 'day' : 'days'}</span>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">Keep it up!</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    {aiInsights?.streak?.message || (streakData.current > 0 ? 'Keep it up!' : 'Start today!')}
+                                </p>
                             </div>
                         </div>
                     </CardContent>
@@ -289,10 +401,15 @@ export default function DashboardPage() {
                 <Card className="card-shadow bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer group">
                     <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center">
                         <div className="p-3 rounded-full bg-primary-foreground/10 mb-3 group-hover:bg-primary-foreground/20 transition-colors">
-                            <Zap className="h-8 w-8" />
+                            {aiLoading ? <Loader2 className="h-8 w-8 animate-spin" /> : <Zap className="h-8 w-8" />}
                         </div>
                         <h3 className="text-lg font-semibold mb-1">Next Best Session</h3>
-                        <p className="text-sm opacity-90 mb-3">Chemistry: Organic Compounds</p>
+                        <p className="text-sm opacity-90 mb-1">
+                            {aiInsights?.nextSession?.topic || topWeaknesses[0]?.label || 'Practice questions'}
+                        </p>
+                        <p className="text-xs opacity-70 mb-3">
+                            {aiInsights?.nextSession?.reason || (topWeaknesses.length > 0 ? 'Your top weakness' : 'Build your skills')}
+                        </p>
                         <Link href="/daily">
                             <Button variant="secondary" size="sm" className="gap-1">
                                 Start Now <ChevronRight className="h-4 w-4" />
@@ -433,12 +550,12 @@ export default function DashboardPage() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <CalendarDays className="h-5 w-5 text-primary" />
-                        GCSE Key Dates 2026
+                        GCSE Key Dates {settings?.exam_year || 2026}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {GCSE_KEY_DATES_2026.map((d) => {
+                        {gcseDatesForYear.map((d: { id: string; label: string; date: string }) => {
                             const days = daysUntil(d.date);
                             const isPast = days < 0;
                             return (

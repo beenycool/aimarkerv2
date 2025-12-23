@@ -318,3 +318,128 @@ export async function createAssessment(studentId, input) {
   if (error) throw error;
   return data;
 }
+
+/**
+ * Calculate consecutive days with completed study sessions (streak)
+ */
+export async function getStudyStreak(studentId) {
+  if (!studentId) return { current: 0, longest: 0 };
+
+  try {
+    const { data: sessions, error } = await supabase
+      .from('study_sessions')
+      .select('planned_for, status')
+      .eq('student_id', studentId)
+      .eq('status', 'done')
+      .order('planned_for', { ascending: false })
+      .limit(90);
+
+    if (error || !sessions?.length) return { current: 0, longest: 0 };
+
+    const completedDates = new Set(sessions.map(s => s.planned_for));
+    const sortedDates = Array.from(completedDates).sort().reverse();
+
+    let currentStreak = 0;
+    const today = isoToday();
+    let checkDate = new Date(today + 'T00:00:00');
+
+    for (let i = 0; i < 365; i++) {
+      const dateStr = checkDate.toISOString().split('T')[0];
+      if (completedDates.has(dateStr)) {
+        currentStreak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (i === 0) {
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    let longest = 0;
+    let tempStreak = 0;
+    let prevDate = null;
+
+    for (const dateStr of sortedDates.reverse()) {
+      const date = new Date(dateStr + 'T00:00:00');
+      if (prevDate) {
+        const diff = (date - prevDate) / (1000 * 60 * 60 * 24);
+        if (diff === 1) {
+          tempStreak++;
+        } else {
+          longest = Math.max(longest, tempStreak);
+          tempStreak = 1;
+        }
+      } else {
+        tempStreak = 1;
+      }
+      prevDate = date;
+    }
+    longest = Math.max(longest, tempStreak);
+
+    return { current: currentStreak, longest };
+  } catch (e) {
+    console.warn('getStudyStreak error:', e);
+    return { current: 0, longest: 0 };
+  }
+}
+
+/**
+ * Get weekly attempt statistics for trend comparison
+ */
+export async function getWeeklyAttemptStats(studentId) {
+  if (!studentId) return { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } };
+
+  try {
+    const now = new Date();
+    const startOfThisWeek = new Date(now);
+    startOfThisWeek.setDate(now.getDate() - now.getDay());
+    startOfThisWeek.setHours(0, 0, 0, 0);
+
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+
+    const { data: attempts, error } = await supabase
+      .from('question_attempts')
+      .select('marks_awarded, marks_total, attempted_at')
+      .eq('student_id', studentId)
+      .gte('attempted_at', startOfLastWeek.toISOString())
+      .order('attempted_at', { ascending: false });
+
+    if (error || !attempts?.length) {
+      return { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } };
+    }
+
+    const thisWeek = { earned: 0, total: 0 };
+    const lastWeek = { earned: 0, total: 0 };
+
+    for (const a of attempts) {
+      const attemptDate = new Date(a.attempted_at);
+      const bucket = attemptDate >= startOfThisWeek ? thisWeek : lastWeek;
+      bucket.earned += Number(a.marks_awarded || 0);
+      bucket.total += Number(a.marks_total || 0);
+    }
+
+    return { thisWeek, lastWeek };
+  } catch (e) {
+    console.warn('getWeeklyAttemptStats error:', e);
+    return { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } };
+  }
+}
+
+/**
+ * Delete all student data (for reset functionality)
+ */
+export async function deleteAllStudentData(studentId) {
+  if (!studentId) throw new Error('studentId required');
+
+  await supabase.from('question_attempts').delete().eq('student_id', studentId);
+  await supabase.from('study_sessions').delete().eq('student_id', studentId);
+  await supabase.from('memory_bank_items').delete().eq('student_id', studentId);
+  await supabase.from('assessments').delete().eq('student_id', studentId);
+  await supabase.from('subjects').delete().eq('student_id', studentId);
+
+  await supabase
+    .from('student_settings')
+    .update({ ...DEFAULT_SETTINGS, updated_at: new Date().toISOString() })
+    .eq('student_id', studentId);
+}
