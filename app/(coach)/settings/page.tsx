@@ -24,10 +24,14 @@ import {
     Target,
     Save,
     Check,
-    AlertCircle
+    AlertCircle,
+    Sparkles,
+    Zap,
+    Bot,
 } from 'lucide-react';
 import { useStudentId } from '../../components/AuthProvider';
 import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS } from '../../services/studentOS';
+import { clearSettingsCache } from '../../services/AIService';
 
 interface UserSettings {
     name: string;
@@ -37,6 +41,8 @@ interface UserSettings {
     preferredStudyTime: string;
     notifications: boolean;
     darkMode: boolean;
+    openrouterEnabled: boolean;
+    hackclubEnabled: boolean;
 }
 
 export default function SettingsPage() {
@@ -52,6 +58,8 @@ export default function SettingsPage() {
         preferredStudyTime: 'evening',
         notifications: true,
         darkMode: false,
+        openrouterEnabled: true,
+        hackclubEnabled: true,
     });
 
     useEffect(() => {
@@ -70,6 +78,8 @@ export default function SettingsPage() {
                         preferredStudyTime: data.preferred_study_time || 'evening',
                         notifications: data.notifications ?? true,
                         darkMode: data.dark_mode ?? false,
+                        openrouterEnabled: data.openrouter_enabled ?? true,
+                        hackclubEnabled: data.hackclub_enabled ?? true,
                     });
                 }
             } catch (error) {
@@ -95,7 +105,10 @@ export default function SettingsPage() {
                 preferred_study_time: settings.preferredStudyTime,
                 notifications: settings.notifications,
                 dark_mode: settings.darkMode,
+                openrouter_enabled: settings.openrouterEnabled,
+                hackclub_enabled: settings.hackclubEnabled,
             });
+            clearSettingsCache(); // Clear AI service cache so new settings take effect
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
         } catch (error) {
@@ -339,6 +352,66 @@ export default function SettingsPage() {
                                     {settings.notifications ? 'On' : 'Off'}
                                 </Button>
                             </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* AI Features */}
+                    <Card className="card-shadow border-purple-500/20">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-purple-500" />
+                                AI Features
+                            </CardTitle>
+                            <CardDescription>Control which AI services are enabled</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* OpenRouter Toggle */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Bot className="h-5 w-5 text-blue-500" />
+                                    <div>
+                                        <p className="font-medium">OpenRouter API</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Powers PDF parsing and tutoring feedback
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant={settings.openrouterEnabled ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => updateSetting('openrouterEnabled', !settings.openrouterEnabled)}
+                                >
+                                    {settings.openrouterEnabled ? 'On' : 'Off'}
+                                </Button>
+                            </div>
+
+                            {/* Hack Club Toggle */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <Zap className="h-5 w-5 text-amber-500" />
+                                    <div>
+                                        <p className="font-medium">Hack Club API</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            Powers AI grading and schedule generation
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant={settings.hackclubEnabled ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => updateSetting('hackclubEnabled', !settings.hackclubEnabled)}
+                                >
+                                    {settings.hackclubEnabled ? 'On' : 'Off'}
+                                </Button>
+                            </div>
+
+                            {(!settings.openrouterEnabled || !settings.hackclubEnabled) && (
+                                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                    <p className="text-sm text-amber-600">
+                                        ⚠️ Disabling AI features will limit functionality like auto-marking and AI scheduling.
+                                    </p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

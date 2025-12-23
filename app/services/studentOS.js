@@ -10,6 +10,9 @@ export const DEFAULT_SETTINGS = {
   light_week: false,
   study_techniques_feed: false,
   nightly_verification: false,
+  // AI API settings
+  openrouter_enabled: true,
+  hackclub_enabled: true,
 };
 
 export async function getOrCreateSettings(studentId) {

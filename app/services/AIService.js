@@ -3,14 +3,59 @@
 /**
  * AI Service abstraction layer
  * Centralizes all API calls using server-side API routes for security
- * Supports user-configurable models
+ * Supports user-configurable models and global API toggles
  */
+
+import { getOrCreateSettings } from './studentOS';
 
 // Default model for tasks
 export const DEFAULT_MODELS = {
     vision: "google/gemini-2.0-flash-001",  // For PDF parsing (needs vision capability)
     chat: "google/gemini-2.0-flash-001",    // For text-only tasks
 };
+
+// --- API Enable Check ---
+let cachedSettings = null;
+let cacheExpiry = 0;
+const CACHE_TTL = 60000; // 1 minute
+
+/**
+ * Check if an API is enabled in user settings
+ * @param {string} studentId - The student ID
+ * @param {string} apiType - 'openrouter' or 'hackclub'
+ * @returns {Promise<boolean>}
+ */
+export async function isApiEnabled(studentId, apiType = 'openrouter') {
+    if (!studentId) return true; // Default to enabled if no user
+
+    try {
+        // Use cached settings if still valid
+        if (cachedSettings && Date.now() < cacheExpiry) {
+            return apiType === 'openrouter'
+                ? cachedSettings.openrouter_enabled !== false
+                : cachedSettings.hackclub_enabled !== false;
+        }
+
+        const settings = await getOrCreateSettings(studentId);
+        cachedSettings = settings;
+        cacheExpiry = Date.now() + CACHE_TTL;
+
+        return apiType === 'openrouter'
+            ? settings.openrouter_enabled !== false
+            : settings.hackclub_enabled !== false;
+    } catch (e) {
+        console.warn('Failed to check API settings:', e);
+        return true; // Default to enabled on error
+    }
+}
+
+/**
+ * Clear the cached settings (call after settings update)
+ */
+export function clearSettingsCache() {
+    cachedSettings = null;
+    cacheExpiry = 0;
+}
 
 // --- HELPER: CLEAN AI JSON ---
 export function cleanGeminiJSON(text) {
