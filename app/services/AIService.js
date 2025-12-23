@@ -619,12 +619,19 @@ Generate a smart, personalized schedule that will maximize this student's exam p
      * Parse exam schedule from PDF
      * Uses 'parsing' feature configuration from settings
      */
-    parseExamSchedule: async (pdfFile, studentId) => {
+    parseExamSchedule: async (pdfFile, studentId, subjects = []) => {
         const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', null, null);
 
         const pdfBase64 = await fileToBase64(pdfFile);
 
-        const prompt = `You are an exam schedule parser. Extract ALL exams from this document.
+        const subjectNames = (subjects || [])
+            .map((subject) => (typeof subject === 'string' ? subject : subject?.name))
+            .filter(Boolean);
+        const subjectContext = subjectNames.length
+            ? `ONLY include exams that match these subjects: ${subjectNames.join(', ')}.`
+            : 'Extract ALL exams from this document.';
+
+        const prompt = `You are an exam schedule parser. ${subjectContext}
 
 For EACH exam found, extract the following information:
 - title: The exam name (e.g., "Chemistry Paper 1", "Mathematics Higher Paper 2")
@@ -636,7 +643,7 @@ For EACH exam found, extract the following information:
 - notes: Any additional relevant information (e.g., "Calculator allowed")
 
 IMPORTANT RULES:
-1. Extract ALL exams, not just a summary
+1. Only include exams that match the subject list when provided
 2. Dates MUST be in YYYY-MM-DD format (e.g., 2025-05-15)
 3. Times MUST be in HH:MM 24-hour format (e.g., 09:00, 14:30)
 4. If the year is not specified, assume 2025 for dates in May-June, otherwise use current year context

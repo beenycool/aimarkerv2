@@ -418,6 +418,7 @@ export async function createUpcomingExam(studentId, input) {
     notes: input.notes || null,
     topics: Array.isArray(input.topics) ? input.topics : [],
     source: input.source || 'manual',
+    type: input.type || 'real',
   };
   const { data, error } = await supabase.from('upcoming_exams').insert(payload).select('*').single();
   if (error) throw error;
@@ -461,7 +462,10 @@ export async function bulkCreateUpcomingExams(studentId, exams) {
     location: exam.location || null,
     notes: exam.notes || null,
     topics: Array.isArray(exam.topics) ? exam.topics : [],
+    notes: exam.notes || null,
+    topics: Array.isArray(exam.topics) ? exam.topics : [],
     source: 'ai_parsed',
+    type: exam.type || 'real',
   }));
 
   const { data, error } = await supabase.from('upcoming_exams').insert(payloads).select('*');

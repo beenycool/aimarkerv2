@@ -32,7 +32,7 @@ import {
     ChevronUp,
 } from 'lucide-react';
 import { useStudentId } from '../../components/AuthProvider';
-import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS, DEFAULT_AI_PREFERENCES } from '../../services/studentOS';
+import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS, DEFAULT_AI_PREFERENCES, listSubjects } from '../../services/studentOS';
 import { clearSettingsCache } from '../../services/AIService';
 import { useTheme } from 'next-themes';
 import AIConfigTable, { CustomAPIConfig } from '../../components/AIConfigTable';
@@ -90,6 +90,8 @@ export default function SettingsPage() {
     const [customAPIConfig, setCustomAPIConfig] = useState<CustomAPIConfig>({ openai_endpoint: '', openai_key: '', gemini_key: '' });
     const [customProfiles, setCustomProfiles] = useState<CustomProfile[]>([]);
     const [showAdvancedAI, setShowAdvancedAI] = useState(false);
+    const [subjectAverageGrade, setSubjectAverageGrade] = useState<number | null>(null);
+    const [subjectAverageCount, setSubjectAverageCount] = useState(0);
 
     useEffect(() => {
         if (!studentId) return;
@@ -102,7 +104,7 @@ export default function SettingsPage() {
                     setSettings({
                         name: data.name || '',
                         targetGrade: data.target_grade || '7',
-                        examYear: data.exam_year || '2026',
+                        examYear: String(data.exam_year ?? DEFAULT_SETTINGS.exam_year ?? '2026'),
                         studyHoursPerDay: data.study_hours_per_day || 2,
                         preferredStudyTime: data.preferred_study_time || 'evening',
                         notifications: data.notifications ?? true,
@@ -142,15 +144,57 @@ export default function SettingsPage() {
         loadSettings();
     }, [studentId]);
 
+    useEffect(() => {
+        if (!studentId) return;
+
+        let active = true;
+
+        const loadSubjectAverage = async () => {
+            try {
+                const subjects = await listSubjects(studentId);
+                const grades = (subjects || [])
+                    .map((s: { target_grade?: string | number }) => {
+                        const raw = typeof s.target_grade === 'number'
+                            ? s.target_grade
+                            : Number.parseInt(String(s.target_grade || ''), 10);
+                        return Number.isFinite(raw) ? raw : null;
+                    })
+                    .filter((g: number | null) => g !== null) as number[];
+
+                if (!active) return;
+
+                if (grades.length) {
+                    const avg = Math.round(grades.reduce((sum, g) => sum + g, 0) / grades.length);
+                    setSubjectAverageGrade(avg);
+                    setSubjectAverageCount(grades.length);
+                } else {
+                    setSubjectAverageGrade(null);
+                    setSubjectAverageCount(0);
+                }
+            } catch (error) {
+                console.error('Failed to load subject targets:', error);
+            }
+        };
+
+        loadSubjectAverage();
+
+        return () => {
+            active = false;
+        };
+    }, [studentId]);
+
     const handleSave = async () => {
         if (!studentId) return;
 
         setSaving(true);
         try {
+            const parsedExamYear = Number.parseInt(settings.examYear, 10);
+            const examYear = Number.isFinite(parsedExamYear) ? parsedExamYear : DEFAULT_SETTINGS.exam_year;
+
             await updateSettings(studentId, {
                 name: settings.name,
                 target_grade: settings.targetGrade,
-                exam_year: settings.examYear,
+                exam_year: examYear,
                 study_hours_per_day: settings.studyHoursPerDay,
                 preferred_study_time: settings.preferredStudyTime,
                 notifications: settings.notifications,
@@ -285,6 +329,24 @@ export default function SettingsPage() {
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    {subjectAverageGrade ? (
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <span>Based on {subjectAverageCount} subject targets: Grade {subjectAverageGrade}</span>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => updateSetting('targetGrade', String(subjectAverageGrade))}
+                                                className="h-7 px-2"
+                                            >
+                                                Use average
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            Add subject targets to calculate an average.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="examYear">Exam Year</Label>

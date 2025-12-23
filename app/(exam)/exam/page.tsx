@@ -20,7 +20,7 @@ import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, 
 
 // Import custom hooks and services
 import useExamLogic from '../../hooks/useExamLogic';
-import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer, DEFAULT_MODELS } from '../../services/AIService';
+import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer } from '../../services/AIService';
 import { PaperStorage } from '../../services/PaperStorage';
 import { useAuth, useStudentId } from '../../components/AuthProvider';
 import { ensureSubjectForStudent, logQuestionAttemptSafe } from '../../services/studentOS';
@@ -43,10 +43,9 @@ export default function GCSEMarkerApp() {
     const [pdfPage, setPdfPage] = useState(1);
     const [pdfScale, setPdfScale] = useState(1.5);
 
-    // API keys and model selection
+    // API keys
     const [customApiKey, setCustomApiKey] = useState("");
     const [hackClubApiKey, setHackClubApiKey] = useState("");
-    const [selectedModel, setSelectedModel] = useState(DEFAULT_MODELS.vision);
     const [hasSavedSession, setHasSavedSession] = useState(false);
     const [hasServerKey, setHasServerKey] = useState(true);
     const [hasHackClubServerKey, setHasHackClubServerKey] = useState(true);
@@ -63,7 +62,7 @@ export default function GCSEMarkerApp() {
     // Use custom exam logic hook
     const exam = useExamLogic();
 
-    // Load API keys and model from localStorage, check server keys
+    // Load API keys from localStorage, check server keys
     useEffect(() => {
         if (typeof window === 'undefined') return;
         // studentId handled by hook
@@ -71,8 +70,6 @@ export default function GCSEMarkerApp() {
         if (storedKey) setCustomApiKey(storedKey);
         const storedHackKey = window.localStorage.getItem('hackclub_api_key');
         if (storedHackKey) setHackClubApiKey(storedHackKey);
-        const storedModel = window.localStorage.getItem('selected_model');
-        if (storedModel) setSelectedModel(storedModel);
         const savedData = window.localStorage.getItem('gcse_marker_state');
         if (savedData) setHasSavedSession(true);
         AIService.checkServerKey().then(hasKey => setHasServerKey(hasKey));
@@ -101,10 +98,9 @@ export default function GCSEMarkerApp() {
         return () => clearInterval(timer);
     }, [phase]);
 
-    // Save API keys and model
+    // Save API keys
     const updateApiKey = (k) => { setCustomApiKey(k); if (typeof window !== 'undefined') window.localStorage.setItem('openrouter_api_key', k); };
     const updateHackClubKey = (k) => { setHackClubApiKey(k); if (typeof window !== 'undefined') window.localStorage.setItem('hackclub_api_key', k); };
-    const updateSelectedModel = (m) => { setSelectedModel(m); if (typeof window !== 'undefined') window.localStorage.setItem('selected_model', m); };
 
     const clearSaveData = () => {
         exam.clearSession();
@@ -207,7 +203,7 @@ export default function GCSEMarkerApp() {
 
         try {
             setParsingStatus('AI analyzing exam paper...');
-            const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, selectedModel, studentId);
+            const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, null, studentId);
             setPaperMeta(metadata || null);
 
             const sid = studentId;
@@ -224,7 +220,7 @@ export default function GCSEMarkerApp() {
             if (files.insert) {
                 setParsingStatus('Processing source material...');
                 try {
-                    const insertContent = await AIService.extractInsertContent(files.insert, customApiKey, selectedModel, studentId);
+                    const insertContent = await AIService.extractInsertContent(files.insert, customApiKey, null, studentId);
                     exam.setInsertContent(insertContent);
                 } catch (e) { console.error('Insert extraction failed:', e); }
             }
@@ -232,7 +228,7 @@ export default function GCSEMarkerApp() {
             if (files.scheme) {
                 setParsingStatus('Parsing mark scheme...');
                 try {
-                    const markScheme = await AIService.parseMarkScheme(files.scheme, customApiKey, selectedModel, studentId);
+                    const markScheme = await AIService.parseMarkScheme(files.scheme, customApiKey, null, studentId);
                     exam.setParsedMarkScheme(markScheme);
                 } catch (e) { console.error('Mark scheme parsing failed:', e); }
             }
@@ -330,7 +326,7 @@ export default function GCSEMarkerApp() {
             const keyToUse = hackClubApiKey;
             if (!keyToUse) throw new Error("Hack Club API key missing for marking.");
 
-            const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, selectedModel, studentId);
+            const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, null, studentId);
             exam.setQuestionFeedback(q.id, feedback);
 
             const sid = studentId;
@@ -528,26 +524,6 @@ export default function GCSEMarkerApp() {
                                     </p>
                                 </div>
                             )}
-
-                            <div className="space-y-2">
-                                <Label htmlFor="model">AI Model</Label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Brain className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                    <Input
-                                        id="model"
-                                        type="text"
-                                        value={selectedModel}
-                                        onChange={(e) => updateSelectedModel(e.target.value)}
-                                        className="pl-10"
-                                        placeholder="e.g., google/gemini-2.0-flash-001"
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Browse models at <a href="https://openrouter.ai/models" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openrouter.ai/models</a>
-                                </p>
-                            </div>
 
                             {!hasHackClubServerKey && (
                                 <div className="space-y-2">

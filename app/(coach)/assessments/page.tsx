@@ -100,6 +100,7 @@ interface UpcomingExam {
     notes?: string;
     topics?: string[];
     source?: string;
+    type?: 'real' | 'mock';
 }
 
 interface Subject {
@@ -118,6 +119,8 @@ interface UploadItem {
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const normalizeSubjectName = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 const paperTypes = [
     { label: 'Past Paper', value: 'past_paper' },
@@ -194,6 +197,8 @@ export default function AssessmentsPage() {
     const [examFormDuration, setExamFormDuration] = useState('');
     const [examFormLocation, setExamFormLocation] = useState('');
     const [examFormNotes, setExamFormNotes] = useState('');
+    const [examFormType, setExamFormType] = useState('real');
+    const [upcomingFilter, setUpcomingFilter] = useState<'all' | 'real' | 'mock'>('all');
     const [examFormErrors, setExamFormErrors] = useState({ title: false, date: false });
 
     useEffect(() => {
@@ -242,6 +247,7 @@ export default function AssessmentsPage() {
         setExamFormDuration('');
         setExamFormLocation('');
         setExamFormNotes('');
+        setExamFormType('real');
         setExamFormErrors({ title: false, date: false });
     };
 
@@ -250,15 +256,44 @@ export default function AssessmentsPage() {
         setIsParsing(true);
         setParsedExams([]);
         try {
-            const result = await AIService.parseExamSchedule(file, studentId);
-            const examsWithIds = (result.exams || []).map((e: any, i: number) => ({
-                ...e,
-                id: `temp-${i}`,
-                title: e.title || 'Untitled Exam',
-                exam_date: e.exam_date || e.date,
-            }));
-            setParsedExams(examsWithIds);
-            toast.success(`Parsed ${examsWithIds.length} exams from schedule`);
+            const result = await AIService.parseExamSchedule(file, studentId, subjects);
+            const subjectIndex = subjects
+                .map((subject) => ({
+                    id: subject.id,
+                    name: subject.name,
+                    normalized: normalizeSubjectName(subject.name || ''),
+                }))
+                .filter((subject) => subject.normalized);
+            const resolveSubjectId = (candidate: string) => {
+                if (!candidate) return undefined;
+                const normalized = normalizeSubjectName(candidate);
+                if (!normalized) return undefined;
+                const exact = subjectIndex.find((subject) => subject.normalized === normalized);
+                if (exact) return exact.id;
+                const partial = subjectIndex.find((subject) =>
+                    normalized.includes(subject.normalized) || subject.normalized.includes(normalized)
+                );
+                return partial?.id;
+            };
+            const mappedExams = (result.exams || []).map((e: any, i: number) => {
+                const subjectCandidate = e.subject || e.title || '';
+                const subject_id = resolveSubjectId(subjectCandidate);
+                return {
+                    ...e,
+                    id: `temp-${i}`,
+                    title: e.title || 'Untitled Exam',
+                    exam_date: e.exam_date || e.date,
+                    subject_id,
+                };
+            });
+            const filteredExams = subjectIndex.length > 0
+                ? mappedExams.filter((exam) => exam.subject_id)
+                : mappedExams;
+            setParsedExams(filteredExams);
+            const message = subjectIndex.length > 0 && filteredExams.length !== mappedExams.length
+                ? `Parsed ${mappedExams.length} exams, kept ${filteredExams.length} matching your subjects`
+                : `Parsed ${filteredExams.length} exams from schedule`;
+            toast.success(message);
         } catch (error) {
             console.error('Failed to parse schedule:', error);
             toast.error('Failed to parse exam schedule. Please try again.');
@@ -298,6 +333,7 @@ export default function AssessmentsPage() {
                 duration_minutes: examFormDuration ? parseInt(examFormDuration) : undefined,
                 location: examFormLocation || undefined,
                 notes: examFormNotes || undefined,
+                type: examFormType as 'real' | 'mock',
             });
             setUpcomingExams(prev => [...prev, newExam].sort((a, b) =>
                 new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()
@@ -751,7 +787,35 @@ export default function AssessmentsPage() {
 
                     {/* Upcoming Exams List */}
                     <div className="space-y-4">
-                        <h2 className="text-lg font-semibold">Upcoming Exams</h2>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <h2 className="text-lg font-semibold">Upcoming Exams</h2>
+                            <div className="flex bg-secondary/50 p-1 rounded-lg">
+                                <Button
+                                    variant={upcomingFilter === 'all' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setUpcomingFilter('all')}
+                                    className="h-7 text-xs"
+                                >
+                                    All
+                                </Button>
+                                <Button
+                                    variant={upcomingFilter === 'real' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setUpcomingFilter('real')}
+                                    className="h-7 text-xs"
+                                >
+                                    Real Exams
+                                </Button>
+                                <Button
+                                    variant={upcomingFilter === 'mock' ? 'secondary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setUpcomingFilter('mock')}
+                                    className="h-7 text-xs"
+                                >
+                                    Mocks
+                                </Button>
+                            </div>
+                        </div>
                         {loading ? (
                             <div className="text-center py-12">
                                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
@@ -779,74 +843,87 @@ export default function AssessmentsPage() {
                             </Card>
                         ) : (
                             <div className="grid gap-4">
-                                {upcomingExams.map((exam) => {
-                                    const daysUntil = getDaysUntil(exam.exam_date);
-                                    const isUrgent = daysUntil <= 7;
-                                    return (
-                                        <Card key={exam.id} className="card-shadow hover:card-shadow-hover transition-shadow">
-                                            <CardContent className="p-4">
-                                                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                                                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                                                        <div className={cn(
-                                                            "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
-                                                            isUrgent ? "bg-warning/20" : "bg-primary/10"
-                                                        )}>
-                                                            <CalendarDays className={cn("h-6 w-6", isUrgent ? "text-warning" : "text-primary")} />
+                                {upcomingExams
+                                    .filter(e => upcomingFilter === 'all' || (e.type || 'real') === upcomingFilter)
+                                    .map((exam) => {
+                                        const daysUntil = getDaysUntil(exam.exam_date);
+                                        const isUrgent = daysUntil <= 7;
+                                        return (
+                                            <Card key={exam.id} className="card-shadow hover:card-shadow-hover transition-shadow">
+                                                <CardContent className="p-4">
+                                                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                                                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                            <div className={cn(
+                                                                "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                                                isUrgent ? "bg-warning/20" : "bg-primary/10"
+                                                            )}>
+                                                                <CalendarDays className={cn("h-6 w-6", isUrgent ? "text-warning" : "text-primary")} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <h3 className="font-semibold truncate">{exam.title}</h3>
+                                                                    {exam.subject_id && (
+                                                                        <Badge variant="outline">{getSubjectName(exam.subject_id)}</Badge>
+                                                                    )}
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className={cn(
+                                                                            "border-transparent",
+                                                                            (exam.type || 'real') === 'real'
+                                                                                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                                                                                : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
+                                                                        )}
+                                                                    >
+                                                                        {(exam.type || 'real') === 'real' ? 'Real Exam' : 'Mock Exam'}
+                                                                    </Badge>
+                                                                    <Badge variant={isUrgent ? "destructive" : "secondary"}>
+                                                                        {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
+                                                                    </Badge>
+                                                                </div>
+                                                                <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <CalendarIcon className="h-3.5 w-3.5" />
+                                                                        {new Date(exam.exam_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                                    </span>
+                                                                    {exam.exam_time && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Clock className="h-3.5 w-3.5" />
+                                                                            {exam.exam_time}
+                                                                        </span>
+                                                                    )}
+                                                                    {exam.duration_minutes && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Timer className="h-3.5 w-3.5" />
+                                                                            {exam.duration_minutes} min
+                                                                        </span>
+                                                                    )}
+                                                                    {exam.location && (
+                                                                        <span className="flex items-center gap-1">
+                                                                            <MapPin className="h-3.5 w-3.5" />
+                                                                            {exam.location}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2 flex-wrap">
-                                                                <h3 className="font-semibold truncate">{exam.title}</h3>
-                                                                {exam.subject_id && (
-                                                                    <Badge variant="outline">{getSubjectName(exam.subject_id)}</Badge>
-                                                                )}
-                                                                <Badge variant={isUrgent ? "destructive" : "secondary"}>
-                                                                    {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
-                                                                </Badge>
-                                                            </div>
-                                                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
-                                                                <span className="flex items-center gap-1">
-                                                                    <CalendarIcon className="h-3.5 w-3.5" />
-                                                                    {new Date(exam.exam_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
-                                                                </span>
-                                                                {exam.exam_time && (
-                                                                    <span className="flex items-center gap-1">
-                                                                        <Clock className="h-3.5 w-3.5" />
-                                                                        {exam.exam_time}
-                                                                    </span>
-                                                                )}
-                                                                {exam.duration_minutes && (
-                                                                    <span className="flex items-center gap-1">
-                                                                        <Timer className="h-3.5 w-3.5" />
-                                                                        {exam.duration_minutes} min
-                                                                    </span>
-                                                                )}
-                                                                {exam.location && (
-                                                                    <span className="flex items-center gap-1">
-                                                                        <MapPin className="h-3.5 w-3.5" />
-                                                                        {exam.location}
-                                                                    </span>
-                                                                )}
-                                                            </div>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                                onClick={() => {
+                                                                    setExamToDelete(exam);
+                                                                    setExamDeleteDialogOpen(true);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
                                                     </div>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                            onClick={() => {
-                                                                setExamToDelete(exam);
-                                                                setExamDeleteDialogOpen(true);
-                                                            }}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
                             </div>
                         )}
                     </div>
@@ -1042,6 +1119,27 @@ export default function AssessmentsPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Exam Type</Label>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={examFormType === 'real' ? 'default' : 'outline'}
+                                    className="flex-1"
+                                    onClick={() => setExamFormType('real')}
+                                >
+                                    Real Exam
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={examFormType === 'mock' ? 'default' : 'outline'}
+                                    className="flex-1"
+                                    onClick={() => setExamFormType('mock')}
+                                >
+                                    Mock Exam
+                                </Button>
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
