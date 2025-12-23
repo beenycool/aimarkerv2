@@ -120,9 +120,9 @@ export default function TimetablePage() {
     const getSessionTypeColor = (sessionType?: string) => {
         switch (sessionType) {
             case 'ai_planned':
-                return 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20';
+                return 'bg-primary/20 border-primary/40 hover:bg-primary/30';
             case 'daily5':
-                return 'bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20';
+                return 'bg-orange-400/20 border-orange-400/40 hover:bg-orange-400/30';
             default:
                 return 'bg-primary/10 border-primary/20 hover:bg-primary/20';
         }
@@ -191,7 +191,7 @@ export default function TimetablePage() {
                         {/* AI Generate Button - Primary Action */}
                         <Button
                             onClick={() => setAiGeneratorOpen(true)}
-                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                            className="bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-lg"
                         >
                             <Sparkles className="h-4 w-4 mr-2" />
                             AI Plan Week
@@ -232,8 +232,8 @@ export default function TimetablePage() {
                                         {/* Day Header */}
                                         <div
                                             className={`p-3 border-b text-center ${dayInfo.isToday
-                                                    ? 'bg-primary/10 border-primary/20'
-                                                    : 'bg-secondary/30'
+                                                ? 'bg-primary/10 border-primary/20'
+                                                : 'bg-secondary/30'
                                                 }`}
                                         >
                                             <div className="text-xs font-medium text-muted-foreground">
@@ -263,7 +263,7 @@ export default function TimetablePage() {
                                                         >
                                                             <div className="font-medium text-foreground truncate flex items-center gap-1">
                                                                 {session.session_type === 'ai_planned' && (
-                                                                    <Sparkles className="h-3 w-3 text-purple-500 shrink-0" />
+                                                                    <Sparkles className="h-3 w-3 text-primary shrink-0" />
                                                                 )}
                                                                 {getSubjectName(session.subject_id)}
                                                             </div>
@@ -372,8 +372,8 @@ export default function TimetablePage() {
                     <Card className="card-shadow">
                         <CardContent className="p-4">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-purple-500/10">
-                                    <Sparkles className="h-5 w-5 text-purple-500" />
+                                <div className="p-2 rounded-lg bg-primary/20">
+                                    <Sparkles className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="flex-1">
                                     <p className="font-medium">AI Sessions</p>
@@ -390,8 +390,8 @@ export default function TimetablePage() {
                         <Card className="card-shadow hover:card-shadow-hover transition-shadow cursor-pointer h-full">
                             <CardContent className="p-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-lg bg-green-500/10">
-                                        <Zap className="h-5 w-5 text-green-500" />
+                                    <div className="p-2 rounded-lg bg-primary/20">
+                                        <Zap className="h-5 w-5 text-primary" />
                                     </div>
                                     <div className="flex-1">
                                         <p className="font-medium">Start Session</p>

@@ -214,7 +214,7 @@ export default function DashboardPage() {
                 date: formatShort(firstExam.date),
                 daysLeft: daysUntil(firstExam.date),
                 icon: GraduationCap,
-                color: "bg-accent/10 text-accent"
+                color: "bg-orange-500/10 text-orange-600"
             } : null,
             resultsDay ? {
                 label: "Results Day",

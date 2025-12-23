@@ -257,7 +257,7 @@ export function AIScheduleGenerator({
         switch (priority) {
             case 'high': return 'bg-red-500/10 text-red-600 border-red-500/20';
             case 'medium': return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
-            case 'low': return 'bg-green-500/10 text-green-600 border-green-500/20';
+            case 'low': return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
             default: return 'bg-primary/10 text-primary border-primary/20';
         }
     };
@@ -281,8 +281,8 @@ export function AIScheduleGenerator({
                         <div className="space-y-3">
                             <div className="flex items-center gap-2">
                                 {step === 'gathering' && <Brain className="h-5 w-5 text-primary animate-pulse" />}
-                                {step === 'analyzing' && <Target className="h-5 w-5 text-amber-500 animate-pulse" />}
-                                {step === 'generating' && <Sparkles className="h-5 w-5 text-purple-500 animate-pulse" />}
+                                {step === 'analyzing' && <Target className="h-5 w-5 text-orange-500 animate-pulse" />}
+                                {step === 'generating' && <Sparkles className="h-5 w-5 text-primary animate-pulse" />}
                                 {step === 'saving' && <Loader2 className="h-5 w-5 text-primary animate-spin" />}
                                 <span className="font-medium">{statusMessage}</span>
                             </div>
@@ -296,7 +296,7 @@ export function AIScheduleGenerator({
                                             key={i}
                                             className="text-sm text-muted-foreground flex items-center gap-2 animate-fade-in"
                                         >
-                                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                            <CheckCircle2 className="h-4 w-4 text-primary" />
                                             {insight}
                                         </div>
                                     ))}
@@ -320,8 +320,8 @@ export function AIScheduleGenerator({
                     {/* Done State */}
                     {step === 'done' && (
                         <div className="text-center py-6 space-y-2">
-                            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto animate-bounce" />
-                            <p className="text-green-600 font-medium">{statusMessage}</p>
+                            <CheckCircle2 className="h-12 w-12 text-primary mx-auto animate-bounce" />
+                            <p className="text-primary font-medium">{statusMessage}</p>
                         </div>
                     )}
 
