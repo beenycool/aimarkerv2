@@ -6,6 +6,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/tabs';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -47,7 +48,12 @@ import {
     Target,
     TrendingUp,
     Loader2,
-    ClipboardCheck
+    ClipboardCheck,
+    CalendarDays,
+    Timer,
+    MapPin,
+    Import,
+    Edit2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useStudentId } from '../../components/AuthProvider';
@@ -58,7 +64,13 @@ import {
     uploadAssessmentFile,
     deleteAssessmentFiles,
     listSubjects,
+    listUpcomingExams,
+    createUpcomingExam,
+    updateUpcomingExam,
+    deleteUpcomingExam,
+    bulkCreateUpcomingExams,
 } from '../../services/studentOS';
+import { AIService } from '../../services/AIService';
 
 interface Assessment {
     id: string;
@@ -75,6 +87,19 @@ interface Assessment {
         size: number;
         type?: string;
     }[];
+}
+
+interface UpcomingExam {
+    id: string;
+    subject_id?: string;
+    title: string;
+    exam_date: string;
+    exam_time?: string;
+    duration_minutes?: number;
+    location?: string;
+    notes?: string;
+    topics?: string[];
+    source?: string;
 }
 
 interface Subject {
@@ -148,21 +173,46 @@ export default function AssessmentsPage() {
     const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // Tab state
+    const [activeTab, setActiveTab] = useState('future');
+
+    // Future Exams state
+    const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>([]);
+    const [addExamDialogOpen, setAddExamDialogOpen] = useState(false);
+    const [importDialogOpen, setImportDialogOpen] = useState(false);
+    const [isParsing, setIsParsing] = useState(false);
+    const [parsedExams, setParsedExams] = useState<UpcomingExam[]>([]);
+    const [examToDelete, setExamToDelete] = useState<UpcomingExam | null>(null);
+    const [examDeleteDialogOpen, setExamDeleteDialogOpen] = useState(false);
+    const importFileInputRef = useRef<HTMLInputElement>(null);
+
+    // Add Exam form state
+    const [examFormTitle, setExamFormTitle] = useState('');
+    const [examFormSubject, setExamFormSubject] = useState('');
+    const [examFormDate, setExamFormDate] = useState('');
+    const [examFormTime, setExamFormTime] = useState('');
+    const [examFormDuration, setExamFormDuration] = useState('');
+    const [examFormLocation, setExamFormLocation] = useState('');
+    const [examFormNotes, setExamFormNotes] = useState('');
+    const [examFormErrors, setExamFormErrors] = useState({ title: false, date: false });
+
     useEffect(() => {
         if (!studentId) return;
 
         const loadData = async () => {
             setLoading(true);
             try {
-                const [asses, subs] = await Promise.all([
+                const [asses, subs, exams] = await Promise.all([
                     listAssessments(studentId),
                     listSubjects(studentId),
+                    listUpcomingExams(studentId),
                 ]);
                 setAssessments(asses || []);
                 setSubjects(subs || []);
+                setUpcomingExams(exams || []);
             } catch (error) {
-                console.error('Failed to load assessments:', error);
-                toast.error('Failed to load assessments.');
+                console.error('Failed to load data:', error);
+                toast.error('Failed to load data.');
             } finally {
                 setLoading(false);
             }
@@ -182,6 +232,105 @@ export default function AssessmentsPage() {
         setIsSuggesting(false);
         setIsDragging(false);
         pendingRemovalRef.current.clear();
+    };
+
+    const resetExamForm = () => {
+        setExamFormTitle('');
+        setExamFormSubject('');
+        setExamFormDate('');
+        setExamFormTime('');
+        setExamFormDuration('');
+        setExamFormLocation('');
+        setExamFormNotes('');
+        setExamFormErrors({ title: false, date: false });
+    };
+
+    const handleImportSchedule = async (file: File) => {
+        if (!studentId) return;
+        setIsParsing(true);
+        setParsedExams([]);
+        try {
+            const result = await AIService.parseExamSchedule(file, studentId);
+            const examsWithIds = (result.exams || []).map((e: any, i: number) => ({
+                ...e,
+                id: `temp-${i}`,
+                title: e.title || 'Untitled Exam',
+                exam_date: e.exam_date || e.date,
+            }));
+            setParsedExams(examsWithIds);
+            toast.success(`Parsed ${examsWithIds.length} exams from schedule`);
+        } catch (error) {
+            console.error('Failed to parse schedule:', error);
+            toast.error('Failed to parse exam schedule. Please try again.');
+        } finally {
+            setIsParsing(false);
+        }
+    };
+
+    const handleConfirmImport = async () => {
+        if (!studentId || !parsedExams.length) return;
+        try {
+            const imported = await bulkCreateUpcomingExams(studentId, parsedExams);
+            setUpcomingExams(prev => [...prev, ...imported].sort((a, b) =>
+                new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()
+            ));
+            setImportDialogOpen(false);
+            setParsedExams([]);
+            toast.success(`Imported ${imported.length} exams`);
+        } catch (error) {
+            console.error('Failed to import exams:', error);
+            toast.error('Failed to import exams.');
+        }
+    };
+
+    const handleAddExam = async () => {
+        if (!studentId || !examFormTitle || !examFormDate) {
+            setExamFormErrors({ title: !examFormTitle, date: !examFormDate });
+            toast.error('Please fill in required fields.');
+            return;
+        }
+        try {
+            const newExam = await createUpcomingExam(studentId, {
+                title: examFormTitle,
+                subject_id: examFormSubject || undefined,
+                exam_date: examFormDate,
+                exam_time: examFormTime || undefined,
+                duration_minutes: examFormDuration ? parseInt(examFormDuration) : undefined,
+                location: examFormLocation || undefined,
+                notes: examFormNotes || undefined,
+            });
+            setUpcomingExams(prev => [...prev, newExam].sort((a, b) =>
+                new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()
+            ));
+            setAddExamDialogOpen(false);
+            resetExamForm();
+            toast.success('Exam added successfully');
+        } catch (error) {
+            console.error('Failed to add exam:', error);
+            toast.error('Failed to add exam.');
+        }
+    };
+
+    const handleDeleteExam = async () => {
+        if (!studentId || !examToDelete) return;
+        try {
+            await deleteUpcomingExam(studentId, examToDelete.id);
+            setUpcomingExams(prev => prev.filter(e => e.id !== examToDelete.id));
+            setExamDeleteDialogOpen(false);
+            setExamToDelete(null);
+            toast.success('Exam deleted');
+        } catch (error) {
+            console.error('Failed to delete exam:', error);
+            toast.error('Failed to delete exam.');
+        }
+    };
+
+    const getDaysUntil = (dateStr: string) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const examDate = new Date(dateStr);
+        examDate.setHours(0, 0, 0, 0);
+        return Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     };
 
     const formatFileSize = (size: number) => {
@@ -492,169 +641,534 @@ export default function AssessmentsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="space-y-1">
                     <h1 className="text-2xl lg:text-3xl font-semibold text-foreground flex items-center gap-3">
-                        <ClipboardCheck className="h-7 w-7 text-primary" />
-                        Assessments
+                        <CalendarDays className="h-7 w-7 text-primary" />
+                        Exams & Assessments
                     </h1>
                     <p className="text-muted-foreground">
-                        Track your assessment history and topics covered.
+                        Track upcoming exams and past assessment results.
                     </p>
                 </div>
-                <Button onClick={() => setDialogOpen(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Assessment
-                </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="card-shadow">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                                <FileText className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold">{assessments.length}</p>
-                                <p className="text-sm text-muted-foreground">Total</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="card-shadow">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-warning/10">
-                                <Clock className="h-5 w-5 text-warning" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold">{pendingCount}</p>
-                                <p className="text-sm text-muted-foreground">Pending</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="card-shadow">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-success/10">
-                                <Target className="h-5 w-5 text-success" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold">{completedCount}</p>
-                                <p className="text-sm text-muted-foreground">Completed</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="card-shadow">
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-accent/10">
-                                <TrendingUp className="h-5 w-5 text-accent" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-semibold">{avgScore}%</p>
-                                <p className="text-sm text-muted-foreground">Avg Score</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Assessments List */}
-            <div className="space-y-4">
-                <h2 className="text-lg font-semibold">Your Assessments</h2>
-
-                {loading ? (
-                    <div className="text-center py-12">
-                        <p className="text-muted-foreground">Loading assessments...</p>
-                    </div>
-                ) : assessments.length === 0 ? (
-                    <Card className="card-shadow">
-                        <CardContent className="p-8 text-center">
-                            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                            <h3 className="font-semibold mb-2">No assessments yet</h3>
-                            <p className="text-sm text-muted-foreground mb-4">
-                                Add a past paper or assessment to get started.
-                            </p>
-                            <Button onClick={() => setDialogOpen(true)}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Your First Assessment
+                <div className="flex gap-2">
+                    {activeTab === 'future' ? (
+                        <>
+                            <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="gap-2">
+                                <Import className="h-4 w-4" />
+                                Import Schedule
                             </Button>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="grid gap-4">
-                        {assessments.map((assessment) => (
-                            <Card key={assessment.id} className="card-shadow hover:card-shadow-hover transition-shadow">
-                                <CardContent className="p-4">
-                                    <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                                        {/* File Icon */}
-                                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                                            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                                <FileText className="h-6 w-6 text-primary" />
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <h3 className="font-semibold truncate">{getSubjectName(assessment.subject_id)}</h3>
-                                                    <Badge variant="outline">{getKindLabel(assessment.kind)}</Badge>
-                                                    <Badge
-                                                        variant="secondary"
-                                                        className={
-                                                            assessment.score != null
-                                                                ? 'bg-success/10 text-success'
-                                                                : 'bg-warning/10 text-warning-foreground'
-                                                        }
-                                                    >
-                                                        {assessment.score != null ? 'completed' : 'pending'}
-                                                    </Badge>
-                                                </div>
-                                                <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
-                                                    <span className="flex items-center gap-2">
-                                                        <CalendarIcon className="h-3.5 w-3.5" />
-                                                        {assessment.date ? new Date(assessment.date).toLocaleDateString() : 'No date'}
-                                                    </span>
-                                                    {assessment.attachments?.length ? (
-                                                        <span className="flex items-center gap-1 text-xs">
-                                                            <Paperclip className="h-3.5 w-3.5" />
-                                                            {assessment.attachments.length} file{assessment.attachments.length === 1 ? '' : 's'}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                            </div>
-                                        </div>
+                            <Button onClick={() => setAddExamDialogOpen(true)} className="gap-2">
+                                <Plus className="h-4 w-4" />
+                                Add Exam
+                            </Button>
+                        </>
+                    ) : (
+                        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Add Assessment
+                        </Button>
+                    )}
+                </div>
+            </div>
 
-                                        {/* Score / Actions */}
-                                        <div className="flex items-center gap-4">
-                                            {assessment.score != null && (
-                                                <div className="text-right">
-                                                    <p className="text-2xl font-bold text-primary">{assessment.score}%</p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {assessment.total ? `/${assessment.total}` : ''}
-                                                    </p>
-                                                </div>
-                                            )}
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                                    onClick={() => {
-                                                        setAssessmentToDelete(assessment);
-                                                        setDeleteDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
+            {/* Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="future" className="gap-2">
+                        <CalendarDays className="h-4 w-4" />
+                        Future Exams
+                        {upcomingExams.length > 0 && (
+                            <Badge variant="secondary" className="ml-1">{upcomingExams.length}</Badge>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger value="past" className="gap-2">
+                        <ClipboardCheck className="h-4 w-4" />
+                        Past Results
+                    </TabsTrigger>
+                </TabsList>
+
+                {/* Future Exams Tab */}
+                <TabsContent value="future" className="space-y-6">
+                    {/* Stats for Future Exams */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                        <CalendarDays className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">{upcomingExams.length}</p>
+                                        <p className="text-sm text-muted-foreground">Upcoming</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-warning/10">
+                                        <Timer className="h-5 w-5 text-warning" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">
+                                            {upcomingExams.length > 0 ? getDaysUntil(upcomingExams[0].exam_date) : '-'}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">Days to Next</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-success/10">
+                                        <Target className="h-5 w-5 text-success" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">
+                                            {upcomingExams.filter(e => getDaysUntil(e.exam_date) <= 7).length}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">This Week</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-accent/10">
+                                        <TrendingUp className="h-5 w-5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">
+                                            {upcomingExams.filter(e => getDaysUntil(e.exam_date) <= 30).length}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">This Month</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Upcoming Exams List */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold">Upcoming Exams</h2>
+                        {loading ? (
+                            <div className="text-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-muted-foreground">Loading exams...</p>
+                            </div>
+                        ) : upcomingExams.length === 0 ? (
+                            <Card className="card-shadow">
+                                <CardContent className="p-8 text-center">
+                                    <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                    <h3 className="font-semibold mb-2">No upcoming exams</h3>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        Add your exam schedule to track deadlines and prepare effectively.
+                                    </p>
+                                    <div className="flex gap-2 justify-center">
+                                        <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                                            <Import className="h-4 w-4 mr-2" />
+                                            Import Schedule PDF
+                                        </Button>
+                                        <Button onClick={() => setAddExamDialogOpen(true)}>
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Exam Manually
+                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>
-                        ))}
+                        ) : (
+                            <div className="grid gap-4">
+                                {upcomingExams.map((exam) => {
+                                    const daysUntil = getDaysUntil(exam.exam_date);
+                                    const isUrgent = daysUntil <= 7;
+                                    return (
+                                        <Card key={exam.id} className="card-shadow hover:card-shadow-hover transition-shadow">
+                                            <CardContent className="p-4">
+                                                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                        <div className={cn(
+                                                            "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
+                                                            isUrgent ? "bg-warning/20" : "bg-primary/10"
+                                                        )}>
+                                                            <CalendarDays className={cn("h-6 w-6", isUrgent ? "text-warning" : "text-primary")} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <h3 className="font-semibold truncate">{exam.title}</h3>
+                                                                {exam.subject_id && (
+                                                                    <Badge variant="outline">{getSubjectName(exam.subject_id)}</Badge>
+                                                                )}
+                                                                <Badge variant={isUrgent ? "destructive" : "secondary"}>
+                                                                    {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
+                                                                </Badge>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                                                                <span className="flex items-center gap-1">
+                                                                    <CalendarIcon className="h-3.5 w-3.5" />
+                                                                    {new Date(exam.exam_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                                </span>
+                                                                {exam.exam_time && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Clock className="h-3.5 w-3.5" />
+                                                                        {exam.exam_time}
+                                                                    </span>
+                                                                )}
+                                                                {exam.duration_minutes && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Timer className="h-3.5 w-3.5" />
+                                                                        {exam.duration_minutes} min
+                                                                    </span>
+                                                                )}
+                                                                {exam.location && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <MapPin className="h-3.5 w-3.5" />
+                                                                        {exam.location}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => {
+                                                                setExamToDelete(exam);
+                                                                setExamDeleteDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                </TabsContent>
+
+                {/* Past Results Tab */}
+                <TabsContent value="past" className="space-y-6">
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-primary/10">
+                                        <FileText className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">{assessments.length}</p>
+                                        <p className="text-sm text-muted-foreground">Total</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-warning/10">
+                                        <Clock className="h-5 w-5 text-warning" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">{pendingCount}</p>
+                                        <p className="text-sm text-muted-foreground">Pending</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-success/10">
+                                        <Target className="h-5 w-5 text-success" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">{completedCount}</p>
+                                        <p className="text-sm text-muted-foreground">Completed</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="card-shadow">
+                            <CardContent className="p-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-lg bg-accent/10">
+                                        <TrendingUp className="h-5 w-5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-semibold">{avgScore}%</p>
+                                        <p className="text-sm text-muted-foreground">Avg Score</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Assessments List */}
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold">Your Assessments</h2>
+
+                        {loading ? (
+                            <div className="text-center py-12">
+                                <p className="text-muted-foreground">Loading assessments...</p>
+                            </div>
+                        ) : assessments.length === 0 ? (
+                            <Card className="card-shadow">
+                                <CardContent className="p-8 text-center">
+                                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                                    <h3 className="font-semibold mb-2">No assessments yet</h3>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        Add a past paper or assessment to get started.
+                                    </p>
+                                    <Button onClick={() => setDialogOpen(true)}>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Add Your First Assessment
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="grid gap-4">
+                                {assessments.map((assessment) => (
+                                    <Card key={assessment.id} className="card-shadow hover:card-shadow-hover transition-shadow">
+                                        <CardContent className="p-4">
+                                            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                                                {/* File Icon */}
+                                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                                        <FileText className="h-6 w-6 text-primary" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <h3 className="font-semibold truncate">{getSubjectName(assessment.subject_id)}</h3>
+                                                            <Badge variant="outline">{getKindLabel(assessment.kind)}</Badge>
+                                                            <Badge
+                                                                variant="secondary"
+                                                                className={
+                                                                    assessment.score != null
+                                                                        ? 'bg-success/10 text-success'
+                                                                        : 'bg-warning/10 text-warning-foreground'
+                                                                }
+                                                            >
+                                                                {assessment.score != null ? 'completed' : 'pending'}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground flex-wrap">
+                                                            <span className="flex items-center gap-2">
+                                                                <CalendarIcon className="h-3.5 w-3.5" />
+                                                                {assessment.date ? new Date(assessment.date).toLocaleDateString() : 'No date'}
+                                                            </span>
+                                                            {assessment.attachments?.length ? (
+                                                                <span className="flex items-center gap-1 text-xs">
+                                                                    <Paperclip className="h-3.5 w-3.5" />
+                                                                    {assessment.attachments.length} file{assessment.attachments.length === 1 ? '' : 's'}
+                                                                </span>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Score / Actions */}
+                                                <div className="flex items-center gap-4">
+                                                    {assessment.score != null && (
+                                                        <div className="text-right">
+                                                            <p className="text-2xl font-bold text-primary">{assessment.score}%</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {assessment.total ? `/${assessment.total}` : ''}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => {
+                                                                setAssessmentToDelete(assessment);
+                                                                setDeleteDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
+            </Tabs>
+
+            {/* Add Exam Dialog */}
+            <Dialog open={addExamDialogOpen} onOpenChange={(open) => {
+                setAddExamDialogOpen(open);
+                if (!open) resetExamForm();
+            }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Add Exam</DialogTitle>
+                        <DialogDescription>Add an upcoming exam to track.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="exam-title">Exam Title *</Label>
+                            <Input
+                                id="exam-title"
+                                placeholder="e.g., Chemistry Paper 1"
+                                value={examFormTitle}
+                                className={cn(examFormErrors.title && 'border-destructive')}
+                                onChange={(e) => {
+                                    setExamFormTitle(e.target.value);
+                                    setExamFormErrors(prev => ({ ...prev, title: false }));
+                                }}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="exam-subject">Subject</Label>
+                            <Select value={examFormSubject} onValueChange={setExamFormSubject}>
+                                <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                                <SelectContent>
+                                    {subjects.map((s) => (
+                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="exam-date">Date *</Label>
+                                <Input
+                                    id="exam-date"
+                                    type="date"
+                                    value={examFormDate}
+                                    className={cn(examFormErrors.date && 'border-destructive')}
+                                    onChange={(e) => {
+                                        setExamFormDate(e.target.value);
+                                        setExamFormErrors(prev => ({ ...prev, date: false }));
+                                    }}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="exam-time">Time</Label>
+                                <Input id="exam-time" type="time" value={examFormTime} onChange={(e) => setExamFormTime(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="exam-duration">Duration (min)</Label>
+                                <Input id="exam-duration" type="number" placeholder="90" value={examFormDuration} onChange={(e) => setExamFormDuration(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="exam-location">Location</Label>
+                                <Input id="exam-location" placeholder="Hall A" value={examFormLocation} onChange={(e) => setExamFormLocation(e.target.value)} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddExamDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleAddExam}>Add Exam</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Import Schedule Dialog */}
+            <Dialog open={importDialogOpen} onOpenChange={(open) => {
+                setImportDialogOpen(open);
+                if (!open) setParsedExams([]);
+            }}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Import Exam Schedule</DialogTitle>
+                        <DialogDescription>Upload a PDF of your exam timetable and AI will extract the exams.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <input
+                            ref={importFileInputRef}
+                            type="file"
+                            accept=".pdf"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleImportSchedule(file);
+                                e.target.value = '';
+                            }}
+                        />
+                        {parsedExams.length === 0 ? (
+                            <div
+                                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/30 hover:bg-secondary/50 transition-colors"
+                                onClick={() => importFileInputRef.current?.click()}
+                            >
+                                {isParsing ? (
+                                    <div className="space-y-2">
+                                        <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
+                                        <p className="font-medium">Parsing exam schedule...</p>
+                                        <p className="text-sm text-muted-foreground">This may take a few seconds</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                                        <p className="font-medium">Click to upload exam schedule PDF</p>
+                                        <p className="text-sm text-muted-foreground">AI will extract all exams automatically</p>
+                                    </>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-sm font-medium">Found {parsedExams.length} exams:</p>
+                                <div className="max-h-64 overflow-y-auto space-y-2">
+                                    {parsedExams.map((exam, i) => (
+                                        <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                                            <div>
+                                                <p className="font-medium text-sm">{exam.title}</p>
+                                                <p className="text-xs text-muted-foreground">{exam.exam_date} {exam.exam_time && `at ${exam.exam_time}`}</p>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setParsedExams(prev => prev.filter((_, idx) => idx !== i))}>
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setImportDialogOpen(false); setParsedExams([]); }}>Cancel</Button>
+                        {parsedExams.length > 0 && (
+                            <Button onClick={handleConfirmImport}>Import {parsedExams.length} Exams</Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Exam Dialog */}
+            <AlertDialog open={examDeleteDialogOpen} onOpenChange={(open) => {
+                setExamDeleteDialogOpen(open);
+                if (!open) setExamToDelete(null);
+            }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Exam</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete "{examToDelete?.title}"? This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteExam} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Add Assessment Dialog */}
             <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>

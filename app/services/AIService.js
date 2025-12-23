@@ -613,6 +613,70 @@ Generate a smart, personalized schedule that will maximize this student's exam p
             console.warn('AI schedule generation failed:', e);
             throw new Error('Failed to generate schedule. Please try again.');
         }
+    },
+
+    /**
+     * Parse exam schedule from PDF
+     * Uses 'parsing' feature configuration from settings
+     */
+    parseExamSchedule: async (pdfFile, studentId) => {
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', null, null);
+
+        const pdfBase64 = await fileToBase64(pdfFile);
+
+        const prompt = `You are an exam schedule parser. Extract ALL exams from this document.
+
+For EACH exam found, extract the following information:
+- title: The exam name (e.g., "Chemistry Paper 1", "Mathematics Higher Paper 2")
+- subject: The subject name only (e.g., "Chemistry", "Mathematics")
+- exam_date: The exam date in YYYY-MM-DD format
+- exam_time: The exam start time in HH:MM format (24-hour), or null if not specified
+- duration_minutes: Duration in minutes, or null if not specified
+- location: Exam venue/room/hall, or null if not specified
+- notes: Any additional relevant information (e.g., "Calculator allowed")
+
+IMPORTANT RULES:
+1. Extract ALL exams, not just a summary
+2. Dates MUST be in YYYY-MM-DD format (e.g., 2025-05-15)
+3. Times MUST be in HH:MM 24-hour format (e.g., 09:00, 14:30)
+4. If the year is not specified, assume 2025 for dates in May-June, otherwise use current year context
+5. Be thorough - don't miss any exams in the document
+
+Return a JSON object with this exact structure:
+{
+  "exams": [
+    {
+      "title": "string",
+      "subject": "string", 
+      "exam_date": "YYYY-MM-DD",
+      "exam_time": "HH:MM or null",
+      "duration_minutes": number or null,
+      "location": "string or null",
+      "notes": "string or null"
+    }
+  ],
+  "summary": "Brief one-line summary of what was parsed"
+}`;
+
+        const content = [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: `data:${pdfFile.type || 'application/pdf'};base64,${pdfBase64}` } }
+        ];
+
+        const messages = [{ role: "user", content }];
+
+        try {
+            const response = await callAI(provider, messages, model, { apiKey, customConfig });
+            const cleaned = cleanGeminiJSON(response);
+            const parsed = JSON.parse(cleaned);
+            return {
+                exams: parsed.exams || [],
+                summary: parsed.summary || `Parsed ${(parsed.exams || []).length} exams`
+            };
+        } catch (e) {
+            console.error('Exam schedule parsing failed:', e);
+            throw new Error('Failed to parse exam schedule. Please check the PDF and try again.');
+        }
     }
 };
 

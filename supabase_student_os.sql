@@ -152,3 +152,28 @@ create table if not exists memory_bank_items (
 );
 
 create index if not exists memory_bank_items_student_idx on memory_bank_items(student_id);
+
+-- =========================
+-- Upcoming Exams (future exam tracking)
+-- =========================
+create table if not exists upcoming_exams (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null,
+  subject_id uuid references subjects(id) on delete set null,
+
+  title text not null,
+  exam_date date not null,
+  exam_time time,
+  duration_minutes int,
+  location text,
+  notes text,
+  topics text[],
+
+  source text not null default 'manual', -- manual | ai_parsed
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists upcoming_exams_student_idx on upcoming_exams(student_id);
+create index if not exists upcoming_exams_date_idx on upcoming_exams(exam_date);
