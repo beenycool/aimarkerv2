@@ -3,9 +3,11 @@
 /**
  * AI Coach Service
  * Generates personalized, AI-powered dashboard insights
+ * Uses Memory Bank for personalization context
  */
 
 import { cleanGeminiJSON } from './AIService';
+import { getMemoryContextForAI } from './memoryService';
 
 /**
  * Call Hack Club API for cost-effective AI completions
@@ -32,6 +34,7 @@ async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b"
 /**
  * Generate comprehensive dashboard insights using AI
  * @param {Object} studentData - Student's performance data
+ * @param {string} studentData.studentId - Student's ID for memory lookup
  * @param {string} studentData.name - Student's name from settings
  * @param {number} studentData.overallPercent - Overall performance percentage
  * @param {Array} studentData.topWeaknesses - Top weakness areas [{label, count}]
@@ -42,6 +45,7 @@ async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b"
  */
 export async function generateDashboardInsights(studentData, hackClubKey = null) {
     const {
+        studentId,
         name = 'Student',
         overallPercent = 0,
         topWeaknesses = [],
@@ -49,6 +53,9 @@ export async function generateDashboardInsights(studentData, hackClubKey = null)
         streakDays = 0,
         subjects = []
     } = studentData;
+
+    // Get memory context for personalization
+    const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
 
     // Calculate actual trend
     const thisWeekPct = weekStats.thisWeek.total > 0
@@ -85,7 +92,10 @@ STUDENT DATA:
 - Week-over-week change: ${trendChange >= 0 ? '+' : ''}${trendChange}% (this week: ${thisWeekPct ?? 'N/A'}%, last week: ${lastWeekPct ?? 'N/A'}%)
 - Top weaknesses: ${weaknessStr}
 - Subjects: ${subjectStr}
-
+${memoryContext ? `
+WHAT YOU KNOW ABOUT THIS STUDENT (use this to personalize your response):
+${memoryContext}
+` : ''}
 OUTPUT STRICT JSON (no markdown, no explanation):
 {
   "greeting": "A warm, personalized greeting using their name and time of day. Include a relevant emoji. Max 12 words.",
@@ -96,7 +106,7 @@ OUTPUT STRICT JSON (no markdown, no explanation):
     "subject": "The subject it belongs to",
     "reason": "Why this topic. Max 15 words."
   },
-  "dailyTip": "One actionable study tip. Max 20 words."
+  "dailyTip": "One actionable study tip tailored to their learning style if known. Max 20 words."
 }`;
 
     try {

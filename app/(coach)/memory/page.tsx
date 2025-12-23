@@ -10,19 +10,46 @@ import {
     Plus,
     Search,
     Trash2,
-    Clock,
-    Tag
+    Pencil,
+    Check,
+    X,
+    Sparkles,
+    User,
+    BookOpen,
+    Target,
+    Lightbulb,
+    Settings,
+    TrendingUp,
+    AlertCircle
 } from 'lucide-react';
 import { useStudentId } from '../../components/AuthProvider';
-import { listMemoryItems, upsertMemoryItem, archiveMemoryItem } from '../../services/studentOS';
+import {
+    getMemoryItems,
+    addMemoryItem,
+    updateMemoryItem,
+    archiveMemoryItem,
+    MEMORY_CATEGORIES,
+    CATEGORY_LABELS
+} from '../../services/memoryService';
 
 interface MemoryItem {
     id: string;
-    front: string;
-    back: string;
-    tags?: string[];
+    category: string;
+    content: string;
+    confidence: number;
+    source: 'user' | 'ai';
+    last_confirmed?: string;
     updated_at?: string;
 }
+
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+    [MEMORY_CATEGORIES.LEARNING_GOALS]: <Target className="h-4 w-4" />,
+    [MEMORY_CATEGORIES.LEARNING_STYLE]: <BookOpen className="h-4 w-4" />,
+    [MEMORY_CATEGORIES.STRENGTHS]: <TrendingUp className="h-4 w-4" />,
+    [MEMORY_CATEGORIES.AREAS_TO_IMPROVE]: <AlertCircle className="h-4 w-4" />,
+    [MEMORY_CATEGORIES.PREFERENCES]: <Settings className="h-4 w-4" />,
+    [MEMORY_CATEGORIES.AI_NOTES]: <Lightbulb className="h-4 w-4" />,
+};
 
 export default function MemoryPage() {
     const studentId = useStudentId();
@@ -30,10 +57,10 @@ export default function MemoryPage() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
-    const [newFront, setNewFront] = useState('');
-    const [newBack, setNewBack] = useState('');
-    const [newTags, setNewTags] = useState('');
-    const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
+    const [newCategory, setNewCategory] = useState(MEMORY_CATEGORIES.PREFERENCES);
+    const [newContent, setNewContent] = useState('');
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editContent, setEditContent] = useState('');
 
     useEffect(() => {
         if (!studentId) return;
@@ -41,7 +68,7 @@ export default function MemoryPage() {
         const loadData = async () => {
             setLoading(true);
             try {
-                const data = await listMemoryItems(studentId);
+                const data = await getMemoryItems(studentId);
                 setItems(data || []);
             } catch (error) {
                 console.error('Failed to load memory items:', error);
@@ -54,21 +81,31 @@ export default function MemoryPage() {
     }, [studentId]);
 
     const handleAddItem = async () => {
-        if (!studentId || !newFront.trim() || !newBack.trim()) return;
+        if (!studentId || !newContent.trim()) return;
 
         try {
-            const newItem = await upsertMemoryItem(studentId, {
-                front: newFront.trim(),
-                back: newBack.trim(),
-                tags: newTags.split(',').map(t => t.trim()).filter(Boolean),
+            const newItem = await addMemoryItem(studentId, {
+                category: newCategory,
+                content: newContent.trim(),
             });
             setItems([newItem, ...items]);
-            setNewFront('');
-            setNewBack('');
-            setNewTags('');
+            setNewContent('');
             setShowAddForm(false);
         } catch (error) {
             console.error('Failed to add memory item:', error);
+        }
+    };
+
+    const handleUpdateItem = async (id: string) => {
+        if (!studentId || !editContent.trim()) return;
+
+        try {
+            const updated = await (updateMemoryItem as any)(studentId, id, { content: editContent.trim() });
+            setItems(items.map(i => i.id === id ? updated : i));
+            setEditingId(null);
+            setEditContent('');
+        } catch (error) {
+            console.error('Failed to update item:', error);
         }
     };
 
@@ -83,23 +120,31 @@ export default function MemoryPage() {
         }
     };
 
-    const toggleFlip = (id: string) => {
-        setFlippedCards(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
+    const startEditing = (item: MemoryItem) => {
+        setEditingId(item.id);
+        setEditContent(item.content);
+    };
+
+    const cancelEditing = () => {
+        setEditingId(null);
+        setEditContent('');
     };
 
     const filteredItems = items.filter(item =>
-        item.front.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.back.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+        item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (CATEGORY_LABELS[item.category] || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Group items by category
+    const groupedItems = filteredItems.reduce((acc, item) => {
+        const cat = item.category || 'preferences';
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(item);
+        return acc;
+    }, {} as Record<string, MemoryItem[]>);
+
+    const userItemCount = items.filter(i => i.source === 'user').length;
+    const aiItemCount = items.filter(i => i.source === 'ai').length;
 
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -111,12 +156,12 @@ export default function MemoryPage() {
                         Memory Bank
                     </h1>
                     <p className="text-muted-foreground">
-                        Store and review key facts, formulas, and concepts.
+                        Help the AI learn about you to personalize your experience.
                     </p>
                 </div>
                 <Button onClick={() => setShowAddForm(true)}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Card
+                    Add Entry
                 </Button>
             </div>
 
@@ -124,7 +169,7 @@ export default function MemoryPage() {
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search cards..."
+                    placeholder="Search memories..."
                     className="pl-10"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -135,39 +180,41 @@ export default function MemoryPage() {
             {showAddForm && (
                 <Card className="card-shadow border-primary/50">
                     <CardHeader>
-                        <CardTitle className="text-lg">New Memory Card</CardTitle>
+                        <CardTitle className="text-lg">What should the AI know about you?</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Front (Question/Term)</label>
-                            <Input
-                                placeholder="e.g., What is photosynthesis?"
-                                value={newFront}
-                                onChange={(e) => setNewFront(e.target.value)}
-                            />
+                            <label className="text-sm font-medium">Category</label>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.entries(MEMORY_CATEGORIES).map(([key, value]) => (
+                                    <Button
+                                        key={value}
+                                        variant={newCategory === value ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setNewCategory(value)}
+                                        className="text-xs"
+                                    >
+                                        {CATEGORY_ICONS[value]}
+                                        <span className="ml-1">{CATEGORY_LABELS[value]?.replace(/^[^\s]+\s/, '')}</span>
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Back (Answer/Definition)</label>
+                            <label className="text-sm font-medium">What would you like the AI to remember?</label>
                             <Input
-                                placeholder="e.g., The process by which plants convert light into energy..."
-                                value={newBack}
-                                onChange={(e) => setNewBack(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Tags (comma separated)</label>
-                            <Input
-                                placeholder="e.g., Biology, Plants, Photosynthesis"
-                                value={newTags}
-                                onChange={(e) => setNewTags(e.target.value)}
+                                placeholder="e.g., I learn best with visual diagrams and examples"
+                                value={newContent}
+                                onChange={(e) => setNewContent(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
                             />
                         </div>
                         <div className="flex gap-2 justify-end">
                             <Button variant="outline" onClick={() => setShowAddForm(false)}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleAddItem} disabled={!newFront.trim() || !newBack.trim()}>
-                                Add Card
+                            <Button onClick={handleAddItem} disabled={!newContent.trim()}>
+                                Save Memory
                             </Button>
                         </div>
                     </CardContent>
@@ -175,101 +222,171 @@ export default function MemoryPage() {
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                 <Card className="card-shadow">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold">{items.length}</p>
-                        <p className="text-sm text-muted-foreground">Total Cards</p>
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                            <Brain className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{items.length}</p>
+                            <p className="text-xs text-muted-foreground">Total Memories</p>
+                        </div>
                     </CardContent>
                 </Card>
                 <Card className="card-shadow">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold text-primary">
-                            {new Set(items.flatMap(i => i.tags || [])).size}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Topics</p>
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="p-2 bg-blue-500/10 rounded-lg">
+                            <User className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{userItemCount}</p>
+                            <p className="text-xs text-muted-foreground">Added by You</p>
+                        </div>
                     </CardContent>
                 </Card>
-                <Card className="card-shadow col-span-2 lg:col-span-1">
-                    <CardContent className="p-4">
-                        <p className="text-2xl font-bold text-success">Daily</p>
-                        <p className="text-sm text-muted-foreground">Review Streak</p>
+                <Card className="card-shadow">
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/10 rounded-lg">
+                            <Sparkles className="h-5 w-5 text-purple-500" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold">{aiItemCount}</p>
+                            <p className="text-xs text-muted-foreground">Learned by AI</p>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Cards Grid */}
+            {/* Memory Entries */}
             {loading ? (
                 <div className="text-center py-12">
-                    <p className="text-muted-foreground">Loading memory cards...</p>
+                    <p className="text-muted-foreground">Loading memories...</p>
                 </div>
-            ) : filteredItems.length === 0 ? (
+            ) : Object.keys(groupedItems).length === 0 ? (
                 <Card className="card-shadow">
                     <CardContent className="p-8 text-center">
                         <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
                         <h3 className="font-semibold mb-2">
-                            {searchQuery ? 'No matching cards' : 'No memory cards yet'}
+                            {searchQuery ? 'No matching memories' : 'No memories yet'}
                         </h3>
                         <p className="text-sm text-muted-foreground mb-4">
                             {searchQuery
                                 ? 'Try a different search term.'
-                                : 'Start adding key facts and formulas to remember.'}
+                                : 'Help the AI understand you better by adding some information about yourself.'}
                         </p>
                         {!searchQuery && (
                             <Button onClick={() => setShowAddForm(true)}>
                                 <Plus className="h-4 w-4 mr-2" />
-                                Add Your First Card
+                                Add Your First Memory
                             </Button>
                         )}
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredItems.map((item) => (
-                        <Card
-                            key={item.id}
-                            className="card-shadow hover:card-shadow-hover transition-all cursor-pointer group min-h-[180px]"
-                            onClick={() => toggleFlip(item.id)}
-                        >
-                            <CardContent className="p-4 h-full flex flex-col">
-                                <div className="flex items-start justify-between mb-3">
-                                    <Badge variant={flippedCards.has(item.id) ? 'default' : 'secondary'} className="text-xs">
-                                        {flippedCards.has(item.id) ? 'Answer' : 'Question'}
-                                    </Badge>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleArchive(item.id);
-                                        }}
-                                    >
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                </div>
-
-                                <div className="flex-1 flex items-center justify-center">
-                                    <p className="text-center font-medium">
-                                        {flippedCards.has(item.id) ? item.back : item.front}
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center justify-between mt-3 pt-3 border-t">
-                                    <div className="flex flex-wrap gap-1">
-                                        {item.tags?.slice(0, 2).map(tag => (
-                                            <Badge key={tag} variant="outline" className="text-xs">
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">Click to flip</p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                <div className="space-y-6">
+                    {Object.entries(groupedItems).map(([category, categoryItems]) => (
+                        <div key={category}>
+                            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                {CATEGORY_ICONS[category] || <Brain className="h-4 w-4" />}
+                                {CATEGORY_LABELS[category] || category}
+                                <Badge variant="secondary" className="ml-2">
+                                    {categoryItems.length}
+                                </Badge>
+                            </h2>
+                            <div className="space-y-2">
+                                {categoryItems.map((item) => (
+                                    <Card key={item.id} className="card-shadow hover:card-shadow-hover transition-all group">
+                                        <CardContent className="p-4">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    {editingId === item.id ? (
+                                                        <div className="flex gap-2">
+                                                            <Input
+                                                                value={editContent}
+                                                                onChange={(e) => setEditContent(e.target.value)}
+                                                                autoFocus
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') handleUpdateItem(item.id);
+                                                                    if (e.key === 'Escape') cancelEditing();
+                                                                }}
+                                                            />
+                                                            <Button size="icon" variant="ghost" onClick={() => handleUpdateItem(item.id)}>
+                                                                <Check className="h-4 w-4 text-green-500" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={cancelEditing}>
+                                                                <X className="h-4 w-4 text-red-500" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm">{item.content}</p>
+                                                    )}
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <Badge
+                                                            variant={item.source === 'ai' ? 'default' : 'outline'}
+                                                            className={`text-xs ${item.source === 'ai' ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : ''}`}
+                                                        >
+                                                            {item.source === 'ai' ? (
+                                                                <><Sparkles className="h-3 w-3 mr-1" /> AI Learned</>
+                                                            ) : (
+                                                                <><User className="h-3 w-3 mr-1" /> You</>
+                                                            )}
+                                                        </Badge>
+                                                        {item.confidence < 100 && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {item.confidence}% confident
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {editingId !== item.id && (
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            onClick={() => startEditing(item)}
+                                                        >
+                                                            <Pencil className="h-3 w-3" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive"
+                                                            onClick={() => handleArchive(item.id)}
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </div>
             )}
+
+            {/* Info Card */}
+            <Card className="card-shadow bg-gradient-to-r from-primary/5 to-purple-500/5 border-primary/20">
+                <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-primary/10 rounded-xl">
+                            <Sparkles className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold mb-1">How Memory Bank Works</h3>
+                            <p className="text-sm text-muted-foreground">
+                                The AI uses these memories to personalize your experience. Add information about your
+                                learning style, goals, and preferences. The AI will also learn things about you
+                                automatically as you use the app and add them here.
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

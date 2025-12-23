@@ -240,6 +240,7 @@ export default function DashboardPage() {
             setAiLoading(true);
             try {
                 const insights = await generateDashboardInsights({
+                    studentId,
                     name: settings?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Student',
                     overallPercent: overallReadiness,
                     topWeaknesses,

@@ -8,6 +8,7 @@
  */
 
 import { getOrCreateSettings, DEFAULT_AI_PREFERENCES } from './studentOS';
+import { getMemoryContextForAI } from './memoryService';
 
 // Feature descriptions for UI
 export const AI_FEATURE_DESCRIPTIONS = {
@@ -405,8 +406,13 @@ export const AIService = {
         const numericScore = Math.min(question.marks, Number(parsedGrader.score ?? 0));
         const primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw ?? "Missing analysis or contextual insight.";
 
-        // STEP 2: Tutor
-        const tutorPrompt = `You are an expert English Literature tutor.\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write a short Model Paragraph that fixes the flaw.\n4) Keep it concise, encouraging, Markdown formatted.`;
+        // STEP 2: Tutor with personalization
+        const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
+        const personalizationNote = memoryContext
+            ? `\n\nSTUDENT PERSONALIZATION (adapt your teaching style accordingly):\n${memoryContext}`
+            : '';
+
+        const tutorPrompt = `You are an expert English Literature tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write a short Model Paragraph that fixes the flaw.\n4) Keep it concise, encouraging, Markdown formatted.`;
 
         let tutorText = "";
         try {
@@ -517,6 +523,9 @@ OUTPUT FORMAT (JSON ONLY, no markdown):
     }
   ]
 }`;
+        // Get memory context for personalization
+        const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
+
         const userPrompt = `Create an optimal study schedule for this student:
 SUBJECTS & PERFORMANCE:
 ${subjectSummary || 'No subjects added yet.'}
@@ -527,6 +536,10 @@ ${assessmentSummary}
 STUDY STREAK: ${studyStreak.current} days current, ${studyStreak.longest} days longest
 AVAILABLE DAYS THIS WEEK:
 ${datesStr || 'All days available'}
+${memoryContext ? `
+STUDENT PREFERENCES & LEARNING STYLE (consider when scheduling):
+${memoryContext}
+` : ''}
 Generate a smart, personalized schedule that will maximize this student's exam performance.`;
 
         const messages = [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }];

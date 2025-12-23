@@ -9,6 +9,7 @@ import {
     listQuestionAttempts,
     getOrCreateSettings
 } from '../services/studentOS';
+import { getMemoryContextForAI } from '../services/memoryService';
 
 export interface StudentData {
     name: string;
@@ -231,12 +232,18 @@ export function useStudyTechniques() {
         const prompt = prompts[techniqueType] || prompts['active-recall'];
 
         try {
+            // Get memory context for personalization
+            const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
+            const systemPrompt = memoryContext
+                ? `You are a helpful GCSE study coach. Be concise and encouraging.\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
+                : 'You are a helpful GCSE study coach. Be concise and encouraging.';
+
             const response = await fetch('/api/hackclub', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: [
-                        { role: 'system', content: 'You are a helpful GCSE study coach. Be concise and encouraging.' },
+                        { role: 'system', content: systemPrompt },
                         { role: 'user', content: prompt }
                     ],
                     apiKey: hackClubKey,
@@ -253,7 +260,7 @@ export function useStudyTechniques() {
             // Return fallback content
             return getFallbackContent(techniqueType, weaknessStr);
         }
-    }, [studentData, hackClubKey]);
+    }, [studentId, studentData, hackClubKey]);
 
     return {
         studentId,
