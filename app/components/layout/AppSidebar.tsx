@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     LayoutDashboard,
     BookOpen,
@@ -15,9 +15,13 @@ import {
     X,
     GraduationCap,
     PenLine,
+    LogIn,
+    LogOut,
+    User,
 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
 import { Button } from "@/app/components/ui/button";
+import { useAuth } from "@/app/components/AuthProvider";
 
 const navItems = [
     { title: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
@@ -33,6 +37,17 @@ const navItems = [
 export function AppSidebar() {
     const [isOpen, setIsOpen] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+    const { user, isAuthenticated, signOut, loading } = useAuth();
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.refresh();
+    };
+
+    // Get user display info
+    const userEmail = user?.email;
+    const userInitial = userEmail ? userEmail.charAt(0).toUpperCase() : "S";
 
     return (
         <>
@@ -108,21 +123,70 @@ export function AppSidebar() {
                         </Link>
                     </div>
 
-                    {/* Footer */}
+                    {/* User Footer */}
                     <div className="px-4 py-4 border-t border-sidebar-border">
-                        <div className="flex items-center gap-3 px-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <span className="text-sm font-medium text-primary">S</span>
+                        {loading ? (
+                            <div className="flex items-center gap-3 px-2">
+                                <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+                                <div className="flex-1 space-y-1">
+                                    <div className="h-4 bg-muted rounded animate-pulse" />
+                                    <div className="h-3 w-16 bg-muted rounded animate-pulse" />
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-sidebar-foreground truncate">
-                                    Student
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                    Year 11
-                                </p>
+                        ) : isAuthenticated ? (
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3 px-2">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <span className="text-sm font-medium text-primary">
+                                            {userInitial}
+                                        </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-sidebar-foreground truncate">
+                                            {userEmail}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            Signed in
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+                                    onClick={handleSignOut}
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Sign out
+                                </Button>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3 px-2">
+                                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                        <User className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-sidebar-foreground truncate">
+                                            Guest
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            Data stored locally
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link href="/login" onClick={() => setIsOpen(false)}>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full justify-start gap-2"
+                                    >
+                                        <LogIn className="h-4 w-4" />
+                                        Sign in to sync
+                                    </Button>
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
             </aside>
