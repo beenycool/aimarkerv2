@@ -21,7 +21,19 @@ create table if not exists student_settings (
 
   light_week boolean not null default false,
   study_techniques_feed boolean not null default false,
-  nightly_verification boolean not null default false
+  nightly_verification boolean not null default false,
+
+  -- New Profile & Preference Fields
+  name text,
+  target_grade text default '7',
+  notifications boolean default true,
+  dark_mode boolean default false,
+  study_hours_per_day integer default 2,
+  preferred_study_time text default 'evening',
+
+  -- AI API settings
+  openrouter_enabled boolean default true,
+  hackclub_enabled boolean default true
 );
 
 -- =========================

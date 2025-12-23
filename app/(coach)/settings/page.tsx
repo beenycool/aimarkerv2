@@ -32,6 +32,7 @@ import {
 import { useStudentId } from '../../components/AuthProvider';
 import { getOrCreateSettings, updateSettings, DEFAULT_SETTINGS } from '../../services/studentOS';
 import { clearSettingsCache } from '../../services/AIService';
+import { useTheme } from 'next-themes';
 
 interface UserSettings {
     name: string;
@@ -47,6 +48,7 @@ interface UserSettings {
 
 export default function SettingsPage() {
     const studentId = useStudentId();
+    const { setTheme } = useTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -81,6 +83,8 @@ export default function SettingsPage() {
                         openrouterEnabled: data.openrouter_enabled ?? true,
                         hackclubEnabled: data.hackclub_enabled ?? true,
                     });
+                    // Apply theme from settings
+                    setTheme(data.dark_mode ? 'dark' : 'light');
                 }
             } catch (error) {
                 console.error('Failed to load settings:', error);
@@ -120,6 +124,11 @@ export default function SettingsPage() {
 
     const updateSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
         setSettings(prev => ({ ...prev, [key]: value }));
+
+        // Immediately apply theme change if darkMode is toggled
+        if (key === 'darkMode') {
+            setTheme(value ? 'dark' : 'light');
+        }
     };
 
     return (

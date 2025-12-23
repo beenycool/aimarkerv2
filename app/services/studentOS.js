@@ -13,6 +13,10 @@ export const DEFAULT_SETTINGS = {
   // AI API settings
   openrouter_enabled: true,
   hackclub_enabled: true,
+  dark_mode: false,
+  name: null,
+  target_grade: '7',
+  notifications: true,
 };
 
 export async function getOrCreateSettings(studentId) {
