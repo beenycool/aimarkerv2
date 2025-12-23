@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
-import { Loader2, UserPlus, BookOpen, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, UserPlus, BookOpen, ArrowRight, CheckCircle2, RefreshCw, Mail } from 'lucide-react';
+import { createClient } from '@/app/lib/supabase/client';
 
 export default function SignUpPage() {
     const [email, setEmail] = useState('');
@@ -17,6 +18,8 @@ export default function SignUpPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [resending, setResending] = useState(false);
+    const [resendSuccess, setResendSuccess] = useState(false);
     const { signUp } = useAuth();
     const router = useRouter();
 
@@ -49,6 +52,27 @@ export default function SignUpPage() {
         }
     };
 
+    const handleResendEmail = async () => {
+        setResending(true);
+        setResendSuccess(false);
+
+        const supabase = createClient();
+        const { error } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+        });
+
+        setResending(false);
+        if (!error) {
+            setResendSuccess(true);
+            // Reset success message after 5 seconds
+            setTimeout(() => setResendSuccess(false), 5000);
+        }
+    };
+
     if (success) {
         return (
             <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
@@ -62,9 +86,32 @@ export default function SignUpPage() {
                             We&apos;ve sent a confirmation link to <strong>{email}</strong>.
                             Click the link to activate your account.
                         </p>
-                        <div className="pt-4">
+
+                        {resendSuccess && (
+                            <div className="p-3 rounded-lg bg-success/10 border border-success/20">
+                                <p className="text-sm text-success flex items-center justify-center gap-2">
+                                    <Mail className="h-4 w-4" />
+                                    Email sent! Check your inbox.
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="pt-2 space-y-3">
+                            <Button
+                                variant="outline"
+                                className="w-full gap-2"
+                                onClick={handleResendEmail}
+                                disabled={resending}
+                            >
+                                {resending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="h-4 w-4" />
+                                )}
+                                Resend confirmation email
+                            </Button>
                             <Link href="/login">
-                                <Button variant="outline" className="w-full">
+                                <Button variant="ghost" className="w-full">
                                     Back to login
                                 </Button>
                             </Link>
@@ -74,6 +121,7 @@ export default function SignUpPage() {
             </div>
         );
     }
+
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
