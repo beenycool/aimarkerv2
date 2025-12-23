@@ -149,7 +149,8 @@ export function AIScheduleGenerator({
             const performanceMap = performance as Record<string, { percentage: number | null; questionCount: number }>;
             const strugglingSubjects = subs?.filter(s => {
                 const perf = performanceMap[s.id];
-                return perf?.percentage !== null && perf.percentage < 60;
+                // Check if perf exists, has a non-null percentage, and is below 60
+                return perf != null && perf.percentage != null && perf.percentage < 60;
             }) || [];
             if (strugglingSubjects.length > 0) {
                 addInsight(`📉 ${strugglingSubjects.length} subject(s) need extra focus`);
