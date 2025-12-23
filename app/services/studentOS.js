@@ -33,6 +33,10 @@ export const DEFAULT_SETTINGS = {
   name: null,
   target_grade: '7',
   notifications: true,
+  // Time slot scheduling preferences
+  preferred_study_time: 'afternoon', // 'morning', 'afternoon', 'evening', 'any'
+  preferred_time_slots: [], // e.g., ['09:00', '14:00', '16:00', '19:00']
+  busy_periods: [], // e.g., [{start: '12:00', end: '13:00', label: 'Lunch'}]
 };
 
 export async function getOrCreateSettings(studentId) {
@@ -524,6 +528,7 @@ export async function createSession(studentId, sessionData) {
     items: sessionData.items || [],
     notes: sessionData.notes || null,
     topic: sessionData.topic || null,
+    start_time: sessionData.start_time || null,
   };
   const { data, error } = await supabase.from('study_sessions').insert(payload).select('*').single();
   if (error) throw error;
@@ -588,6 +593,7 @@ export async function saveSchedule(studentId, sessions, weekStartISO, weekEndISO
     items: s.items || [],
     notes: s.notes || null,
     topic: s.topic || null,
+    start_time: s.start_time || null,
   }));
 
   if (payloads.length === 0) return [];
@@ -663,3 +669,185 @@ export async function getUpcomingAssessments(studentId) {
     return [];
   }
 }
+
+/**
+ * Get recent study history (last 14 days) to avoid repetition in AI scheduling
+ * Returns topics that were recently studied so AI can schedule spaced repetition
+ */
+export async function getRecentStudyHistory(studentId, days = 14) {
+  if (!studentId) return { recentTopics: [], completedSessions: [], skippedCount: 0 };
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startISO = startDate.toISOString().split('T')[0];
+
+    const { data: sessions, error } = await supabase
+      .from('study_sessions')
+      .select('id, subject_id, topic, status, planned_for, duration_minutes, session_type')
+      .eq('student_id', studentId)
+      .gte('planned_for', startISO)
+      .order('planned_for', { ascending: false });
+
+    if (error || !sessions?.length) {
+      return { recentTopics: [], completedSessions: [], skippedCount: 0 };
+    }
+
+    // Extract recently studied topics (from completed sessions)
+    const recentTopics = sessions
+      .filter(s => s.status === 'done' && s.topic)
+      .map(s => ({
+        topic: s.topic,
+        subjectId: s.subject_id,
+        studiedOn: s.planned_for,
+        daysAgo: Math.ceil((Date.now() - new Date(s.planned_for).getTime()) / (1000 * 60 * 60 * 24))
+      }));
+
+    // Track completed sessions for feedback
+    const completedSessions = sessions.filter(s => s.status === 'done');
+    const skippedCount = sessions.filter(s =>
+      s.status === 'planned' && new Date(s.planned_for) < new Date()
+    ).length;
+
+    return { recentTopics, completedSessions, skippedCount };
+  } catch (e) {
+    console.warn('getRecentStudyHistory error:', e);
+    return { recentTopics: [], completedSessions: [], skippedCount: 0 };
+  }
+}
+
+/**
+ * Get topic-level performance (more granular than subject-level)
+ * Groups attempts by topic/question_type to identify specific weak areas
+ */
+export async function getTopicPerformance(studentId) {
+  if (!studentId) return { byTopic: {}, byQuestionType: {} };
+
+  try {
+    const { data: attempts, error } = await supabase
+      .from('question_attempts')
+      .select('subject_id, marks_awarded, marks_total, primary_flaw, question_type')
+      .eq('student_id', studentId)
+      .order('attempted_at', { ascending: false })
+      .limit(500);
+
+    if (error || !attempts?.length) return { byTopic: {}, byQuestionType: {} };
+
+    const byTopic = {};
+    const byQuestionType = {};
+
+    for (const a of attempts) {
+      // Group by primary_flaw (topic/skill area)
+      const topic = (a.primary_flaw || '').trim();
+      if (topic) {
+        if (!byTopic[topic]) byTopic[topic] = { earned: 0, total: 0, count: 0 };
+        byTopic[topic].earned += Number(a.marks_awarded || 0);
+        byTopic[topic].total += Number(a.marks_total || 0);
+        byTopic[topic].count += 1;
+      }
+
+      // Group by question type
+      const qType = (a.question_type || 'unknown').trim();
+      if (!byQuestionType[qType]) byQuestionType[qType] = { earned: 0, total: 0, count: 0 };
+      byQuestionType[qType].earned += Number(a.marks_awarded || 0);
+      byQuestionType[qType].total += Number(a.marks_total || 0);
+      byQuestionType[qType].count += 1;
+    }
+
+    // Calculate percentages
+    for (const [key, stats] of Object.entries(byTopic)) {
+      byTopic[key].percentage = stats.total > 0 ? Math.round((stats.earned / stats.total) * 100) : null;
+    }
+    for (const [key, stats] of Object.entries(byQuestionType)) {
+      byQuestionType[key].percentage = stats.total > 0 ? Math.round((stats.earned / stats.total) * 100) : null;
+    }
+
+    return { byTopic, byQuestionType };
+  } catch (e) {
+    console.warn('getTopicPerformance error:', e);
+    return { byTopic: {}, byQuestionType: {} };
+  }
+}
+
+/**
+ * Get session completion stats for AI feedback loop
+ * Tracks patterns in when sessions are completed vs skipped
+ */
+export async function getSessionCompletionStats(studentId) {
+  if (!studentId) return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
+
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startISO = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { data: sessions, error } = await supabase
+      .from('study_sessions')
+      .select('id, status, planned_for, session_type, duration_minutes, start_time')
+      .eq('student_id', studentId)
+      .gte('planned_for', startISO)
+      .order('planned_for', { ascending: false });
+
+    if (error || !sessions?.length) {
+      return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
+    }
+
+    const pastSessions = sessions.filter(s => new Date(s.planned_for) < new Date());
+    const completed = pastSessions.filter(s => s.status === 'done').length;
+    const completionRate = pastSessions.length > 0
+      ? Math.round((completed / pastSessions.length) * 100)
+      : 0;
+
+    // Analyze by day of week
+    const byDayOfWeek = {
+      Mon: { done: 0, total: 0 }, Tue: { done: 0, total: 0 }, Wed: { done: 0, total: 0 },
+      Thu: { done: 0, total: 0 }, Fri: { done: 0, total: 0 }, Sat: { done: 0, total: 0 },
+      Sun: { done: 0, total: 0 }
+    };
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    for (const s of pastSessions) {
+      const dayName = days[new Date(s.planned_for).getDay()];
+      byDayOfWeek[dayName].total++;
+      if (s.status === 'done') byDayOfWeek[dayName].done++;
+    }
+
+    // Analyze by time of day (if start_time is tracked)
+    const byTimeOfDay = { morning: { done: 0, total: 0 }, afternoon: { done: 0, total: 0 }, evening: { done: 0, total: 0 } };
+    for (const s of pastSessions.filter(x => x.start_time)) {
+      const hour = parseInt(s.start_time.split(':')[0], 10);
+      const period = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+      byTimeOfDay[period].total++;
+      if (s.status === 'done') byTimeOfDay[period].done++;
+    }
+
+    // Generate insights for AI
+    const insights = [];
+
+    // Find worst day
+    const worstDay = Object.entries(byDayOfWeek)
+      .filter(([_, stats]) => stats.total >= 2)
+      .sort((a, b) => (a[1].done / a[1].total) - (b[1].done / b[1].total))[0];
+    if (worstDay && (worstDay[1].done / worstDay[1].total) < 0.5) {
+      insights.push(`Student often skips sessions on ${worstDay[0]}`);
+    }
+
+    // Find best day
+    const bestDay = Object.entries(byDayOfWeek)
+      .filter(([_, stats]) => stats.total >= 2)
+      .sort((a, b) => (b[1].done / b[1].total) - (a[1].done / a[1].total))[0];
+    if (bestDay && (bestDay[1].done / bestDay[1].total) > 0.8) {
+      insights.push(`Student is most consistent on ${bestDay[0]}`);
+    }
+
+    if (completionRate < 50) {
+      insights.push('Low completion rate - consider fewer, shorter sessions');
+    }
+
+    return { completionRate, byDayOfWeek, byTimeOfDay, insights };
+  } catch (e) {
+    console.warn('getSessionCompletionStats error:', e);
+    return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
+  }
+}
+

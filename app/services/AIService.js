@@ -476,10 +476,23 @@ export const AIService = {
 
     generateWeeklySchedule: async (context, hackClubKey, studentId) => {
         const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', hackClubKey, null);
-        // ... prompt construction ...
-        const { subjects = [], subjectPerformance = {}, weaknesses = {}, upcomingAssessments = [], studyStreak = { current: 0, longest: 0 }, settings = {}, weekDates = [] } = context;
 
-        // Note: reusing the extensive prompt logic from original file
+        const {
+            subjects = [],
+            subjectPerformance = {},
+            weaknesses = {},
+            upcomingAssessments = [],
+            studyStreak = { current: 0, longest: 0 },
+            settings = {},
+            weekDates = [],
+            // Enhanced context
+            recentStudyHistory = [],
+            topicPerformance = {},
+            completionStats = {},
+            preferredStudyTime = 'any',
+        } = context;
+
+        // Build subject summary with performance data
         const subjectSummary = subjects.map(s => {
             const perf = subjectPerformance[s.id];
             const grade = perf?.percentage ?? 'No data';
@@ -496,6 +509,36 @@ export const AIService = {
         const maxSessions = settings.max_sessions_per_day || 2;
         const lightWeek = settings.light_week ? 'YES - reduce workload by 50%' : 'No';
 
+        // Build recent study history for spaced repetition
+        const recentTopicsStr = recentStudyHistory.length > 0
+            ? recentStudyHistory.slice(0, 8).map(t => `- "${t.topic}" (${t.daysAgo} days ago)`).join('\n')
+            : 'No recent study data.';
+
+        // Topic performance for targeting specific weaknesses
+        const weakTopics = Object.entries(topicPerformance)
+            .filter(([_, stats]) => stats.percentage !== null && stats.percentage < 50)
+            .sort((a, b) => a[1].percentage - b[1].percentage)
+            .slice(0, 5)
+            .map(([topic, stats]) => `- "${topic}": ${stats.percentage}% (${stats.count} attempts)`)
+            .join('\n') || 'No topic-level data available.';
+
+        // Session completion insights
+        const completionInsightsStr = completionStats.insights?.length > 0
+            ? completionStats.insights.join('; ')
+            : '';
+        const bestDaysStr = completionStats.bestDays?.length > 0
+            ? `Student's most productive days: ${completionStats.bestDays.join(', ')}`
+            : '';
+
+        // Time preference
+        const timePreferenceMap = {
+            morning: 'Schedule sessions between 6:00-12:00',
+            afternoon: 'Schedule sessions between 12:00-17:00',
+            evening: 'Schedule sessions between 17:00-21:00',
+            any: 'No specific time preference'
+        };
+        const timePreferenceStr = timePreferenceMap[preferredStudyTime] || timePreferenceMap.any;
+
         const systemPrompt = `You are an expert GCSE study coach and scheduling AI. Your job is to create an optimal weekly study schedule for a student.
 
 RULES:
@@ -506,6 +549,11 @@ RULES:
 5. Session duration should be ${sessionLength} minutes (adjustable by ±15 min based on topic complexity).
 6. Maximum ${maxSessions} sessions per day.
 7. Light week mode: ${lightWeek}
+8. SPACED REPETITION: Schedule review sessions for topics studied 3-7 days ago.
+9. AVOID REPETITION: Don't schedule the same topic twice in one week unless it's a weak area.
+10. TIME PREFERENCE: ${timePreferenceStr}
+${completionInsightsStr ? `11. COMPLETION PATTERNS: ${completionInsightsStr}` : ''}
+${bestDaysStr ? `12. ${bestDaysStr} - prioritize these for important sessions.` : ''}
 
 OUTPUT FORMAT (JSON ONLY, no markdown):
 {
@@ -519,7 +567,8 @@ OUTPUT FORMAT (JSON ONLY, no markdown):
       "topic": "Quadratic equations - solving by factorisation",
       "duration": 30,
       "priority": "high",
-      "reason": "Assessment in 5 days, lowest grade at 45%"
+      "reason": "Assessment in 5 days, lowest grade at 45%",
+      "startTime": "16:00"
     }
   ]
 }`;
@@ -527,20 +576,32 @@ OUTPUT FORMAT (JSON ONLY, no markdown):
         const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
 
         const userPrompt = `Create an optimal study schedule for this student:
+
 SUBJECTS & PERFORMANCE:
 ${subjectSummary || 'No subjects added yet.'}
+
 TOP RECURRING WEAKNESSES:
 ${topWeaknesses}
+
+WEAK TOPICS (need extra practice):
+${weakTopics}
+
 UPCOMING ASSESSMENTS (CRITICAL):
 ${assessmentSummary}
+
+RECENTLY STUDIED (for spaced repetition - review topics from 3-7 days ago):
+${recentTopicsStr}
+
 STUDY STREAK: ${studyStreak.current} days current, ${studyStreak.longest} days longest
+${completionStats.rate ? `SESSION COMPLETION RATE: ${completionStats.rate}%` : ''}
+
 AVAILABLE DAYS THIS WEEK:
 ${datesStr || 'All days available'}
 ${memoryContext ? `
 STUDENT PREFERENCES & LEARNING STYLE (consider when scheduling):
 ${memoryContext}
 ` : ''}
-Generate a smart, personalized schedule that will maximize this student's exam performance.`;
+Generate a smart, personalized schedule that will maximize this student's exam performance. Include specific time slots (startTime) based on their preferences.`;
 
         const messages = [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }];
 

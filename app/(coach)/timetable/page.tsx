@@ -43,6 +43,7 @@ interface Session {
     status?: string;
     topic?: string;
     notes?: string;
+    start_time?: string;
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -267,6 +268,11 @@ export default function TimetablePage() {
                                                                 )}
                                                                 {getSubjectName(session.subject_id)}
                                                             </div>
+                                                            {session.start_time && (
+                                                                <div className="text-primary font-medium text-[10px] mt-0.5">
+                                                                    {session.start_time}
+                                                                </div>
+                                                            )}
                                                             {session.topic && (
                                                                 <div className="text-muted-foreground truncate mt-0.5 text-[10px]">
                                                                     {session.topic}

@@ -36,6 +36,7 @@ interface Session {
     status?: string;
     topic?: string;
     notes?: string;
+    start_time?: string;
 }
 
 interface SessionDialogProps {
@@ -67,6 +68,7 @@ export function SessionDialog({
         duration_minutes: 30,
         topic: '',
         notes: '',
+        start_time: '',
     });
 
     useEffect(() => {
@@ -77,6 +79,7 @@ export function SessionDialog({
                 duration_minutes: session.duration_minutes || 30,
                 topic: session.topic || '',
                 notes: session.notes || '',
+                start_time: session.start_time || '',
             });
         } else {
             setFormData({
@@ -85,6 +88,7 @@ export function SessionDialog({
                 duration_minutes: 30,
                 topic: '',
                 notes: '',
+                start_time: '',
             });
         }
         setDeleteConfirm(false);
@@ -185,6 +189,20 @@ export function SessionDialog({
                                 setFormData({ ...formData, planned_for: e.target.value })
                             }
                             required
+                        />
+                    </div>
+
+                    {/* Start Time */}
+                    <div className="space-y-2">
+                        <Label htmlFor="start_time">Time (optional)</Label>
+                        <Input
+                            id="start_time"
+                            type="time"
+                            value={formData.start_time || ''}
+                            onChange={(e) =>
+                                setFormData({ ...formData, start_time: e.target.value })
+                            }
+                            placeholder="e.g. 16:00"
                         />
                     </div>
 

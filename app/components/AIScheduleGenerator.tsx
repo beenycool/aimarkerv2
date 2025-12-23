@@ -35,6 +35,9 @@ import {
     getSubjectPerformance,
     getUpcomingAssessments,
     saveSchedule,
+    getRecentStudyHistory,
+    getTopicPerformance,
+    getSessionCompletionStats,
 } from '@/app/services/studentOS';
 
 interface Subject {
@@ -50,6 +53,7 @@ interface GeneratedSession {
     duration: number;
     priority: 'high' | 'medium' | 'low';
     reason?: string;
+    startTime?: string; // e.g., '09:00', '14:30'
 }
 
 interface AIScheduleResult {
@@ -117,7 +121,7 @@ export function AIScheduleGenerator({
             ]);
             setSubjects(subs || []);
             addInsight(`📚 Found ${subs?.length || 0} subjects`);
-            setProgress(25);
+            setProgress(20);
 
             setStatusMessage('Analyzing your performance...');
             const [attempts, performance, upcomingAssessments] = await Promise.all([
@@ -125,7 +129,16 @@ export function AIScheduleGenerator({
                 getSubjectPerformance(studentId),
                 getUpcomingAssessments(studentId),
             ]);
-            setProgress(40);
+            setProgress(35);
+
+            // Fetch enhanced context data
+            setStatusMessage('Gathering study patterns...');
+            const [recentHistory, topicPerformance, completionStats] = await Promise.all([
+                getRecentStudyHistory(studentId),
+                getTopicPerformance(studentId),
+                getSessionCompletionStats(studentId),
+            ]);
+            setProgress(50);
 
             // Calculate weaknesses
             const weaknesses = weaknessCountsFromAttempts(attempts);
@@ -149,7 +162,6 @@ export function AIScheduleGenerator({
             const performanceMap = performance as Record<string, { percentage: number | null; questionCount: number }>;
             const strugglingSubjects = subs?.filter(s => {
                 const perf = performanceMap[s.id];
-                // Check if perf exists, has a non-null percentage, and is below 60
                 return perf != null && perf.percentage != null && perf.percentage < 60;
             }) || [];
             if (strugglingSubjects.length > 0) {
@@ -161,18 +173,31 @@ export function AIScheduleGenerator({
                 addInsight(`🔥 ${streak.current}-day study streak!`);
             }
 
-            setProgress(50);
+            // Note completion rate
+            if (completionStats.completionRate > 0) {
+                addInsight(`📊 ${completionStats.completionRate}% session completion rate`);
+            }
+
+            // Note recent topics for spaced repetition
+            const topicsNeedingReview = recentHistory.recentTopics
+                .filter(t => t.daysAgo >= 3 && t.daysAgo <= 10)
+                .slice(0, 3);
+            if (topicsNeedingReview.length > 0) {
+                addInsight(`🔄 ${topicsNeedingReview.length} topic(s) ready for review`);
+            }
+
+            setProgress(55);
 
             // Step 2: Analyze
             setStep('analyzing');
             setStatusMessage('Building your personalized context...');
-            await sleep(500); // Brief pause for UX
-            setProgress(60);
+            await sleep(500);
+            setProgress(65);
 
             // Step 3: Generate
             setStep('generating');
             setStatusMessage('AI is crafting your optimal schedule...');
-            setProgress(70);
+            setProgress(75);
 
             const context = {
                 subjects: subs || [],
@@ -187,10 +212,21 @@ export function AIScheduleGenerator({
                     month: d.month,
                     isoDate: d.isoDate,
                 })),
+                // Enhanced context for better scheduling
+                recentStudyHistory: recentHistory.recentTopics.slice(0, 10),
+                topicPerformance: topicPerformance.byTopic,
+                completionStats: {
+                    rate: completionStats.completionRate,
+                    insights: completionStats.insights,
+                    bestDays: Object.entries(completionStats.byDayOfWeek)
+                        .filter(([_, stats]) => stats.total >= 2 && (stats.done / stats.total) > 0.7)
+                        .map(([day]) => day),
+                },
+                preferredStudyTime: settings.preferred_study_time || 'any',
             };
 
             const aiResult = await AIService.generateWeeklySchedule(context, null, studentId) as unknown as AIScheduleResult;
-            setProgress(90);
+            setProgress(95);
 
             if (!aiResult?.sessions?.length) {
                 throw new Error('AI returned an empty schedule. Please add subjects first.');
@@ -240,6 +276,7 @@ export function AIScheduleGenerator({
                     topic: s.topic,
                     notes: s.reason || null,
                     session_type: 'ai_planned',
+                    start_time: s.startTime || null,
                 };
             });
 
@@ -394,7 +431,12 @@ export function AIScheduleGenerator({
                                                 </div>
                                                 <div className="text-right shrink-0">
                                                     <p className="text-xs font-medium">{session.day}</p>
-                                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    {session.startTime && (
+                                                        <p className="text-xs text-primary font-medium">
+                                                            {session.startTime}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
                                                         <Clock className="h-3 w-3" />
                                                         {session.duration}m
                                                     </p>
