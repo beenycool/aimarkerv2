@@ -185,6 +185,7 @@ export function AIScheduleGenerator({
                     day: d.day,
                     date: d.date,
                     month: d.month,
+                    isoDate: d.isoDate,
                 })),
             };
 

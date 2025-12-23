@@ -485,7 +485,7 @@ export const AIService = {
         const topWeaknesses = Object.entries(weaknesses).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `"${k}" (${v}x)`).join(', ') || 'No weakness data yet.';
         const unavailableDays = settings.unavailable_days || [];
         const availableDates = weekDates.filter(d => !unavailableDays.includes(d.day));
-        const datesStr = availableDates.map(d => `${d.day} ${d.date} ${d.month}`).join(', ');
+        const datesStr = availableDates.map(d => `${d.day} ${d.isoDate || `${d.date} ${d.month}`}`).join(', ');
         const sessionLength = settings.session_length || 25;
         const maxSessions = settings.max_sessions_per_day || 2;
         const lightWeek = settings.light_week ? 'YES - reduce workload by 50%' : 'No';
@@ -508,7 +508,7 @@ OUTPUT FORMAT (JSON ONLY, no markdown):
   "sessions": [
     {
       "day": "Mon",
-      "date": "2024-01-15",
+      "date": "2025-01-15",
       "subjectName": "Mathematics",
       "topic": "Quadratic equations - solving by factorisation",
       "duration": 30,
