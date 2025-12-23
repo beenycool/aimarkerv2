@@ -354,6 +354,130 @@ export const AIService = {
             { role: "user", content: `Student scored ${percentage}%. Repeated weaknesses: ${weaknessSummary || 'Not enough data yet.'}. Total questions: ${questionCount}.` }
         ];
         return await callHackClubAPI(messages, hackClubKey);
+    },
+
+    /**
+     * Generate a smart weekly study schedule based on student context
+     * @param {Object} context - Student context including subjects, performance, weaknesses, assessments, settings
+     * @returns {Promise<Array>} Array of session objects with day, subject, topic, duration, priority
+     */
+    generateWeeklySchedule: async (context, hackClubKey) => {
+        const {
+            subjects = [],
+            subjectPerformance = {},
+            weaknesses = {},
+            upcomingAssessments = [],
+            studyStreak = { current: 0, longest: 0 },
+            settings = {},
+            weekDates = [],
+        } = context;
+
+        // Build subject performance summary
+        const subjectSummary = subjects.map(s => {
+            const perf = subjectPerformance[s.id];
+            const grade = perf?.percentage ?? 'No data';
+            const weaknessesForSubject = Object.entries(weaknesses)
+                .filter(([k]) => k.toLowerCase().includes(s.name.toLowerCase()))
+                .slice(0, 3)
+                .map(([k, v]) => `${k} (${v}x)`)
+                .join(', ');
+            return `- ${s.name}: Grade ${grade}%${weaknessesForSubject ? `, Weaknesses: ${weaknessesForSubject}` : ''}`;
+        }).join('\n');
+
+        // Build upcoming assessments summary
+        const assessmentSummary = upcomingAssessments.length > 0
+            ? upcomingAssessments.map(a => {
+                const daysUntil = Math.ceil((new Date(a.date) - new Date()) / (1000 * 60 * 60 * 24));
+                const subjectName = subjects.find(s => s.id === a.subject_id)?.name || 'Unknown';
+                return `- ${subjectName} ${a.kind || 'assessment'} in ${daysUntil} days (${a.date})`;
+            }).join('\n')
+            : 'No upcoming assessments scheduled.';
+
+        // Build top weaknesses summary (global)
+        const topWeaknesses = Object.entries(weaknesses)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([k, v]) => `"${k}" (${v}x)`)
+            .join(', ') || 'No weakness data yet.';
+
+        // Build available days
+        const unavailableDays = settings.unavailable_days || [];
+        const availableDates = weekDates.filter(d => !unavailableDays.includes(d.day));
+        const datesStr = availableDates.map(d => `${d.day} ${d.date} ${d.month}`).join(', ');
+
+        // Build constraints
+        const sessionLength = settings.session_length || 25;
+        const maxSessions = settings.max_sessions_per_day || 2;
+        const lightWeek = settings.light_week ? 'YES - reduce workload by 50%' : 'No';
+
+        const systemPrompt = `You are an expert GCSE study coach and scheduling AI. Your job is to create an optimal weekly study schedule for a student.
+
+RULES:
+1. PRIORITIZE subjects with LOW grades (below 60%) - they need the most time.
+2. If an assessment is within 7 days, allocate AT LEAST 2 revision sessions for that subject.
+3. Each session should target a SPECIFIC weakness or topic, not generic "study".
+4. Balance the schedule across available days - avoid cramming.
+5. Session duration should be ${sessionLength} minutes (adjustable by ±15 min based on topic complexity).
+6. Maximum ${maxSessions} sessions per day.
+7. Light week mode: ${lightWeek}
+
+OUTPUT FORMAT (JSON ONLY, no markdown):
+{
+  "analysis": "Brief 1-2 sentence analysis of student's situation",
+  "priorityOrder": ["Subject1", "Subject2"],
+  "sessions": [
+    {
+      "day": "Mon",
+      "date": "2024-01-15",
+      "subjectName": "Mathematics",
+      "topic": "Quadratic equations - solving by factorisation",
+      "duration": 30,
+      "priority": "high",
+      "reason": "Assessment in 5 days, lowest grade at 45%"
+    }
+  ]
+}`;
+
+        const userPrompt = `Create an optimal study schedule for this student:
+
+SUBJECTS & PERFORMANCE:
+${subjectSummary || 'No subjects added yet.'}
+
+TOP RECURRING WEAKNESSES:
+${topWeaknesses}
+
+UPCOMING ASSESSMENTS (CRITICAL):
+${assessmentSummary}
+
+STUDY STREAK: ${studyStreak.current} days current, ${studyStreak.longest} days longest
+
+AVAILABLE DAYS THIS WEEK:
+${datesStr || 'All days available'}
+
+Generate a smart, personalized schedule that will maximize this student's exam performance.`;
+
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+        ];
+
+        try {
+            const response = await callHackClubAPI(messages, hackClubKey, "moonshotai/kimi-k2-thinking");
+            const cleaned = cleanGeminiJSON(response);
+            const parsed = JSON.parse(cleaned);
+            return parsed;
+        } catch (primaryErr) {
+            console.warn('Primary AI schedule generation failed, trying fallback:', primaryErr);
+            try {
+                const response = await callHackClubAPI(messages, hackClubKey);
+                const cleaned = cleanGeminiJSON(response);
+                const parsed = JSON.parse(cleaned);
+                return parsed;
+            } catch (fallbackErr) {
+                console.error('AI schedule generation failed:', fallbackErr);
+                throw new Error('Failed to generate schedule. Please try again.');
+            }
+        }
     }
 };
 

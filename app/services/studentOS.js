@@ -313,10 +313,52 @@ export async function createAssessment(studentId, input) {
     score: Number.isFinite(input.score) ? input.score : null,
     total: Number.isFinite(input.total) ? input.total : null,
     notes: input.notes || null,
+    attachments: Array.isArray(input.attachments) ? input.attachments : [],
   };
   const { data, error } = await supabase.from('assessments').insert(payload).select('*').single();
   if (error) throw error;
   return data;
+}
+
+export async function uploadAssessmentFile(studentId, file) {
+  if (!studentId) throw new Error('studentId required');
+  if (!file) throw new Error('file required');
+
+  const timestamp = Date.now();
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${studentId}/${timestamp}_${safeName}`;
+
+  const { error } = await supabase.storage
+    .from('assessment-pdfs')
+    .upload(path, file, {
+      contentType: file.type || 'application/pdf',
+      upsert: false,
+    });
+
+  if (error) throw error;
+  return { path };
+}
+
+export async function deleteAssessmentFiles(paths = []) {
+  if (!paths.length) return;
+  const { error } = await supabase.storage.from('assessment-pdfs').remove(paths);
+  if (error) throw error;
+}
+
+export async function deleteAssessment(studentId, assessmentId, attachments = []) {
+  if (!studentId) throw new Error('studentId required');
+  const attachmentPaths = (attachments || [])
+    .map((item) => (typeof item === 'string' ? item : item?.path))
+    .filter(Boolean);
+  if (attachmentPaths.length) {
+    await deleteAssessmentFiles(attachmentPaths);
+  }
+  const { error } = await supabase
+    .from('assessments')
+    .delete()
+    .eq('student_id', studentId)
+    .eq('id', assessmentId);
+  if (error) throw error;
 }
 
 /**
@@ -442,4 +484,159 @@ export async function deleteAllStudentData(studentId) {
     .from('student_settings')
     .update({ ...DEFAULT_SETTINGS, updated_at: new Date().toISOString() })
     .eq('student_id', studentId);
+}
+
+/**
+ * Create a new study session
+ */
+export async function createSession(studentId, sessionData) {
+  if (!studentId) throw new Error('studentId required');
+  const payload = {
+    student_id: studentId,
+    subject_id: sessionData.subject_id || null,
+    session_type: sessionData.session_type || 'scheduled',
+    planned_for: sessionData.planned_for,
+    duration_minutes: sessionData.duration_minutes || 30,
+    status: sessionData.status || 'planned',
+    items: sessionData.items || [],
+    notes: sessionData.notes || null,
+    topic: sessionData.topic || null,
+  };
+  const { data, error } = await supabase.from('study_sessions').insert(payload).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Update an existing study session
+ */
+export async function updateSession(studentId, sessionId, patch) {
+  if (!studentId) throw new Error('studentId required');
+  const { data, error } = await supabase
+    .from('study_sessions')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('student_id', studentId)
+    .eq('id', sessionId)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Delete a study session
+ */
+export async function deleteSession(studentId, sessionId) {
+  if (!studentId) throw new Error('studentId required');
+  const { error } = await supabase
+    .from('study_sessions')
+    .delete()
+    .eq('student_id', studentId)
+    .eq('id', sessionId);
+  if (error) throw error;
+}
+
+/**
+ * Batch save sessions from AI-generated schedule
+ * Clears existing planned sessions for the week and inserts new ones
+ */
+export async function saveSchedule(studentId, sessions, weekStartISO, weekEndISO) {
+  if (!studentId) throw new Error('studentId required');
+
+  // Delete existing planned sessions for this week (except completed ones)
+  const { error: deleteError } = await supabase
+    .from('study_sessions')
+    .delete()
+    .eq('student_id', studentId)
+    .eq('status', 'planned')
+    .gte('planned_for', weekStartISO)
+    .lte('planned_for', weekEndISO);
+
+  if (deleteError) throw deleteError;
+
+  // Insert new sessions
+  const payloads = sessions.map(s => ({
+    student_id: studentId,
+    subject_id: s.subject_id || null,
+    session_type: s.session_type || 'ai_planned',
+    planned_for: s.planned_for,
+    duration_minutes: s.duration_minutes || 30,
+    status: 'planned',
+    items: s.items || [],
+    notes: s.notes || null,
+    topic: s.topic || null,
+  }));
+
+  if (payloads.length === 0) return [];
+
+  const { data, error } = await supabase.from('study_sessions').insert(payloads).select('*');
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Get subject performance stats (average score per subject)
+ */
+export async function getSubjectPerformance(studentId) {
+  if (!studentId) return {};
+
+  try {
+    const { data: attempts, error } = await supabase
+      .from('question_attempts')
+      .select('subject_id, marks_awarded, marks_total')
+      .eq('student_id', studentId)
+      .order('attempted_at', { ascending: false })
+      .limit(500);
+
+    if (error || !attempts?.length) return {};
+
+    const bySubject = {};
+    for (const a of attempts) {
+      const sid = a.subject_id || 'unknown';
+      if (!bySubject[sid]) bySubject[sid] = { earned: 0, total: 0, count: 0 };
+      bySubject[sid].earned += Number(a.marks_awarded || 0);
+      bySubject[sid].total += Number(a.marks_total || 0);
+      bySubject[sid].count += 1;
+    }
+
+    const result = {};
+    for (const [sid, stats] of Object.entries(bySubject)) {
+      result[sid] = {
+        percentage: stats.total > 0 ? Math.round((stats.earned / stats.total) * 100) : null,
+        questionCount: stats.count,
+      };
+    }
+    return result;
+  } catch (e) {
+    console.warn('getSubjectPerformance error:', e);
+    return {};
+  }
+}
+
+/**
+ * Get upcoming assessments (within next 30 days)
+ */
+export async function getUpcomingAssessments(studentId) {
+  if (!studentId) return [];
+
+  try {
+    const today = isoToday();
+    const thirtyDaysLater = new Date();
+    thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+    const endDate = thirtyDaysLater.toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('assessments')
+      .select('*')
+      .eq('student_id', studentId)
+      .gte('date', today)
+      .lte('date', endDate)
+      .order('date', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (e) {
+    console.warn('getUpcomingAssessments error:', e);
+    return [];
+  }
 }

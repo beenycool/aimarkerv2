@@ -58,6 +58,7 @@ create table if not exists assessments (
   score int,
   total int,
   notes text,
+  attachments jsonb not null default '[]'::jsonb,
 
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
