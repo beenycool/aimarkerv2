@@ -1,20 +1,32 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/app/lib/supabase/server';
 
 const HACKCLUB_API_KEY = process.env.HACKCLUB_API_KEY || "";
 const HACKCLUB_API_URL = process.env.HACKCLUB_API_URL || "https://ai.hackclub.com/proxy/v1/chat/completions";
 
 export async function POST(request) {
     try {
+        // Enforce authentication
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { error: "Authentication required. Please sign in to use this feature." },
+                { status: 401 }
+            );
+        }
+
         const body = await request.json();
         const { messages, model = "qwen/qwen3-32b", temperature = 0.2 } = body;
 
-        // Use server-side key, or allow client to provide their own
-        const apiKey = body.apiKey || HACKCLUB_API_KEY;
+        // Use server-side key only (no longer accept client keys for security)
+        const apiKey = HACKCLUB_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json(
-                { error: "Hack Club API key not configured. Please provide an API key." },
-                { status: 400 }
+                { error: "Hack Club API key not configured on server." },
+                { status: 500 }
             );
         }
 

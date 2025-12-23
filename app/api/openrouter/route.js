@@ -1,20 +1,32 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/app/lib/supabase/server';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
 
 export async function POST(request) {
     try {
+        // Enforce authentication
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { error: "Authentication required. Please sign in to use this feature." },
+                { status: 401 }
+            );
+        }
+
         const body = await request.json();
         const { prompt, files, model, temperature = 0.2, maxTokens = 16384 } = body;
 
-        // Use server-side key, or allow client to provide their own
-        const apiKey = body.apiKey || OPENROUTER_API_KEY;
+        // Use server-side key only (no longer accept client keys for security)
+        const apiKey = OPENROUTER_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json(
-                { error: "OpenRouter API key not configured. Please provide an API key." },
-                { status: 400 }
+                { error: "OpenRouter API key not configured on server." },
+                { status: 500 }
             );
         }
 
