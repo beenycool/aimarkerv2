@@ -275,7 +275,7 @@ export default function AssessmentsPage() {
                 );
                 return partial?.id;
             };
-            const mappedExams = (result.exams || []).map((e: any, i: number) => {
+            const mappedExams: UpcomingExam[] = (result.exams || []).map((e: any, i: number) => {
                 const subjectCandidate = e.subject || e.title || '';
                 const subject_id = resolveSubjectId(subjectCandidate);
                 return {
