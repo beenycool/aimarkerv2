@@ -361,6 +361,21 @@ export default function AssessmentsPage() {
         }
     };
 
+    const handleToggleExamType = async (exam: UpcomingExam) => {
+        if (!studentId) return;
+        try {
+            const newType = (exam.type || 'real') === 'real' ? 'mock' : 'real';
+            await updateUpcomingExam(studentId, exam.id, { type: newType });
+            setUpcomingExams(prev => prev.map(e =>
+                e.id === exam.id ? { ...e, type: newType } : e
+            ));
+            toast.success(`Exam set to ${newType === 'real' ? 'Real Exam' : 'Mock Exam'}`);
+        } catch (error) {
+            console.error('Failed to update exam type:', error);
+            toast.error('Failed to update exam type.');
+        }
+    };
+
     const getDaysUntil = (dateStr: string) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -868,11 +883,12 @@ export default function AssessmentsPage() {
                                                                     <Badge
                                                                         variant="outline"
                                                                         className={cn(
-                                                                            "border-transparent",
+                                                                            "border-transparent cursor-pointer hover:opacity-80 transition-opacity",
                                                                             (exam.type || 'real') === 'real'
                                                                                 ? "bg-primary/10 text-primary hover:bg-primary/20"
                                                                                 : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
                                                                         )}
+                                                                        onClick={() => handleToggleExamType(exam)}
                                                                     >
                                                                         {(exam.type || 'real') === 'real' ? 'Real Exam' : 'Mock Exam'}
                                                                     </Badge>

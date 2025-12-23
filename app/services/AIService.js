@@ -641,6 +641,7 @@ For EACH exam found, extract the following information:
 - duration_minutes: Duration in minutes, or null if not specified
 - location: Exam venue/room/hall, or null if not specified
 - notes: Any additional relevant information (e.g., "Calculator allowed")
+- type: 'real' or 'mock'. Use context clues. If it says "Mock", "Practice", "Feb/March Mocks", or implies a non-official exam, it is 'mock'. If it looks like a final official exam (e.g. "GCSE", "A-Level", "May/June", "Official"), it is 'real'. Default to 'real' if unsure.
 
 IMPORTANT RULES:
 1. Only include exams that match the subject list when provided
@@ -659,7 +660,8 @@ Return a JSON object with this exact structure:
       "exam_time": "HH:MM or null",
       "duration_minutes": number or null,
       "location": "string or null",
-      "notes": "string or null"
+      "notes": "string or null",
+      "type": "real" | "mock"
     }
   ],
   "summary": "Brief one-line summary of what was parsed"
@@ -698,7 +700,7 @@ export const stringifyAnswer = (answer) => {
         return answer.join('\n');
     }
     if (typeof answer === 'object' && answer.points) {
-        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])}`;
+        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} `;
     }
     return JSON.stringify(answer);
 };
@@ -730,7 +732,7 @@ export const evaluateAnswerLocally = (question, answer, scheme) => {
     if (!normalized) return { score: 0, totalMarks, text: "No answer provided.", rewrite: "" };
 
     if (question.markingRegex && checkRegex(question.markingRegex, normalized)) {
-        return { score: totalMarks, totalMarks, text: "Matched expected answer via regex.", rewrite: `**${answerText}**` };
+        return { score: totalMarks, totalMarks, text: "Matched expected answer via regex.", rewrite: `** ${answerText}** ` };
     }
 
     if (scheme) {
@@ -753,7 +755,7 @@ export const evaluateAnswerLocally = (question, answer, scheme) => {
             score: cappedScore,
             totalMarks,
             text: feedbackParts.join(' ') || "Partial credit awarded based on keyword matches.",
-            rewrite: acceptable[0] ? `Model answer idea: **${acceptable[0]}**` : answerText
+            rewrite: acceptable[0] ? `Model answer idea: ** ${acceptable[0]}** ` : answerText
         };
     }
 
@@ -762,12 +764,12 @@ export const evaluateAnswerLocally = (question, answer, scheme) => {
 
 export const buildHintFromScheme = (question, scheme) => {
     const hints = [];
-    if (question.context?.content) hints.push(`Re-read the provided context: "${question.context.content.slice(0, 160)}..."`);
-    if (scheme?.criteria?.length) hints.push(`Checklist: ${scheme.criteria.slice(0, 3).join('; ')}`);
+    if (question.context?.content) hints.push(`Re - read the provided context: "${question.context.content.slice(0, 160)}..."`);
+    if (scheme?.criteria?.length) hints.push(`Checklist: ${scheme.criteria.slice(0, 3).join('; ')} `);
     if (question.type === 'multiple_choice' && question.options?.length) hints.push("Eliminate clearly wrong options before choosing.");
     if (question.type === 'long_text') hints.push("Plan your answer with bullet points before writing full sentences.");
     if (!hints.length) hints.push("Focus on the command words and allocate your marks accordingly.");
-    return hints.map(h => `• ${h}`).join('\n');
+    return hints.map(h => `• ${h} `).join('\n');
 };
 
 export const buildExplanationFromFeedback = (question, answer, feedback, scheme) => {
