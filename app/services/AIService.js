@@ -658,22 +658,28 @@ export const AIService = {
             // SPECIAL OPTIMIZATION: For 1 mark MCQs, provide immediate feedback without AI
             if (totalMarks === 1) {
                 const numericScore = 0;
-                const correctAnswer = acceptable[0] || 'See mark scheme';
+                const correctAnswer = acceptable.length > 0 ? acceptable[0] : 'See mark scheme';
                 const primaryFlaw = "Incorrect multiple choice selection.";
                 
                 // Generate simple, clear feedback without AI
-                const feedbackText = `**Score: ${numericScore}/${totalMarks}**
+                const feedbackText = acceptable.length > 0
+                    ? `**Score: ${numericScore}/${totalMarks}**
 
 Your answer: **${studentAnswerText}**
 Correct answer: **${correctAnswer}**
 
-For this multiple choice question, the correct option is **${correctAnswer}**. Review the question and the mark scheme to understand why this is the correct answer.`;
+For this multiple choice question, the correct option is **${correctAnswer}**. Review the question and the mark scheme to understand why this is the correct answer.`
+                    : `**Score: ${numericScore}/${totalMarks}**
+
+Your answer: **${studentAnswerText}**
+
+This answer is incorrect. Please review the mark scheme to identify the correct answer.`;
 
                 return {
                     score: numericScore,
                     totalMarks,
                     text: feedbackText,
-                    rewrite: `**${correctAnswer}**`,
+                    rewrite: acceptable.length > 0 ? `**${correctAnswer}**` : studentAnswerText,
                     primaryFlaw
                 };
             }
