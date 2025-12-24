@@ -40,6 +40,73 @@ export const AI_FEATURE_DESCRIPTIONS = {
     }
 };
 
+const PROMPTS = {
+    EXTRACTION: `You are an exam paper parser. Extract all questions from the provided question paper PDF.
+
+Return JSON only with this shape:
+{
+  "metadata": {
+    "subject": "string",
+    "board": "string",
+    "season": "string",
+    "year": "YYYY",
+    "paperNumber": "Paper 1"
+  },
+  "questions": [
+    {
+      "id": "1",
+      "section": "Section A",
+      "question": "Full question text",
+      "marks": 4,
+      "type": "multiple_choice|short_text|long_text|list|table|graph_drawing",
+      "options": ["A", "B", "C", "D"],
+      "listCount": 3,
+      "tableStructure": { "headers": ["Col 1", "Col 2"], "rows": 3, "initialData": [[null, null]] },
+      "graphConfig": { "xMin": 0, "xMax": 10, "yMin": 0, "yMax": 10, "xLabel": "x", "yLabel": "y" },
+      "pageNumber": 2,
+      "relatedFigure": "Figure 2",
+      "figurePage": 3,
+      "markingRegex": "optional regex for exact answers"
+    }
+  ]
+}
+
+Rules:
+- Use the exact question numbering from the paper (e.g., "1", "1a", "2bii") with no extra punctuation.
+- Each sub-question is its own entry in "questions".
+- Infer "type" from the question wording; use "list" for multi-point answers, "table" for table completion, "graph_drawing" for drawing/plotting tasks.
+- Include only relevant fields for each question; omit fields that do not apply.
+- Output JSON only, no markdown or extra text.`,
+    MARK_SCHEME: `You are a mark scheme parser. Extract the mark scheme for each question from the PDF.
+
+Return JSON only with this shape:
+{
+  "markScheme": {
+    "1": {
+      "totalMarks": 4,
+      "criteria": ["Key point 1", "Key point 2"],
+      "acceptableAnswers": ["Model answer or accepted wording"],
+      "markingRegex": "optional regex for exact match"
+    },
+    "1a": { "totalMarks": 2, "criteria": [], "acceptableAnswers": [] }
+  }
+}
+
+Rules:
+- Use the same question IDs as the question paper (e.g., "1", "1a", "2bii").
+- Summarize marking points into concise "criteria" bullet strings.
+- Provide short model answers in "acceptableAnswers" when available.
+- Output JSON only, no markdown or extra text.`,
+    GRADER_SYSTEM: `You are a strict exam marker. Use ONLY the provided mark scheme.
+Return JSON only in this exact format:
+{"score": number, "primary_flaw": "short reason"}
+
+Rules:
+- "score" must be an integer between 0 and the question's max marks.
+- "primary_flaw" should be a concise, specific reason for lost marks.
+- Output JSON only, no markdown or extra text.`
+};
+
 // --- API Enable Check ---
 let cachedSettings = null;
 let cacheExpiry = 0;

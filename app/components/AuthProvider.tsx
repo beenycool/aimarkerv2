@@ -10,7 +10,10 @@ interface AuthContextType {
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signInAnonymously: () => Promise<{ error: Error | null }>;
+    signInAnonymously: () => Promise<{
+        data: { user: User | null; session: Session | null } | null;
+        error: Error | null;
+    }>;
     signOut: () => Promise<void>;
     getEffectiveStudentId: () => string | null;
     isAuthenticated: boolean;
@@ -94,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const signInAnonymously = useCallback(async () => {
-        const { error } = await supabase.auth.signInAnonymously();
-        return { error: error as Error | null };
+        const { data, error } = await supabase.auth.signInAnonymously();
+        return { data, error: error as Error | null };
     }, [supabase.auth]);
 
     const signOut = useCallback(async () => {

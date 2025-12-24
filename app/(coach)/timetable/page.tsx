@@ -54,6 +54,7 @@ export default function TimetablePage() {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(true);
     const [currentWeek, setCurrentWeek] = useState(0);
+    const [anchorDate, setAnchorDate] = useState<Date | null>(null);
 
     // Dialog states
     const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -89,6 +90,10 @@ export default function TimetablePage() {
     }, [studentId, currentWeek]);
 
     useEffect(() => {
+        setAnchorDate(new Date());
+    }, []);
+
+    useEffect(() => {
         loadData();
     }, [loadData]);
 
@@ -97,9 +102,10 @@ export default function TimetablePage() {
     };
 
     const weekDates = useMemo(() => {
-        const today = new Date();
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay() + 1 + (currentWeek * 7));
+        if (!anchorDate) return [];
+        const weekStart = new Date(anchorDate);
+        weekStart.setDate(anchorDate.getDate() - anchorDate.getDay() + 1 + (currentWeek * 7));
+        const todayStamp = anchorDate.toDateString();
 
         return DAYS.map((day, i) => {
             const date = new Date(weekStart);
@@ -108,11 +114,11 @@ export default function TimetablePage() {
                 day,
                 date: date.getDate(),
                 month: date.toLocaleDateString('en-GB', { month: 'short' }),
-                isToday: date.toDateString() === new Date().toDateString(),
+                isToday: date.toDateString() === todayStamp,
                 isoDate: date.toISOString().split('T')[0],
             };
         });
-    }, [currentWeek]);
+    }, [anchorDate, currentWeek]);
 
     const getSessionsForDay = (isoDate: string) => {
         return sessions.filter(s => s.planned_for === isoDate);

@@ -40,14 +40,6 @@ import {
 } from '../../services/studentOS';
 import { generateDashboardInsights } from '../../services/AICoachService';
 
-const today = new Date();
-const formattedDate = today.toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-});
-
 interface AIInsights {
     greeting: string;
     trend: { change: number; direction: 'up' | 'down' | 'flat'; insight: string };
@@ -113,6 +105,11 @@ export default function DashboardPage() {
     );
     const [aiInsights, setAiInsights] = useState<AIInsights | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [clientNow, setClientNow] = useState<Date | null>(null);
+
+    useEffect(() => {
+        setClientNow(new Date());
+    }, []);
 
     useEffect(() => {
         if (!studentId) return;
@@ -275,6 +272,24 @@ export default function DashboardPage() {
         };
     }, [weekStats]);
 
+    const formattedDate = useMemo(() => {
+        if (!clientNow) return '';
+        return clientNow.toLocaleDateString("en-GB", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        });
+    }, [clientNow]);
+
+    const displayName = settings?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Student';
+    const fallbackGreeting = useMemo(() => {
+        if (!clientNow) return '';
+        const hour = clientNow.getHours();
+        const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+        return `Good ${timeOfDay}, ${displayName}!`;
+    }, [clientNow, displayName]);
+
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
             {/* Header with AI Greeting and Date */}
@@ -285,13 +300,13 @@ export default function DashboardPage() {
                             <Sparkles className="h-6 w-6" />
                         </div>
                         <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-                            {aiInsights?.greeting || `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, ${settings?.name || user?.user_metadata?.full_name || user?.user_metadata?.name || 'Student'}!`}
+                            {aiInsights?.greeting || fallbackGreeting || 'Welcome!'}
                         </h1>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                         <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
-                            {formattedDate}
+                            {formattedDate || '—'}
                         </p>
                         {aiInsights?.dailyTip && (
                             <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-secondary/50 text-xs font-medium text-muted-foreground border border-border/50">
