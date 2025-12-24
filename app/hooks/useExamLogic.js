@@ -17,6 +17,7 @@ export const useExamLogic = () => {
     const [insertContent, setInsertContent] = useState(null);
     const [parsedMarkScheme, setParsedMarkScheme] = useState({});
     const [paperFilePaths, setPaperFilePaths] = useState(null);
+    const [paperId, setPaperId] = useState(null);
     const restoredSessionRef = useRef(false);
 
     // Persist to LocalStorage
@@ -33,13 +34,14 @@ export const useExamLogic = () => {
                     skippedQuestions: Array.from(skippedQuestions),
                     followUpChats,
                     paperFilePaths,
+                    paperId,
                     timestamp: Date.now()
                 }));
             } catch (err) {
                 console.error('Failed to persist session', err);
             }
         }
-    }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, skippedQuestions, followUpChats, paperFilePaths]);
+    }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, skippedQuestions, followUpChats, paperFilePaths, paperId]);
 
     // Restore session from LocalStorage
     const restoreSession = useCallback(() => {
@@ -59,6 +61,7 @@ export const useExamLogic = () => {
                 if (parsed.skippedQuestions) setSkippedQuestions(new Set(parsed.skippedQuestions));
                 if (parsed.followUpChats) setFollowUpChats(parsed.followUpChats);
                 if (parsed.paperFilePaths) setPaperFilePaths(parsed.paperFilePaths);
+                if (parsed.paperId) setPaperId(parsed.paperId);
                 restoredSessionRef.current = true;
                 return parsed;
             }
@@ -72,6 +75,47 @@ export const useExamLogic = () => {
     const clearSession = useCallback(() => {
         if (typeof window === 'undefined') return;
         window.localStorage.removeItem('gcse_marker_state');
+    }, []);
+
+    // Check if a session exists for a specific paper
+    const checkSessionForPaper = useCallback((paperIdentifier) => {
+        if (typeof window === 'undefined') return false;
+        const saved = window.localStorage.getItem('gcse_marker_state');
+        if (!saved) return false;
+        
+        try {
+            const parsed = JSON.parse(saved);
+            return parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0;
+        } catch (err) {
+            return false;
+        }
+    }, []);
+
+    // Restore session for a specific paper
+    const restoreSessionForPaper = useCallback((paperIdentifier) => {
+        if (typeof window === 'undefined') return null;
+        const saved = window.localStorage.getItem('gcse_marker_state');
+        if (!saved) return null;
+
+        try {
+            const parsed = JSON.parse(saved);
+            if (parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0) {
+                setActiveQuestions(parsed.activeQuestions);
+                setUserAnswers(parsed.userAnswers || {});
+                setFeedbacks(parsed.feedbacks || {});
+                setInsertContent(parsed.insertContent);
+                setCurrentQIndex(parsed.currentQIndex || 0);
+                if (parsed.skippedQuestions) setSkippedQuestions(new Set(parsed.skippedQuestions));
+                if (parsed.followUpChats) setFollowUpChats(parsed.followUpChats);
+                if (parsed.paperFilePaths) setPaperFilePaths(parsed.paperFilePaths);
+                if (parsed.paperId) setPaperId(parsed.paperId);
+                restoredSessionRef.current = true;
+                return parsed;
+            }
+        } catch (err) {
+            console.error('Failed to restore session for paper', err);
+        }
+        return null;
     }, []);
 
     // Memoized answer change handler - prevents re-creation on every render
@@ -188,6 +232,7 @@ export const useExamLogic = () => {
         insertContent,
         parsedMarkScheme,
         paperFilePaths,
+        paperId,
 
         // Computed
         currentQuestion,
@@ -204,6 +249,7 @@ export const useExamLogic = () => {
         setInsertContent,
         setParsedMarkScheme,
         setPaperFilePaths,
+        setPaperId,
 
         // Actions
         handleAnswerChange,
@@ -220,7 +266,9 @@ export const useExamLogic = () => {
         // Session management
         saveSession,
         restoreSession,
-        clearSession
+        clearSession,
+        checkSessionForPaper,
+        restoreSessionForPaper
     };
 };
 

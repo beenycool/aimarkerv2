@@ -225,6 +225,11 @@ export default function GCSEMarkerApp() {
             ]);
             setFiles({ paper: p, scheme: s, insert: i });
 
+            // Set paper ID for session tracking
+            if (paperData.paperId) {
+                exam.setPaperId(paperData.paperId);
+            }
+
             // Save paths for session restoration
             exam.setPaperFilePaths({
                 paper: paperData.paper.url,
@@ -238,6 +243,48 @@ export default function GCSEMarkerApp() {
             setParsingStatus("");
         }
     };
+
+    const handleResumePaper = async (paper) => {
+        setParsingStatus("Resuming paper...");
+        try {
+            // First, restore the session for this paper
+            const restored = exam.restoreSessionForPaper(paper.id);
+            
+            if (!restored) {
+                alert("Failed to restore session for this paper.");
+                return;
+            }
+
+            // Load the files
+            const pdfUrl = PaperStorage.getPublicUrl(paper.pdf_path);
+            const schemeUrl = PaperStorage.getPublicUrl(paper.scheme_path);
+            const insertUrl = PaperStorage.getPublicUrl(paper.insert_path);
+
+            const loadFile = async (url, name) => {
+                if (!url) return null;
+                const res = await fetch(url);
+                const blob = await res.blob();
+                const file = new File([blob], name, { type: 'application/pdf' });
+                file.fromLibrary = true;
+                return file;
+            };
+
+            const [p, s, i] = await Promise.all([
+                loadFile(pdfUrl, paper.name),
+                schemeUrl ? loadFile(schemeUrl, "scheme.pdf") : null,
+                insertUrl ? loadFile(insertUrl, "insert.pdf") : null
+            ]);
+
+            setFiles({ paper: p, scheme: s, insert: i });
+            setPhase('exam');
+        } catch (e) {
+            console.error(e);
+            alert("Failed to resume paper.");
+        } finally {
+            setParsingStatus("");
+        }
+    };
+
 
     const handleStartParsing = async () => {
         if (!files.paper) return;
@@ -674,7 +721,11 @@ export default function GCSEMarkerApp() {
                             </div>
 
                             <div className="border-t pt-6">
-                                <PaperLibrary onSelectPaper={handleSelectPaper} />
+                                <PaperLibrary 
+                                    onSelectPaper={handleSelectPaper} 
+                                    onResumePaper={handleResumePaper}
+                                    checkSessionForPaper={exam.checkSessionForPaper}
+                                />
                             </div>
                         </CardContent>
 
