@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { BookOpen, Calendar, Trash2, Download, ExternalLink, Loader2, FileText, Check, Search, Filter, Book, FileCheck2 } from 'lucide-react';
+import { BookOpen, Calendar, Trash2, Download, ExternalLink, Loader2, FileText, Check, Search, Filter, Book, FileCheck2, RefreshCw } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
 
 import { Card, CardContent } from './ui/card';
@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 
-export const PaperLibrary = ({ onSelectPaper }) => {
+export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPaper }) => {
     const [papers, setPapers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
@@ -60,6 +60,7 @@ export const PaperLibrary = ({ onSelectPaper }) => {
             const insertUrl = PaperStorage.getPublicUrl(paper.insert_path);
 
             onSelectPaper({
+                paperId: paper.id,
                 paper: {
                     url: pdfUrl,
                     name: paper.name,
@@ -155,11 +156,16 @@ export const PaperLibrary = ({ onSelectPaper }) => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                    {filteredPapers.map(paper => (
+                    {filteredPapers.map(paper => {
+                        const hasSession = checkSessionForPaper && checkSessionForPaper(paper.id);
+                        return (
                         <Card
                             key={paper.id}
-                            onClick={() => handleSelect(paper)}
-                            className="group cursor-pointer hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm"
+                            onClick={() => !hasSession && handleSelect(paper)}
+                            className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
+                            role={hasSession ? "article" : "button"}
+                            tabIndex={hasSession ? undefined : 0}
+                            aria-label={hasSession ? `${paper.subject || paper.name} - In progress` : `Start ${paper.subject || paper.name}`}
                         >
                             <CardContent className="p-4 flex items-start gap-4">
                                 {/* Icon Box */}
@@ -207,10 +213,37 @@ export const PaperLibrary = ({ onSelectPaper }) => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Resume Button */}
+                                    {hasSession && onResumePaper && (
+                                        <div className="mt-3 flex gap-2">
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onResumePaper(paper);
+                                                }}
+                                                className="gap-2 flex-1"
+                                            >
+                                                <RefreshCw className="w-3 h-3" /> Resume
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelect(paper);
+                                                }}
+                                            >
+                                                Restart
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>
