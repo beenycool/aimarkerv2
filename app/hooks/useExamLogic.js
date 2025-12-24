@@ -43,6 +43,20 @@ export const useExamLogic = () => {
         }
     }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, skippedQuestions, followUpChats, paperFilePaths, paperId]);
 
+    // Helper function to apply parsed session data to state
+    const applySessionData = useCallback((parsed) => {
+        setActiveQuestions(parsed.activeQuestions);
+        setUserAnswers(parsed.userAnswers || {});
+        setFeedbacks(parsed.feedbacks || {});
+        setInsertContent(parsed.insertContent);
+        setCurrentQIndex(parsed.currentQIndex || 0);
+        if (parsed.skippedQuestions) setSkippedQuestions(new Set(parsed.skippedQuestions));
+        if (parsed.followUpChats) setFollowUpChats(parsed.followUpChats);
+        if (parsed.paperFilePaths) setPaperFilePaths(parsed.paperFilePaths);
+        if (parsed.paperId) setPaperId(parsed.paperId);
+        restoredSessionRef.current = true;
+    }, []);
+
     // Restore session from LocalStorage
     const restoreSession = useCallback(() => {
         if (typeof window === 'undefined' || restoredSessionRef.current) return null;
@@ -53,23 +67,14 @@ export const useExamLogic = () => {
         try {
             const parsed = JSON.parse(saved);
             if (parsed.activeQuestions && parsed.activeQuestions.length > 0) {
-                setActiveQuestions(parsed.activeQuestions);
-                setUserAnswers(parsed.userAnswers || {});
-                setFeedbacks(parsed.feedbacks || {});
-                setInsertContent(parsed.insertContent);
-                setCurrentQIndex(parsed.currentQIndex || 0);
-                if (parsed.skippedQuestions) setSkippedQuestions(new Set(parsed.skippedQuestions));
-                if (parsed.followUpChats) setFollowUpChats(parsed.followUpChats);
-                if (parsed.paperFilePaths) setPaperFilePaths(parsed.paperFilePaths);
-                if (parsed.paperId) setPaperId(parsed.paperId);
-                restoredSessionRef.current = true;
+                applySessionData(parsed);
                 return parsed;
             }
         } catch (err) {
             console.error('Failed to restore saved session', err);
         }
         return null;
-    }, []);
+    }, [applySessionData]);
 
     // Clear saved session
     const clearSession = useCallback(() => {
@@ -100,23 +105,14 @@ export const useExamLogic = () => {
         try {
             const parsed = JSON.parse(saved);
             if (parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0) {
-                setActiveQuestions(parsed.activeQuestions);
-                setUserAnswers(parsed.userAnswers || {});
-                setFeedbacks(parsed.feedbacks || {});
-                setInsertContent(parsed.insertContent);
-                setCurrentQIndex(parsed.currentQIndex || 0);
-                if (parsed.skippedQuestions) setSkippedQuestions(new Set(parsed.skippedQuestions));
-                if (parsed.followUpChats) setFollowUpChats(parsed.followUpChats);
-                if (parsed.paperFilePaths) setPaperFilePaths(parsed.paperFilePaths);
-                if (parsed.paperId) setPaperId(parsed.paperId);
-                restoredSessionRef.current = true;
+                applySessionData(parsed);
                 return parsed;
             }
         } catch (err) {
             console.error('Failed to restore session for paper', err);
         }
         return null;
-    }, []);
+    }, [applySessionData]);
 
     // Memoized answer change handler - prevents re-creation on every render
     const handleAnswerChange = useCallback((questionId, value) => {

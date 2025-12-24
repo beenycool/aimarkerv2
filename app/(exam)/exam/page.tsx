@@ -251,7 +251,9 @@ export default function GCSEMarkerApp() {
             const restored = exam.restoreSessionForPaper(paper.id);
             
             if (!restored) {
-                alert("Failed to restore session for this paper.");
+                console.error("No saved session found for paper:", paper.id);
+                alert("Unable to resume this paper. The saved session may have been cleared or corrupted. Please start the paper fresh by clicking 'Restart'.");
+                setParsingStatus("");
                 return;
             }
 

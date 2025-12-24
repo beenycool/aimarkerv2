@@ -162,7 +162,10 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                         <Card
                             key={paper.id}
                             onClick={() => !hasSession && handleSelect(paper)}
-                            className={`group ${!hasSession ? 'cursor-pointer' : ''} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
+                            className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
+                            role={hasSession ? "article" : "button"}
+                            tabIndex={hasSession ? undefined : 0}
+                            aria-label={hasSession ? `${paper.subject || paper.name} - In progress` : `Start ${paper.subject || paper.name}`}
                         >
                             <CardContent className="p-4 flex items-start gap-4">
                                 {/* Icon Box */}
