@@ -92,6 +92,7 @@ export default function SettingsPage() {
     const [showAdvancedAI, setShowAdvancedAI] = useState(false);
     const [subjectAverageGrade, setSubjectAverageGrade] = useState<number | null>(null);
     const [subjectAverageCount, setSubjectAverageCount] = useState(0);
+    const [serverKeys, setServerKeys] = useState<{ openrouter: boolean; hackclub: boolean; hackclub_search: boolean; gemini: boolean }>({ openrouter: false, hackclub: false, hackclub_search: false, gemini: false });
 
     useEffect(() => {
         if (!studentId) return;
@@ -124,7 +125,9 @@ export default function SettingsPage() {
                         setCustomAPIConfig({
                             openai_endpoint: data.custom_api_config.openai_endpoint || '',
                             openai_key: data.custom_api_config.openai_key || '',
-                            gemini_key: data.custom_api_config.gemini_key || ''
+                            gemini_key: data.custom_api_config.gemini_key || '',
+                            hackclub_search_key: data.custom_api_config.hackclub_search_key || '',
+                            search_strategy: data.custom_api_config.search_strategy || 'fallback'
                         });
                     }
                     // Load custom AI profiles
@@ -142,6 +145,12 @@ export default function SettingsPage() {
         };
 
         loadSettings();
+
+        // Fetch server key status
+        fetch('/api/key-status')
+            .then(res => res.json())
+            .then(data => setServerKeys(data))
+            .catch(() => { });
     }, [studentId]);
 
     useEffect(() => {
@@ -572,6 +581,7 @@ export default function SettingsPage() {
                                         customProfiles={customProfiles}
                                         onSaveProfile={handleSaveProfile}
                                         onDeleteProfile={handleDeleteProfile}
+                                        serverKeys={serverKeys}
                                     />
                                 </div>
                             )}

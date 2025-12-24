@@ -56,6 +56,8 @@ import {
     Plus,
     Server,
     Key,
+    Search,
+    Globe,
 } from 'lucide-react';
 
 // Types for AI preferences
@@ -77,6 +79,8 @@ export interface CustomAPIConfig {
     openai_endpoint: string;
     openai_key: string;
     gemini_key: string;
+    hackclub_search_key?: string;
+    search_strategy?: 'hackclub' | 'perplexity' | 'both' | 'fallback';
 }
 
 interface CustomProfile {
@@ -240,6 +244,7 @@ interface AIConfigTableProps {
     customProfiles?: CustomProfile[];
     onSaveProfile?: (profile: CustomProfile) => void;
     onDeleteProfile?: (profileName: string) => void;
+    serverKeys?: { openrouter: boolean; hackclub: boolean; hackclub_search: boolean; gemini: boolean };
 }
 
 export default function AIConfigTable({
@@ -250,6 +255,7 @@ export default function AIConfigTable({
     customProfiles = [],
     onSaveProfile,
     onDeleteProfile,
+    serverKeys = { openrouter: false, hackclub: false, hackclub_search: false, gemini: false },
 }: AIConfigTableProps) {
     const [activeProfile, setActiveProfile] = useState<string | null>(null);
     const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -536,46 +542,28 @@ export default function AIConfigTable({
                 </div>
 
                 {/* Custom API Configuration */}
-                {(Object.values(mergedPrefs).some(p => p.provider === 'custom_openai' || p.provider === 'gemini')) && (
-                    <Card className="border-muted bg-muted/30">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium flex items-center gap-2">
-                                <Server className="h-4 w-4 text-primary" />
-                                Private API Configuration
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Needed if you use Gemini or Custom OpenAI providers. Keys are stored in your private settings.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-4 sm:grid-cols-2">
-                            {Object.values(mergedPrefs).some(p => p.provider === 'custom_openai') && (
-                                <>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="custom-endpoint" className="text-xs">Custom OpenAI Endpoint</Label>
-                                        <Input
-                                            id="custom-endpoint"
-                                            className="h-8 text-sm"
-                                            placeholder="http://localhost:11434/v1"
-                                            value={customAPIConfig.openai_endpoint || ''}
-                                            onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_endpoint: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="custom-key" className="text-xs">Custom API Key (Optional)</Label>
-                                        <Input
-                                            id="custom-key"
-                                            type="password"
-                                            className="h-8 text-sm"
-                                            placeholder="sk-..."
-                                            value={customAPIConfig.openai_key || ''}
-                                            onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_key: e.target.value })}
-                                        />
-                                    </div>
-                                </>
-                            )}
-                            {Object.values(mergedPrefs).some(p => p.provider === 'gemini') && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="gemini-key" className="text-xs">Gemini API Key</Label>
+                <Card className="border-muted bg-muted/30">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <Server className="h-4 w-4 text-primary" />
+                            API Keys
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Configure your API keys for various services. Keys are stored in your private settings.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+
+                        {/* Gemini API Key */}
+                        {Object.values(mergedPrefs).some(p => p.provider === 'gemini') && (
+                            <div className="space-y-2">
+                                <Label htmlFor="gemini-key" className="text-xs flex items-center gap-2">
+                                    Gemini API Key
+                                    {serverKeys.gemini && (
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Server configured</Badge>
+                                    )}
+                                </Label>
+                                {!serverKeys.gemini && (
                                     <Input
                                         id="gemini-key"
                                         type="password"
@@ -584,11 +572,144 @@ export default function AIConfigTable({
                                         value={customAPIConfig.gemini_key || ''}
                                         onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, gemini_key: e.target.value })}
                                     />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Custom OpenAI settings */}
+                        {Object.values(mergedPrefs).some(p => p.provider === 'custom_openai') && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="custom-endpoint" className="text-xs">Custom OpenAI Endpoint</Label>
+                                    <Input
+                                        id="custom-endpoint"
+                                        className="h-8 text-sm"
+                                        placeholder="http://localhost:11434/v1"
+                                        value={customAPIConfig.openai_endpoint || ''}
+                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_endpoint: e.target.value })}
+                                    />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="custom-key" className="text-xs">Custom API Key (Optional)</Label>
+                                    <Input
+                                        id="custom-key"
+                                        type="password"
+                                        className="h-8 text-sm"
+                                        placeholder="sk-..."
+                                        value={customAPIConfig.openai_key || ''}
+                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_key: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Search Provider Configuration */}
+                <Card className="border-muted bg-muted/30">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <Search className="h-4 w-4 text-primary" />
+                            Web Search (Topic Verification)
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Configure how the AI verifies syllabus topics using web search. Used for schedule planning.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {/* Search Strategy Selector */}
+                        <div className="space-y-2">
+                            <Label htmlFor="search-strategy" className="text-xs">Search Provider Strategy</Label>
+                            <Select
+                                value={customAPIConfig.search_strategy || 'fallback'}
+                                onValueChange={(v) => onCustomAPIConfigChange({
+                                    ...customAPIConfig,
+                                    search_strategy: v as 'hackclub' | 'perplexity' | 'both' | 'fallback'
+                                })}
+                            >
+                                <SelectTrigger id="search-strategy" className="h-9 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="fallback">
+                                        <span className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-green-500" />
+                                            Auto (Hack Club → Perplexity fallback)
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="hackclub">
+                                        <span className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-orange-500" />
+                                            Hack Club Search Only (Free)
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="perplexity">
+                                        <span className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-purple-500" />
+                                            Perplexity Only (via OpenRouter)
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="both">
+                                        <span className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                            Both (Combined Results)
+                                        </span>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-muted-foreground">
+                                <strong>Auto:</strong> Tries Hack Club Search first, falls back to Perplexity if unavailable.
+                                <br />
+                                <strong>Hack Club:</strong> Free search via search.hackclub.com (Brave-powered).
+                                <br />
+                                <strong>Perplexity:</strong> AI-powered search via OpenRouter (may incur costs).
+                                <br />
+                                <strong>Both:</strong> Combines results from both for maximum accuracy.
+                            </p>
+                        </div>
+
+                        {/* Hack Club Search API Key Input */}
+                        <div className="space-y-2">
+                            <Label htmlFor="hackclub-search-key" className="text-xs flex items-center gap-2">
+                                <Globe className="h-3 w-3" />
+                                Hack Club Search API Key
+                                {serverKeys.hackclub_search && (
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Server configured</Badge>
+                                )}
+                            </Label>
+                            {!serverKeys.hackclub_search && (
+                                <>
+                                    <Input
+                                        id="hackclub-search-key"
+                                        type="password"
+                                        className="h-8 text-sm"
+                                        placeholder="Your Hack Club Search key..."
+                                        value={customAPIConfig.hackclub_search_key || ''}
+                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, hackclub_search_key: e.target.value })}
+                                    />
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Get a free API key at{' '}
+                                        <a href="https://search.hackclub.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                                            search.hackclub.com
+                                        </a>
+                                        {' '}(Sign in with Hack Club)
+                                    </p>
+                                </>
                             )}
-                        </CardContent>
-                    </Card>
-                )}
+                        </div>
+
+                        {/* Cost Warning */}
+                        {(customAPIConfig.search_strategy === 'perplexity' || customAPIConfig.search_strategy === 'both') && (
+                            <div className="flex items-start gap-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                <p className="text-xs text-amber-700 dark:text-amber-400">
+                                    <strong>Cost Notice:</strong> Perplexity search via OpenRouter may incur API charges.
+                                    Consider using "Hack Club Only" or "Auto" mode to minimize costs.
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {/* Quick Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-border">

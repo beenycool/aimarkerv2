@@ -93,6 +93,8 @@ export function AIScheduleGenerator({
     const [result, setResult] = useState<AIScheduleResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [subjects, setSubjects] = useState<Subject[]>([]);
+    const [focusOnExams, setFocusOnExams] = useState(false);
+    const [useSearchApi, setUseSearchApi] = useState(false);
 
     useEffect(() => {
         if (open && studentId) {
@@ -188,6 +190,49 @@ export function AIScheduleGenerator({
 
             setProgress(55);
 
+            setProgress(55);
+
+            // Verify Topics Step (Search API)
+            let verifiedTopics: Record<string, string[]> = {};
+            if (useSearchApi) {
+                setStatusMessage('Verifying official syllabus topics (Web Search)...');
+
+                // Get search settings from user config
+                const searchStrategy = settings.custom_api_config?.search_strategy || 'fallback';
+                const hackclubSearchKey = settings.custom_api_config?.hackclub_search_key || null;
+
+                // Prioritize weak subjects or those with exams
+                const performanceMap = performance as Record<string, { percentage: number | null }>;
+                const prioritySubjects = (subs || []).filter(s => {
+                    const hasExam = upcomingAssessments.some((a: any) => a.subject_id === s.id);
+                    const lowPerf = performanceMap[s.id]?.percentage != null && performanceMap[s.id].percentage! < 60;
+                    return hasExam || lowPerf;
+                });
+
+                const targets = prioritySubjects.length > 0 ? prioritySubjects : (subs || []).slice(0, 3);
+
+                if (targets.length > 0) {
+                    const topicsPromises = targets.map(async s => {
+                        const t = await AIService.researchSubjectTopics(s.name, studentId, {
+                            searchStrategy,
+                            hackclubSearchKey
+                        });
+                        return { id: s.id, topics: t };
+                    });
+
+                    const results = await Promise.all(topicsPromises);
+                    results.forEach(r => {
+                        if (r.topics && Array.isArray(r.topics) && r.topics.length) {
+                            verifiedTopics[r.id] = r.topics;
+                        }
+                    });
+
+                    if (Object.keys(verifiedTopics).length > 0) {
+                        addInsight(`🔍 Verified topics for ${Object.keys(verifiedTopics).length} subjects (${searchStrategy})`);
+                    }
+                }
+            }
+
             // Step 2: Analyze
             setStep('analyzing');
             setStatusMessage('Building your personalized context...');
@@ -223,6 +268,8 @@ export function AIScheduleGenerator({
                         .map(([day]) => day),
                 },
                 preferredStudyTime: settings.preferred_study_time || 'any',
+                focusOnExams,
+                verifiedTopics,
             };
 
             const aiResult = await AIService.generateWeeklySchedule(context, null, studentId) as unknown as AIScheduleResult;
@@ -451,18 +498,59 @@ export function AIScheduleGenerator({
                 </div>
 
                 {step === 'preview' && (
-                    <DialogFooter className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={runGeneration}
-                        >
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                            Regenerate
-                        </Button>
-                        <Button onClick={applySchedule}>
-                            <Zap className="h-4 w-4 mr-1" />
-                            Apply Schedule
-                        </Button>
+                    <DialogFooter className="flex sm:justify-between gap-4 flex-col sm:flex-row items-center">
+                        <div className="flex items-center space-x-2 bg-secondary/10 px-3 py-2 rounded-md">
+                            <input
+                                type="checkbox"
+                                id="focus-exams"
+                                checked={focusOnExams}
+                                onChange={(e) => setFocusOnExams(e.target.checked)}
+                                className="h-4 w-4 rounded border-primary text-primary focus:ring-primary accent-primary cursor-pointer"
+                            />
+                            <label
+                                htmlFor="focus-exams"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                                Adapt for upcoming assessments
+                            </label>
+                        </div>
+
+                        <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-2 bg-secondary/10 px-3 py-2 rounded-md">
+                                <input
+                                    type="checkbox"
+                                    id="use-search"
+                                    checked={useSearchApi}
+                                    onChange={(e) => setUseSearchApi(e.target.checked)}
+                                    className="h-4 w-4 rounded border-primary text-primary focus:ring-primary accent-primary cursor-pointer"
+                                />
+                                <label
+                                    htmlFor="use-search"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                >
+                                    Verify Topics (Web Search)
+                                </label>
+                            </div>
+                            {useSearchApi && (
+                                <p className="text-[10px] text-muted-foreground px-1">
+                                    🔍 Uses your configured search provider (Settings → AI → Web Search)
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <Button
+                                variant="outline"
+                                onClick={runGeneration}
+                            >
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                                Regenerate
+                            </Button>
+                            <Button onClick={applySchedule}>
+                                <Zap className="h-4 w-4 mr-1" />
+                                Apply Schedule
+                            </Button>
+                        </div>
                     </DialogFooter>
                 )}
             </DialogContent>

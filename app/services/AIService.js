@@ -290,6 +290,149 @@ async function fileToBase64(file) {
     return null;
 }
 
+/**
+ * Fallback topic generation using AI only (no search)
+ */
+async function fallbackTopicGeneration(subject, studentId, settings) {
+    try {
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', null, null);
+        const messages = [
+            { role: "system", content: "You are a GCSE curriculum expert. List the top 15 official specification topics for GCSE " + subject + ". Return ONLY a JSON array of topic strings." },
+            { role: "user", content: "List the official " + subject + " GCSE topics." }
+        ];
+        const response = await callAI(provider, messages, model, { apiKey, customConfig });
+        const cleaned = cleanGeminiJSON(response);
+        return JSON.parse(cleaned);
+    } catch (e) {
+        console.warn('Fallback topic generation failed:', e);
+        return [];
+    }
+}
+
+/**
+ * Search the web using available providers (Hack Club Search and/or Perplexity)
+ * Supports multiple strategies: 'hackclub', 'perplexity', 'both', 'fallback'
+ * @param {string} query - The search query
+ * @param {object} options - Search options
+ * @param {string} options.strategy - 'hackclub' | 'perplexity' | 'both' | 'fallback' (default: 'fallback')
+ * @param {string} options.hackclubSearchKey - User's Hack Club Search API key (optional, uses server key if not provided)
+ * @param {number} options.count - Number of results (default: 5)
+ * @returns {Promise<{results: Array<{title: string, url: string, description: string}>, source: string}>}
+ */
+export async function searchWeb(query, options = {}) {
+    const { strategy = 'fallback', hackclubSearchKey = null, count = 5 } = options;
+
+    // Helper to search via Hack Club Search (search.hackclub.com)
+    const searchHackClub = async () => {
+        const headers = {};
+        if (hackclubSearchKey) {
+            headers['x-hackclub-search-key'] = hackclubSearchKey;
+        }
+
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&count=${count}`, { headers });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Hack Club Search API Error ${res.status}`);
+        }
+        const data = await res.json();
+        return {
+            results: data.results || [],
+            source: 'hackclub'
+        };
+    };
+
+    // Helper to search via Perplexity (through OpenRouter)
+    const searchPerplexity = async () => {
+        const messages = [
+            {
+                role: "system",
+                content: "You are a helpful search assistant. Search the web and return relevant results as a JSON array of objects with 'title', 'url', and 'description' fields. Return ONLY the JSON array, no explanation."
+            },
+            {
+                role: "user",
+                content: query
+            }
+        ];
+
+        const response = await callAI('openrouter', messages, 'perplexity/sonar-pro', {});
+
+        // Try to parse as JSON array
+        try {
+            const cleaned = cleanGeminiJSON(response);
+            const parsed = JSON.parse(cleaned);
+            return {
+                results: Array.isArray(parsed) ? parsed : [],
+                source: 'perplexity'
+            };
+        } catch {
+            // If parsing fails, extract snippets from text response
+            return {
+                results: [{ title: 'Search Result', url: '', description: response }],
+                source: 'perplexity'
+            };
+        }
+    };
+
+    try {
+        switch (strategy) {
+            case 'hackclub':
+                return await searchHackClub();
+
+            case 'perplexity':
+                return await searchPerplexity();
+
+            case 'both': {
+                // Run both in parallel and combine results
+                const [hackclubResults, perplexityResults] = await Promise.allSettled([
+                    searchHackClub(),
+                    searchPerplexity()
+                ]);
+
+                const combined = [];
+                let sources = [];
+
+                if (hackclubResults.status === 'fulfilled') {
+                    combined.push(...hackclubResults.value.results);
+                    sources.push('hackclub');
+                }
+                if (perplexityResults.status === 'fulfilled') {
+                    combined.push(...perplexityResults.value.results);
+                    sources.push('perplexity');
+                }
+
+                if (combined.length === 0) {
+                    throw new Error('Both search providers failed');
+                }
+
+                return {
+                    results: combined,
+                    source: sources.join('+')
+                };
+            }
+
+            case 'fallback':
+            default: {
+                // Try Hack Club Search first, fall back to Perplexity
+                try {
+                    return await searchHackClub();
+                } catch (hackclubError) {
+                    console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
+                    try {
+                        return await searchPerplexity();
+                    } catch (perplexityError) {
+                        console.warn('Perplexity search also failed:', perplexityError.message);
+                        throw new Error('All search providers failed');
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Web search failed:', error);
+        return { results: [], source: 'none', error: error.message };
+    }
+}
+
+
 export const AIService = {
     checkServerKey: async () => { /* ... existing ... */ return true; }, // keeping implementations light here, actual checks should be done same as before
     // (Re-implementing checkServerKeys below properly)
@@ -601,9 +744,33 @@ ${memoryContext ? `
 STUDENT PREFERENCES & LEARNING STYLE (consider when scheduling):
 ${memoryContext}
 ` : ''}
-Generate a smart, personalized schedule that will maximize this student's exam performance. Include specific time slots (startTime) based on their preferences.`;
+Generate a smart, personalized study schedule.
+`;
 
-        const messages = [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }];
+        // Adapt prompt based on focus mode
+        const focusModeInstruction = context.focusOnExams
+            ? `\nCRITICAL OVERRIDE: The student has explicitly requested to FOCUS on upcoming assessments. 
+               1. Dedicate at least 70% of sessions to the subjects/topics in the "UPCOMING ASSESSMENTS" list.
+               2. Ignore the "max sessions per day" limit if necessary to cover all assessment topics.
+               3. Prioritize topics mentioned in assessment notes or titles.`
+            : '';
+
+        // Add verified topics context
+        const verifiedTopicsStr = context.verifiedTopics
+            ? Object.entries(context.verifiedTopics).map(([subjId, topics]) => {
+                const sName = subjects.find(s => s.id === subjId)?.name || subjId;
+                return `- ${sName}: ${(topics || []).join(', ')}`;
+            }).join('\n')
+            : '';
+
+        const verifiedInstruction = verifiedTopicsStr
+            ? `\n\nOFFICIAL SYLLABUS TOPICS (VERIFIED BY SEARCH API):\n${verifiedTopicsStr}\n\nIMPORTANT: When selecting topics for these subjects, ONLY use topics from the verified list above.`
+            : '';
+
+        const messages = [
+            { role: "system", content: systemPrompt + focusModeInstruction },
+            { role: "user", content: userPrompt + verifiedInstruction }
+        ];
 
         try {
             const response = await callAI(provider, messages, model, { apiKey, customConfig });
@@ -614,6 +781,92 @@ Generate a smart, personalized schedule that will maximize this student's exam p
             throw new Error('Failed to generate schedule. Please try again.');
         }
     },
+
+    /**
+     * Research topics using web search (Hack Club Search and/or Perplexity)
+     * Uses real-time web search to find official syllabus topics
+     * @param {string} subject - The subject to research
+     * @param {string} studentId - Student ID for settings lookup
+     * @param {object} options - Research options
+     * @param {string} options.searchStrategy - 'hackclub' | 'perplexity' | 'both' | 'fallback' (default: 'fallback')
+     * @param {string} options.hackclubSearchKey - User's Hack Club Search API key (optional)
+     */
+    researchSubjectTopics: async (subject, studentId, options = {}) => {
+        const { searchStrategy = 'fallback', hackclubSearchKey = null } = options;
+
+        try {
+            // Strategy 1: Use Perplexity directly for combined search + extraction
+            if (searchStrategy === 'perplexity') {
+                const messages = [
+                    {
+                        role: "system",
+                        content: "You are a GCSE curriculum expert with access to web search. Search for the official AQA/Edexcel/OCR GCSE " + subject + " specification and list the main topics. Return ONLY a JSON array of 10-15 topic strings, e.g. [\"Topic 1\", \"Topic 2\"]. No explanation, just the JSON array."
+                    },
+                    {
+                        role: "user",
+                        content: "Search for and list the official GCSE " + subject + " syllabus topics from exam board specifications."
+                    }
+                ];
+
+                const response = await callAI('openrouter', messages, 'perplexity/sonar-pro', {});
+                const cleaned = cleanGeminiJSON(response);
+                return JSON.parse(cleaned);
+            }
+
+            // Strategy 2: Use Hack Club Search + cheaper LLM for extraction
+            // Or fallback strategy: try Hack Club first, then Perplexity
+            const searchQuery = `official GCSE ${subject} specification topics list AQA Edexcel OCR`;
+            const searchResults = await searchWeb(searchQuery, {
+                strategy: searchStrategy === 'both' ? 'both' : (searchStrategy === 'hackclub' ? 'hackclub' : 'fallback'),
+                hackclubSearchKey,
+                count: 8
+            });
+
+            // If search returned results, extract topics using a faster/cheaper model
+            if (searchResults.results && searchResults.results.length > 0) {
+                const context = searchResults.results
+                    .map(r => `${r.title}: ${r.description}`)
+                    .join('\n\n');
+
+                const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', null, null);
+
+                const messages = [
+                    {
+                        role: "system",
+                        content: `You are a GCSE curriculum expert. Extract a list of 10-15 official ${subject} GCSE topics from the search results provided.
+                        
+IMPORTANT:
+- Only include topics that appear in official exam board specifications (AQA, Edexcel, OCR)
+- Focus on main topic areas, not sub-topics
+- Return ONLY a JSON array of topic strings, e.g. ["Topic 1", "Topic 2"]
+- No explanation, just the JSON array`
+                    },
+                    {
+                        role: "user",
+                        content: `Search results:\n\n${context}\n\nExtract the official GCSE ${subject} topics from these results.`
+                    }
+                ];
+
+                const response = await callAI(provider, messages, model, { apiKey, customConfig });
+                const cleaned = cleanGeminiJSON(response);
+                const topics = JSON.parse(cleaned);
+
+                // Log which source was used
+                console.log(`Topic research for ${subject} completed using: ${searchResults.source}`);
+                return topics;
+            }
+
+            // If no search results or search failed, fall back to AI-only generation
+            console.warn('No search results, falling back to AI-only topic generation');
+            return await fallbackTopicGeneration(subject, studentId, {});
+
+        } catch (e) {
+            console.warn('Topic research failed:', e);
+            // Final fallback to regular AI if everything fails
+            return await fallbackTopicGeneration(subject, studentId, {});
+        }
+    },
+
 
     /**
      * Parse exam schedule from PDF
