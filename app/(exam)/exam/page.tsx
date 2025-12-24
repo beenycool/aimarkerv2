@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, BookOpen, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, BookOpen, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle
 } from 'lucide-react';
 
 // Import Shadcn UI components
@@ -387,14 +387,23 @@ export default function GCSEMarkerApp() {
         }
     };
 
-    const handleSubmitAnswer = async () => {
+    const handleSubmitAnswer = async (forcedAnswerOverride = null) => {
+        // Handle event objects being passed if called directly
+        const forcedAnswer = (typeof forcedAnswerOverride === 'string') ? forcedAnswerOverride : null;
+
         const q = exam.currentQuestion;
-        const answer = exam.userAnswers[q.id];
+        const answer = forcedAnswer !== null ? forcedAnswer : exam.userAnswers[q.id];
+
+        // If forced answer (I don't know), update state so UI reflects it
+        if (forcedAnswer) {
+            onAnswerChange(forcedAnswer);
+        }
 
         let hasContent = false;
         if (q.type === 'graph_drawing') hasContent = answer && (answer.points?.length > 0 || answer.lines?.length > 0);
         else hasContent = Array.isArray(answer) ? answer.flat().some(cell => cell && String(cell).trim() !== '') : (answer !== undefined && answer !== null && String(answer).trim() !== '');
-        if (!hasContent) return;
+
+        if (!forcedAnswer && !hasContent) return;
 
         if (exam.skippedQuestions.has(q.id)) exam.unskipQuestion(q.id);
 
@@ -899,11 +908,14 @@ export default function GCSEMarkerApp() {
 
                             {!hasFeedback && (
                                 <div className="mt-8 flex justify-end gap-3">
+                                    <Button variant="ghost" onClick={() => handleSubmitAnswer("I don't know")} className="gap-2 text-muted-foreground hover:text-foreground">
+                                        I don't know <HelpCircle className="w-4 h-4" />
+                                    </Button>
                                     <Button variant="outline" onClick={handleSkip} className="gap-2">
                                         Skip <SkipForward className="w-4 h-4" />
                                     </Button>
                                     <Button
-                                        onClick={handleSubmitAnswer}
+                                        onClick={() => handleSubmitAnswer()}
                                         disabled={!exam.userAnswers[question.id] || loadingFeedback}
                                         className="gap-2"
                                         size="lg"
