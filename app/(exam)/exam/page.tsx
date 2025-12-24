@@ -654,6 +654,7 @@ export default function GCSEMarkerApp() {
         const question = exam.currentQuestion;
         const hasFeedback = !!exam.feedbacks[question.id];
         const progressPercent = ((exam.currentQIndex + 1) / exam.activeQuestions.length) * 100;
+        const stats = exam.getSummaryStats();
 
         return (
             <div className="min-h-screen bg-background flex flex-col h-screen overflow-hidden">
@@ -672,7 +673,13 @@ export default function GCSEMarkerApp() {
                             <Clock className="h-4 w-4 text-muted-foreground" />
                             <span className="font-mono font-bold text-foreground">{formatTime(timeElapsed)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-sm border-l pl-4 text-muted-foreground font-medium">
+                            Marks:
+                            <span className="font-mono font-bold text-foreground ml-1">
+                                {stats.totalScore}/{stats.totalPossible}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2 border-l pl-4">
                             <span className="text-sm font-medium text-muted-foreground">Q</span>
                             <span className="text-sm font-bold text-foreground">{exam.currentQIndex + 1}/{exam.activeQuestions.length}</span>
                         </div>

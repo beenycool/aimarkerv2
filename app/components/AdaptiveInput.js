@@ -239,7 +239,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
     if (type === 'long_text') {
         return (
             <div className="relative">
-                <div className="absolute top-2 right-2 bg-muted text-xs px-2 py-1 rounded text-muted-foreground font-mono">LaTeX Supported</div>
+
                 <textarea className="w-full h-48 p-4 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none font-serif leading-relaxed text-foreground" placeholder="Type your answer here..." value={value || ''} onChange={(e) => onChange(e.target.value)} />
                 <MathKeyboard onInsert={handleSymbolInsert} isOpen={isKeyboardOpen} toggleOpen={() => setIsKeyboardOpen(!isKeyboardOpen)} />
             </div>
