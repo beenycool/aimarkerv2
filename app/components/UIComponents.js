@@ -3,6 +3,8 @@
 import React, { useState, memo } from 'react';
 import DOMPurify from 'dompurify';
 import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send } from 'lucide-react';
+import katex from 'katex';
+
 
 /**
  * Safe Markdown Text Renderer using DOMPurify
@@ -42,12 +44,21 @@ export const MarkdownText = memo(({ text, className = "" }) => {
             return token;
         };
 
+        // Handle inline code first
         escaped = escaped.replace(/`([^`]+)`/g, (_match, code) =>
             stash(`<code class="${classNames.inlineCode}">${code}</code>`)
         );
-        escaped = escaped.replace(/\$(.+?)\$/g, (_match, content) =>
-            stash(`<span class="${classNames.inlineMath}">${content}</span>`)
-        );
+
+        // Handle inline math $...$
+        escaped = escaped.replace(/\$((?!\$)(?:\\\$|[^\$])+)\$/g, (_match, content) => {
+            try {
+                const rendered = katex.renderToString(content, { displayMode: false, throwOnError: false });
+                return stash(`<span class="inline-math">${rendered}</span>`);
+            } catch (err) {
+                console.error("KaTeX error:", err);
+                return stash(`<span class="${classNames.inlineMath}">${content}</span>`);
+            }
+        });
 
         escaped = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
         escaped = escaped.replace(/__(.+?)__/g, "<strong>$1</strong>");
@@ -60,6 +71,7 @@ export const MarkdownText = memo(({ text, className = "" }) => {
         return escaped;
     };
 
+
     const renderMarkdown = (rawText) => {
         const normalized = String(rawText).replace(/\\n/g, "\n").replace(/\r\n/g, "\n");
         const lines = normalized.split("\n");
@@ -71,11 +83,33 @@ export const MarkdownText = memo(({ text, className = "" }) => {
         const isOrdered = (line) => /^\d+\.\s+/.test(line);
         const isBlockquote = (line) => /^>\s+/.test(line);
         const isCodeFence = (line) => /^```/.test(line);
+        const isMathBlock = (line) => /^\$\$/.test(line);
 
         while (i < lines.length) {
             const line = lines[i];
             if (!line || !line.trim()) {
                 i += 1;
+                continue;
+            }
+
+            if (isMathBlock(line)) {
+                let content = line.slice(2);
+                i += 1;
+                while (i < lines.length && !isMathBlock(lines[i])) {
+                    content += "\n" + lines[i];
+                    i += 1;
+                }
+                if (i < lines.length) {
+                    content += "\n" + lines[i].replace(/\$\$.*/, "");
+                    i += 1;
+                }
+                try {
+                    const rendered = katex.renderToString(content.replace(/\$\$$/, ""), { displayMode: true, throwOnError: false });
+                    html.push(`<div class="math-block my-4">${rendered}</div>`);
+                } catch (err) {
+                    console.error("KaTeX block error:", err);
+                    html.push(`<div class="bg-muted p-2 rounded font-mono text-xs my-2">$$${content}$$</div>`);
+                }
                 continue;
             }
 
@@ -152,7 +186,8 @@ export const MarkdownText = memo(({ text, className = "" }) => {
                 !isUnordered(lines[i]) &&
                 !isOrdered(lines[i]) &&
                 !isBlockquote(lines[i]) &&
-                !isCodeFence(lines[i])
+                !isCodeFence(lines[i]) &&
+                !isMathBlock(lines[i])
             ) {
                 paragraphLines.push(lines[i]);
                 i += 1;
@@ -164,8 +199,11 @@ export const MarkdownText = memo(({ text, className = "" }) => {
         return html.join("");
     };
 
+
     const rendered = renderMarkdown(text);
     const sanitized = DOMPurify.sanitize(rendered, {
+        ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'maligngroup', 'malignmark', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
+        ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
         ALLOWED_TAGS: [
             'a',
             'blockquote',
@@ -184,8 +222,9 @@ export const MarkdownText = memo(({ text, className = "" }) => {
             'strong',
             'ul'
         ],
-        ALLOWED_ATTR: ['class', 'href', 'rel', 'target']
+        ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
     });
+
 
     return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitized }} />;
 });

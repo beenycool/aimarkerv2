@@ -127,8 +127,16 @@
   .card-shadow {
     box-shadow: 0 2px 8px -2px hsl(30 15% 15% / 0.08), 0 4px 16px -4px hsl(30 15% 15% / 0.06);
   }
-  
+
   .card-shadow-hover {
     box-shadow: 0 4px 12px -2px hsl(30 15% 15% / 0.12), 0 8px 24px -4px hsl(30 15% 15% / 0.08);
+  }
+
+  .math-block {
+    @apply w-full overflow-x-auto overflow-y-hidden py-2;
+  }
+
+  .inline-math {
+    @apply px-0.5;
   }
 }

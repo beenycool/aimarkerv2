@@ -16,6 +16,7 @@ export const useExamLogic = () => {
     const [quoteDrafts, setQuoteDrafts] = useState({});
     const [insertContent, setInsertContent] = useState(null);
     const [parsedMarkScheme, setParsedMarkScheme] = useState({});
+    const [paperFilePaths, setPaperFilePaths] = useState(null);
     const restoredSessionRef = useRef(false);
 
     // Persist to LocalStorage
@@ -31,13 +32,14 @@ export const useExamLogic = () => {
                     currentQIndex,
                     skippedQuestions: Array.from(skippedQuestions),
                     followUpChats,
+                    paperFilePaths,
                     timestamp: Date.now()
                 }));
             } catch (err) {
                 console.error('Failed to persist session', err);
             }
         }
-    }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, skippedQuestions, followUpChats]);
+    }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, skippedQuestions, followUpChats, paperFilePaths]);
 
     // Restore session from LocalStorage
     const restoreSession = useCallback(() => {
@@ -56,6 +58,7 @@ export const useExamLogic = () => {
                 setCurrentQIndex(parsed.currentQIndex || 0);
                 if (parsed.skippedQuestions) setSkippedQuestions(new Set(parsed.skippedQuestions));
                 if (parsed.followUpChats) setFollowUpChats(parsed.followUpChats);
+                if (parsed.paperFilePaths) setPaperFilePaths(parsed.paperFilePaths);
                 restoredSessionRef.current = true;
                 return parsed;
             }
@@ -184,6 +187,7 @@ export const useExamLogic = () => {
         quoteDrafts,
         insertContent,
         parsedMarkScheme,
+        paperFilePaths,
 
         // Computed
         currentQuestion,
@@ -199,6 +203,7 @@ export const useExamLogic = () => {
         setFollowUpChats,
         setInsertContent,
         setParsedMarkScheme,
+        setPaperFilePaths,
 
         // Actions
         handleAnswerChange,

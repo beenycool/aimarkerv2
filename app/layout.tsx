@@ -1,4 +1,6 @@
 import './globals.css';
+import 'katex/dist/katex.min.css';
+
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from './components/AuthProvider';
 import { Toaster } from './components/ui/sonner';

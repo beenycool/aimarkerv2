@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, BookOpen, ImageIcon, ArrowLeft, Clock, Zap
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, BookOpen, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle
 } from 'lucide-react';
 
 // Import Shadcn UI components
@@ -83,6 +83,39 @@ export default function GCSEMarkerApp() {
         if (restored) {
             setHasSavedSession(true);
             setPhase('exam');
+
+            // Restore files if URLs are available
+            if (restored.paperFilePaths && (!files.paper || files.paper !== null)) {
+                setParsingStatus("Restoring paper from session...");
+                const fetchFiles = async () => {
+                    try {
+                        const load = async (url, name) => {
+                            if (!url) return null;
+                            const res = await fetch(url);
+                            const blob = await res.blob();
+                            return new File([blob], name || "paper.pdf", { type: 'application/pdf' });
+                        };
+
+                        const [p, s, i] = await Promise.all([
+                            load(restored.paperFilePaths.paper, "paper.pdf"),
+                            restored.paperFilePaths.scheme ? load(restored.paperFilePaths.scheme, "scheme.pdf") : null,
+                            restored.paperFilePaths.insert ? load(restored.paperFilePaths.insert, "insert.pdf") : null
+                        ]);
+
+                        // Attach metadata to restored paper if available from restore
+                        if (p && restored.activeQuestions) {
+                            p.parsedQuestions = restored.activeQuestions;
+                        }
+
+                        setFiles({ paper: p, scheme: s, insert: i });
+                    } catch (e) {
+                        console.error("Failed to restore paper files:", e);
+                    } finally {
+                        setParsingStatus("");
+                    }
+                };
+                fetchFiles();
+            }
         }
     }, [exam.restoreSession]);
 
@@ -191,6 +224,13 @@ export default function GCSEMarkerApp() {
                 loadFile(paperData.insert)
             ]);
             setFiles({ paper: p, scheme: s, insert: i });
+
+            // Save paths for session restoration
+            exam.setPaperFilePaths({
+                paper: paperData.paper.url,
+                scheme: paperData.scheme?.url,
+                insert: paperData.insert?.url
+            });
         } catch (e) {
             console.error(e);
             alert("Failed to load paper.");
@@ -317,12 +357,22 @@ export default function GCSEMarkerApp() {
                         if (data?.user?.id) effectiveStudentId = data.user.id;
                     }
 
-                    await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
+                    const savedRecord = await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
                         name: files.paper.name.replace(/\.pdf$/i, ''),
                         ...metadata,
                         parsed_questions: questions,
                         parsed_mark_scheme: markScheme
                     }, effectiveStudentId);
+
+                    // Save file paths (public URLs) for session persistence
+                    if (savedRecord) {
+                        const getUrl = (path) => path ? PaperStorage.getPublicUrl(path) : null;
+                        exam.setPaperFilePaths({
+                            paper: getUrl(savedRecord.pdf_path),
+                            scheme: getUrl(savedRecord.scheme_path),
+                            insert: getUrl(savedRecord.insert_path)
+                        });
+                    }
                 } catch (storageErr) {
                     console.error("Failed to auto-save paper:", storageErr);
                 }
@@ -656,6 +706,33 @@ export default function GCSEMarkerApp() {
         const progressPercent = ((exam.currentQIndex + 1) / exam.activeQuestions.length) * 100;
         const stats = exam.getSummaryStats();
 
+        if (!files.paper) {
+            return (
+                <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+                    <Card className="max-w-md w-full p-8 text-center space-y-6 card-shadow border-warning/20">
+                        <div className="mx-auto w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center text-warning animate-pulse">
+                            <AlertTriangle className="w-8 h-8" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="text-xl font-bold">Connection to Paper Lost</h3>
+                            <p className="text-muted-foreground">
+                                We've restored your progress, but the PDF file needs to be re-loaded.
+                                Please select the paper again from your library.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => setPhase('upload')}
+                            size="lg"
+                            className="w-full gap-2 font-semibold shadow-lg shadow-primary/20"
+                        >
+                            <BookOpen className="w-4 h-4" />
+                            Select Paper from Library
+                        </Button>
+                    </Card>
+                </div>
+            );
+        }
+
         return (
             <div className="min-h-screen bg-background flex flex-col h-screen overflow-hidden">
                 {/* Header */}
@@ -735,7 +812,8 @@ export default function GCSEMarkerApp() {
                                 <div className="flex justify-between items-start gap-4">
                                     <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
                                         <span className="text-muted-foreground mr-2">{question.id}.</span>
-                                        {question.question}
+                                        <MarkdownText text={question.question} />
+
                                     </h1>
                                     {question.pageNumber && (
                                         <Button
