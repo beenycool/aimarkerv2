@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { retryWithBackoff } from '../lib/retryUtils';
 
 async function requireAuthenticatedUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -64,13 +65,19 @@ export const PaperStorage = {
         try {
             fileHash = await this.calculateFileHash(file);
 
-            // Check for duplicate paper for this user
-            const { data: existingPaper } = await supabase
-                .from('papers')
-                .select('*')
-                .eq('file_hash', fileHash)
-                .eq('student_id', effectiveStudentId)
-                .maybeSingle();
+            // Check for duplicate paper for this user with retry
+            const existingPaper = await retryWithBackoff(
+                async () => {
+                    const { data } = await supabase
+                        .from('papers')
+                        .select('*')
+                        .eq('file_hash', fileHash)
+                        .eq('student_id', effectiveStudentId)
+                        .maybeSingle();
+                    return data;
+                },
+                { maxAttempts: 2, baseDelay: 500 }
+            );
 
             if (existingPaper) {
                 console.log("Duplicate paper detected. Using existing record:", existingPaper);
@@ -85,65 +92,86 @@ export const PaperStorage = {
         const safeName = (name) => name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const generatePath = (f) => `${ownerId}/${timestamp}_${safeName(f.name)}`;
 
-        // 1. Upload Question Paper
+        // 1. Upload Question Paper with retry
         const pdfPath = generatePath(file);
-        const { error: uploadError } = await supabase.storage
-            .from('exam-papers')
-            .upload(pdfPath, file, {
-                contentType: file.type || 'application/pdf',
-                upsert: false
-            });
+        await retryWithBackoff(
+            async () => {
+                const { error: uploadError } = await supabase.storage
+                    .from('exam-papers')
+                    .upload(pdfPath, file, {
+                        contentType: file.type || 'application/pdf',
+                        upsert: false
+                    });
+                if (uploadError) throw uploadError;
+            },
+            { maxAttempts: 3, onRetry: (error, attempt) => console.log(`Retrying PDF upload (attempt ${attempt})...`) }
+        );
 
-        if (uploadError) throw uploadError;
-
-        // 2. Upload Mark Scheme (optional)
+        // 2. Upload Mark Scheme (optional) with retry
         let schemePath = null;
         if (schemeFile) {
             schemePath = generatePath(schemeFile);
-            const { error: schemeError } = await supabase.storage
-                .from('exam-papers')
-                .upload(schemePath, schemeFile, {
-                    contentType: schemeFile.type || 'application/pdf',
-                    upsert: false
-                });
-            if (schemeError) throw schemeError;
+            await retryWithBackoff(
+                async () => {
+                    const { error: schemeError } = await supabase.storage
+                        .from('exam-papers')
+                        .upload(schemePath, schemeFile, {
+                            contentType: schemeFile.type || 'application/pdf',
+                            upsert: false
+                        });
+                    if (schemeError) throw schemeError;
+                },
+                { maxAttempts: 3 }
+            );
         }
 
-        // 3. Upload Insert (optional)
+        // 3. Upload Insert (optional) with retry
         let insertPath = null;
         if (insertFile) {
             insertPath = generatePath(insertFile);
-            const { error: insertError } = await supabase.storage
-                .from('exam-papers')
-                .upload(insertPath, insertFile, {
-                    contentType: insertFile.type || 'application/pdf',
-                    upsert: false
-                });
-            if (insertError) throw insertError;
+            await retryWithBackoff(
+                async () => {
+                    const { error: insertError } = await supabase.storage
+                        .from('exam-papers')
+                        .upload(insertPath, insertFile, {
+                            contentType: insertFile.type || 'application/pdf',
+                            upsert: false
+                        });
+                    if (insertError) throw insertError;
+                },
+                { maxAttempts: 3 }
+            );
         }
 
-        // 4. Save Metadata
-        const { data, error: dbError } = await supabase
-            .from('papers')
-            .insert({
-                name: metadata.name || file.name,
-                section: metadata.section || metadata.paperNumber || 'Paper 1',
-                year: metadata.year ? parseInt(metadata.year) : new Date().getFullYear(),
-                subject: metadata.subject || 'Unknown Subject',
-                board: metadata.board || 'Unknown Board',
-                season: metadata.season || 'June',
-                student_id: effectiveStudentId,
-                pdf_path: pdfPath,
-                scheme_path: schemePath,
-                insert_path: insertPath,
-                file_hash: fileHash,
-                parsed_questions: metadata.parsed_questions || null,
-                parsed_mark_scheme: metadata.parsed_mark_scheme || null
-            })
-            .select()
-            .single();
+        // 4. Save Metadata with retry
+        const data = await retryWithBackoff(
+            async () => {
+                const { data, error: dbError } = await supabase
+                    .from('papers')
+                    .insert({
+                        name: metadata.name || file.name,
+                        section: metadata.section || metadata.paperNumber || 'Paper 1',
+                        year: metadata.year ? parseInt(metadata.year) : new Date().getFullYear(),
+                        subject: metadata.subject || 'Unknown Subject',
+                        board: metadata.board || 'Unknown Board',
+                        season: metadata.season || 'June',
+                        student_id: effectiveStudentId,
+                        pdf_path: pdfPath,
+                        scheme_path: schemePath,
+                        insert_path: insertPath,
+                        file_hash: fileHash,
+                        parsed_questions: metadata.parsed_questions || null,
+                        parsed_mark_scheme: metadata.parsed_mark_scheme || null
+                    })
+                    .select()
+                    .single();
 
-        if (dbError) throw dbError;
+                if (dbError) throw dbError;
+                return data;
+            },
+            { maxAttempts: 3, onRetry: (error, attempt) => console.log(`Retrying metadata save (attempt ${attempt})...`) }
+        );
+
         return data;
     },
 
@@ -151,13 +179,24 @@ export const PaperStorage = {
      * Fetch all saved papers
      */
     async listPapers() {
-        const { data, error } = await supabase
-            .from('papers')
-            .select('*')
-            .order('created_at', { ascending: false });
+        return retryWithBackoff(
+            async () => {
+                const { data, error } = await supabase
+                    .from('papers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        return data;
+                if (error) throw error;
+                return data;
+            },
+            {
+                maxAttempts: 3,
+                baseDelay: 1000,
+                onRetry: (error, attempt) => {
+                    console.log(`Retrying listPapers (attempt ${attempt})...`);
+                }
+            }
+        );
     },
 
     /**

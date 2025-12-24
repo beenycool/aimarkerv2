@@ -8,12 +8,13 @@
 
 import { cleanGeminiJSON } from './AIService';
 import { getMemoryContextForAI } from './memoryService';
+import { fetchWithRetry } from '../lib/retryUtils';
 
 /**
  * Call Hack Club API for cost-effective AI completions
  */
 async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b") {
-    const response = await fetch('/api/hackclub', {
+    const response = await fetchWithRetry('/api/hackclub', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -22,6 +23,11 @@ async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b"
             model,
             temperature: 0.4
         })
+    }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+            console.log(`Retrying Hack Club API (attempt ${attempt})...`);
+        }
     });
 
     const data = await response.json();
