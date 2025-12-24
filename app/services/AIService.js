@@ -37,6 +37,11 @@ export const AI_FEATURE_DESCRIPTIONS = {
         name: "Hints & Tips",
         description: "Provides exam-specific hints without giving answers",
         requiresVision: false
+    },
+    verification: {
+        name: "Fact Checker",
+        description: "Fast model that decides what to search for (Orchestrator)",
+        requiresVision: false
     }
 };
 
@@ -85,7 +90,8 @@ Return JSON only with this shape:
     "board": "string",
     "season": "string",
     "year": "YYYY",
-    "paperNumber": "Paper 1"
+    "paperNumber": "Paper 1",
+    "level": "GCSE | A-Level | IB | University"
   },
   "questions": [
     {
@@ -139,7 +145,16 @@ Return JSON only in this exact format:
 Rules:
 - "score" must be an integer between 0 and the question's max marks.
 - "primary_flaw" should be a concise, specific reason for lost marks.
-- Output JSON only, no markdown or extra text.`
+- Output JSON only, no markdown or extra text.`,
+    ORCHESTRATOR: `You are a marking assistant. Your goal is to decide if the student's answer needs FACTUAL verification using a web search to be marked correctly (e.g. specific dates, chemical properties, grade boundaries, or facts not in the mark scheme).
+
+Question: "{question}"
+Student Answer: "{answer}"
+
+If the question is purely logic/math based or if the mark scheme is usually sufficient, return "NO_SEARCH".
+If specific external facts are needed to verify the answer (and might be missing from the provided scheme), return a concise search query (max 5 words).
+
+Output ONLY the query string or "NO_SEARCH". No other text.`
 };
 
 // --- API Enable Check ---
@@ -617,7 +632,7 @@ export const AIService = {
         return parsed.markScheme || {};
     },
 
-    markQuestion: async (question, answer, scheme, hackClubKey, customApiKey, model, studentId) => {
+    markQuestion: async (question, answer, scheme, hackClubKey, customApiKey, model, studentId, level) => {
         const studentAnswerText = stringifyAnswer(answer);
         const totalMarks = question.marks || scheme?.totalMarks || 0;
 
@@ -651,7 +666,7 @@ export const AIService = {
                 ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
                 : '';
 
-            const tutorPrompt = `You are a professional exam tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${totalMarks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nOPTIONS: ${JSON.stringify(question.options || [])}\nCORRECT ANSWER: ${JSON.stringify(acceptable)}\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why their choice was wrong and why the correct choice is better.\n3) Write an "Improved Answer (Changes in Bold)" that matches the correct option.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis.`;
+            const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${totalMarks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nOPTIONS: ${JSON.stringify(question.options || [])}\nCORRECT ANSWER: ${JSON.stringify(acceptable)}\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why their choice was wrong and why the correct choice is better.\n3) Write an "Improved Answer (Changes in Bold)" that matches the correct option.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis.`;
 
             let tutorText = "";
             try {
@@ -678,11 +693,37 @@ export const AIService = {
         // Resolve Grading Config
         const gradingConfig = await resolveConfig(studentId, 'grading', hackClubKey, model, 'hackclub');
         const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model, 'openrouter');
+        const orchestratorConfig = await resolveConfig(studentId, 'verification', customApiKey, model, 'openrouter'); // Use dedicated verification config
+
+        // STEP 0: Orchestrator & Search (Fact Verification)
+        let searchContext = "";
+        try {
+            const orchestMsg = [
+                { role: "system", content: "You are a helpful marking assistant." },
+                { role: "user", content: PROMPTS.ORCHESTRATOR.replace("{question}", question.question).replace("{answer}", studentAnswerText) }
+            ];
+            const searchQuery = await callAI(orchestratorConfig.provider, orchestMsg, orchestratorConfig.model, {
+                apiKey: orchestratorConfig.apiKey,
+                customConfig: orchestratorConfig.customConfig
+            });
+            const cleanedQuery = cleanGeminiJSON(searchQuery).replace(/["']/g, "").trim();
+
+            if (cleanedQuery && cleanedQuery !== "NO_SEARCH") {
+                console.log("Orchestrator requested search:", cleanedQuery);
+                const searchRes = await searchWeb(cleanedQuery, { strategy: 'hackclub', count: 3 });
+                if (searchRes.results?.length) {
+                    searchContext = `\n\nVERIFIED FACTS (FROM WEB SEARCH - ${searchRes.source}):\n` +
+                        searchRes.results.map(r => `- ${r.title}: ${r.snippet}`).join('\n');
+                }
+            }
+        } catch (err) {
+            console.warn("Orchestrator check failed, proceeding without search:", err);
+        }
 
         // STEP 1: Strict grader (often Kimi)
         const graderMessages = [
-            { role: "system", content: PROMPTS.GRADER_SYSTEM },
-            { role: "user", content: `Question (${question.marks} marks): ${question.question}\nScheme: ${JSON.stringify(scheme)}\nStudent: ${studentAnswerText}` }
+            { role: "system", content: level ? `You are a strict ${level} exam marker. Use ONLY the provided mark scheme and any VERIFIED FACTS provided.` : PROMPTS.GRADER_SYSTEM },
+            { role: "user", content: `Question (${question.marks} marks): ${question.question}\nScheme: ${JSON.stringify(scheme)}\nStudent: ${studentAnswerText}${searchContext}` }
         ];
 
         let graderResponseText = "";
@@ -709,7 +750,7 @@ export const AIService = {
             ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
             : '';
 
-        const tutorPrompt = `You are a professional exam tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis.`;
+        const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis. If relevant, reference the verified facts.`;
 
         let tutorText = "";
         try {

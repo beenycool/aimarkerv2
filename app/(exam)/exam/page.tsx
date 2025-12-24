@@ -430,7 +430,7 @@ export default function GCSEMarkerApp() {
             const keyToUse = hackClubApiKey || null;
             if (!canUseHackClub) throw new Error("Hack Club API key missing for marking.");
 
-            const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, null, studentId);
+            const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, null, studentId, paperMeta?.level);
             exam.setQuestionFeedback(q.id, feedback);
 
             const sid = studentId;

@@ -8,6 +8,7 @@ export const DEFAULT_AI_PREFERENCES = {
   tutor: { enabled: true, provider: "openrouter", model: "google/gemini-2.0-flash-001" },
   planning: { enabled: true, provider: "hackclub", model: "moonshotai/kimi-k2-thinking" },
   hints: { enabled: true, provider: "hackclub", model: "qwen/qwen3-32b" },
+  verification: { enabled: true, provider: "openrouter", model: "google/gemini-2.0-flash-001" },
 };
 
 export const DEFAULT_SETTINGS = {
