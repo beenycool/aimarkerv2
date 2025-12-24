@@ -9,14 +9,185 @@ import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send } f
  */
 export const MarkdownText = memo(({ text, className = "" }) => {
     if (!text) return null;
-    const sanitized = DOMPurify.sanitize(text, { ALLOWED_TAGS: ['strong', 'em', 'span', 'br'], ALLOWED_ATTR: ['class'] });
-    let html = sanitized
-        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-        .replace(/\*(.*?)\*/g, "<em>$1</em>")
-        .replace(/\$(.*?)\$/g, "<span class='font-mono bg-slate-100 text-primary px-1 rounded text-xs'>$1</span>")
-        .replace(/\\n/g, "<br/>")
-        .replace(/\n/g, "<br/>");
-    return <div className={`whitespace-pre-wrap leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: html }} />;
+
+    const escapeHtml = (value) => value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+    const classNames = {
+        paragraph: "mb-2 last:mb-0",
+        unorderedList: "list-disc pl-5 my-2 space-y-1",
+        orderedList: "list-decimal pl-5 my-2 space-y-1",
+        listItem: "leading-relaxed",
+        blockquote: "border-l-4 border-border pl-3 italic my-2",
+        inlineCode: "font-mono text-xs bg-muted/50 text-current px-1 py-0.5 rounded",
+        inlineMath: "font-mono bg-muted/50 text-primary px-1 rounded text-xs",
+        codeBlock: "font-mono text-xs text-current",
+        pre: "bg-muted/50 p-3 rounded overflow-x-auto my-2",
+        h1: "text-lg font-semibold mt-4 mb-2",
+        h2: "text-base font-semibold mt-4 mb-2",
+        h3: "text-sm font-semibold mt-3 mb-1",
+        h4: "text-sm font-semibold mt-3 mb-1"
+    };
+
+    const renderInline = (value) => {
+        let escaped = escapeHtml(value);
+        const tokens = [];
+        const stash = (html) => {
+            const token = `@@INLINE_${tokens.length}@@`;
+            tokens.push(html);
+            return token;
+        };
+
+        escaped = escaped.replace(/`([^`]+)`/g, (_match, code) =>
+            stash(`<code class="${classNames.inlineCode}">${code}</code>`)
+        );
+        escaped = escaped.replace(/\$(.+?)\$/g, (_match, content) =>
+            stash(`<span class="${classNames.inlineMath}">${content}</span>`)
+        );
+
+        escaped = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+        escaped = escaped.replace(/__(.+?)__/g, "<strong>$1</strong>");
+        escaped = escaped.replace(/\*(.+?)\*/g, "<em>$1</em>");
+        escaped = escaped.replace(/_(.+?)_/g, "<em>$1</em>");
+
+        tokens.forEach((html, index) => {
+            escaped = escaped.replace(`@@INLINE_${index}@@`, html);
+        });
+        return escaped;
+    };
+
+    const renderMarkdown = (rawText) => {
+        const normalized = String(rawText).replace(/\\n/g, "\n").replace(/\r\n/g, "\n");
+        const lines = normalized.split("\n");
+        const html = [];
+        let i = 0;
+
+        const isHeading = (line) => /^#{1,4}\s+/.test(line);
+        const isUnordered = (line) => /^[-+*]\s+/.test(line);
+        const isOrdered = (line) => /^\d+\.\s+/.test(line);
+        const isBlockquote = (line) => /^>\s+/.test(line);
+        const isCodeFence = (line) => /^```/.test(line);
+
+        while (i < lines.length) {
+            const line = lines[i];
+            if (!line || !line.trim()) {
+                i += 1;
+                continue;
+            }
+
+            if (isCodeFence(line)) {
+                const language = line.slice(3).trim();
+                i += 1;
+                const codeLines = [];
+                while (i < lines.length && !isCodeFence(lines[i])) {
+                    codeLines.push(lines[i]);
+                    i += 1;
+                }
+                if (i < lines.length) i += 1;
+                const codeContent = escapeHtml(codeLines.join("\n"));
+                const langClass = language ? ` language-${escapeHtml(language)}` : "";
+                html.push(
+                    `<pre class="${classNames.pre}"><code class="${classNames.codeBlock}${langClass}">${codeContent}</code></pre>`
+                );
+                continue;
+            }
+
+            const headingMatch = line.match(/^(#{1,4})\s+(.*)$/);
+            if (headingMatch) {
+                const level = headingMatch[1].length;
+                const content = renderInline(headingMatch[2]);
+                const headingClass = classNames[`h${level}`];
+                html.push(`<h${level} class="${headingClass}">${content}</h${level}>`);
+                i += 1;
+                continue;
+            }
+
+            if (isBlockquote(line)) {
+                const quoteLines = [];
+                while (i < lines.length && isBlockquote(lines[i])) {
+                    quoteLines.push(lines[i].replace(/^>\s?/, ""));
+                    i += 1;
+                }
+                const quoteContent = renderInline(quoteLines.join(" "));
+                html.push(`<blockquote class="${classNames.blockquote}">${quoteContent}</blockquote>`);
+                continue;
+            }
+
+            if (isUnordered(line)) {
+                const items = [];
+                while (i < lines.length && isUnordered(lines[i])) {
+                    items.push(lines[i].replace(/^[-+*]\s+/, ""));
+                    i += 1;
+                }
+                const listItems = items
+                    .map((item) => `<li class="${classNames.listItem}">${renderInline(item)}</li>`)
+                    .join("");
+                html.push(`<ul class="${classNames.unorderedList}">${listItems}</ul>`);
+                continue;
+            }
+
+            if (isOrdered(line)) {
+                const items = [];
+                while (i < lines.length && isOrdered(lines[i])) {
+                    items.push(lines[i].replace(/^\d+\.\s+/, ""));
+                    i += 1;
+                }
+                const listItems = items
+                    .map((item) => `<li class="${classNames.listItem}">${renderInline(item)}</li>`)
+                    .join("");
+                html.push(`<ol class="${classNames.orderedList}">${listItems}</ol>`);
+                continue;
+            }
+
+            const paragraphLines = [line];
+            i += 1;
+            while (
+                i < lines.length &&
+                lines[i].trim() !== "" &&
+                !isHeading(lines[i]) &&
+                !isUnordered(lines[i]) &&
+                !isOrdered(lines[i]) &&
+                !isBlockquote(lines[i]) &&
+                !isCodeFence(lines[i])
+            ) {
+                paragraphLines.push(lines[i]);
+                i += 1;
+            }
+            const paragraphText = paragraphLines.join(" ");
+            html.push(`<p class="${classNames.paragraph}">${renderInline(paragraphText)}</p>`);
+        }
+
+        return html.join("");
+    };
+
+    const rendered = renderMarkdown(text);
+    const sanitized = DOMPurify.sanitize(rendered, {
+        ALLOWED_TAGS: [
+            'a',
+            'blockquote',
+            'br',
+            'code',
+            'em',
+            'h1',
+            'h2',
+            'h3',
+            'h4',
+            'li',
+            'ol',
+            'p',
+            'pre',
+            'span',
+            'strong',
+            'ul'
+        ],
+        ALLOWED_ATTR: ['class', 'href', 'rel', 'target']
+    });
+
+    return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitized }} />;
 });
 MarkdownText.displayName = 'MarkdownText';
 
@@ -25,18 +196,18 @@ MarkdownText.displayName = 'MarkdownText';
  */
 export const FileUploadZone = memo(({ label, onUpload, file }) => (
     <div className="flex flex-col items-center justify-center w-full mb-4">
-        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-slate-50 border-slate-300 transition-colors group">
+        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 border-muted-foreground/25 transition-colors group">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 {file ? (
                     <>
                         <CheckCircle className="w-8 h-8 text-primary mb-2" />
-                        <p className="text-sm text-slate-700 font-medium">{file.name}</p>
+                        <p className="text-sm text-foreground font-medium">{file.name}</p>
                     </>
                 ) : (
                     <>
-                        <Upload className="w-8 h-8 text-slate-400 mb-2 group-hover:text-primary transition-colors" />
-                        <p className="text-sm text-slate-500"><span className="font-semibold">Click to upload</span> {label}</p>
-                        <p className="text-xs text-slate-400">PDF only</p>
+                        <Upload className="w-8 h-8 text-muted-foreground mb-2 group-hover:text-primary transition-colors" />
+                        <p className="text-sm text-muted-foreground"><span className="font-semibold text-foreground">Click to upload</span> {label}</p>
+                        <p className="text-xs text-muted-foreground/70">PDF only</p>
                     </>
                 )}
             </div>
@@ -61,49 +232,49 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
     };
 
     return (
-        <div className="mt-6 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-primary p-4 flex justify-between items-center text-white">
+        <div className="mt-6 bg-card border border-border rounded-xl shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-primary p-4 flex justify-between items-center text-primary-foreground">
                 <div className="flex items-center gap-2">
                     <Brain className="w-5 h-5" />
                     <h3 className="font-bold">Marking Analysis</h3>
                 </div>
-                <div className="font-mono bg-orange-700 px-3 py-1 rounded-full text-sm">
+                <div className="font-mono bg-background/20 px-3 py-1 rounded-full text-sm">
                     Score: {feedback.score}/{feedback.totalMarks}
                 </div>
             </div>
 
             <div className="p-5 space-y-4">
                 <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Feedback</h4>
-                    <div className="text-slate-700 text-sm"><MarkdownText text={feedback.text} /></div>
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Feedback</h4>
+                    <div className="text-card-foreground text-sm"><MarkdownText text={feedback.text} /></div>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Improved Answer (Changes in Bold)</h4>
-                    <div className="text-slate-800 font-serif text-sm"><MarkdownText text={feedback.rewrite} /></div>
+                <div className="bg-muted/30 p-4 rounded-lg border border-border">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Improved Answer (Changes in Bold)</h4>
+                    <div className="text-foreground font-serif text-sm"><MarkdownText text={feedback.rewrite} /></div>
                 </div>
 
                 {!explanation && (
-                    <button onClick={onExplain} disabled={explaining} className="w-full py-2 bg-orange-50 text-primary border border-orange-200 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-orange-100 transition-colors">
+                    <button onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
                         {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         {explaining ? "Preparing explanation..." : "Explain Why"}
                     </button>
                 )}
 
                 {explanation && (
-                    <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg animate-in fade-in">
+                    <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg animate-in fade-in">
                         <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2"><Sparkles className="w-4 h-4" /> Explanation</h4>
-                        <div className="text-orange-900 text-sm leading-relaxed"><MarkdownText text={explanation} /></div>
+                        <div className="text-foreground text-sm leading-relaxed"><MarkdownText text={explanation} /></div>
                     </div>
                 )}
 
-                <div className="border-t border-slate-100 pt-4 mt-4">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Ask a Follow-up Question</h4>
+                <div className="border-t border-border pt-4 mt-4">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Ask a Follow-up Question</h4>
                     {followUpChat && followUpChat.length > 0 && (
-                        <div className="space-y-3 mb-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg">
+                        <div className="space-y-3 mb-3 max-h-48 overflow-y-auto p-2 bg-muted/30 rounded-lg">
                             {followUpChat.map((msg, i) => (
                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] p-2 rounded-lg text-sm ${msg.role === 'user' ? 'bg-orange-100 text-primary' : 'bg-white border border-slate-200 text-slate-700'}`}>
+                                    <div className={`max-w-[85%] p-2 rounded-lg text-sm ${msg.role === 'user' ? 'bg-primary/20 text-primary-foreground' : 'bg-card border border-border text-foreground'}`}>
                                         <MarkdownText text={msg.text} />
                                     </div>
                                 </div>
@@ -111,8 +282,8 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         </div>
                     )}
                     <div className="flex gap-2">
-                        <input type="text" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-                        <button onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-white p-2 rounded-lg hover:bg-orange-600 disabled:opacity-50">
+                        <input type="text" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
+                        <button onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
                             {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>

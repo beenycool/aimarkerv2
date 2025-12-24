@@ -64,24 +64,24 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
     }, [pdfDoc, pageNumber, scale]);
 
     return (
-        <div className="w-1/2 bg-slate-800 border-r border-slate-700 flex flex-col hidden md:flex relative">
-            <div className="bg-slate-900 border-b border-slate-700 p-2 flex gap-2">
-                <button onClick={() => onTabChange('paper')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'paper' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>Question Paper</button>
-                {hasInsert && <button onClick={() => onTabChange('insert')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'insert' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>Source Material</button>}
+        <div className="w-1/2 bg-muted/30 border-r border-border flex flex-col hidden md:flex relative">
+            <div className="bg-card border-b border-border p-2 flex gap-2">
+                <button onClick={() => onTabChange('paper')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'paper' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Question Paper</button>
+                {hasInsert && <button onClick={() => onTabChange('insert')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'insert' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Source Material</button>}
             </div>
-            <div className="flex-1 bg-slate-600 relative overflow-auto flex justify-center p-4 h-full">
+            <div className="flex-1 bg-muted/50 relative overflow-auto flex justify-center p-4 h-full">
                 <canvas ref={canvasRef} className="shadow-2xl max-w-full h-auto object-contain bg-white" />
-                {!pdfDoc && <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300"><RefreshCw className="w-8 h-8 animate-spin mb-2" /><p>Loading PDF...</p></div>}
+                {!pdfDoc && <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground"><RefreshCw className="w-8 h-8 animate-spin mb-2" /><p>Loading PDF...</p></div>}
             </div>
-            <div className="bg-slate-900 p-3 flex justify-between items-center border-t border-slate-700">
+            <div className="bg-card p-3 flex justify-between items-center border-t border-border">
                 <div className="flex gap-2">
-                    <button onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className="p-2 text-white hover:bg-slate-700 rounded disabled:opacity-30"><ChevronLeft className="w-5 h-5" /></button>
-                    <button onClick={() => onPageChange(pdfDoc ? Math.min(pdfDoc.numPages, pageNumber + 1) : pageNumber + 1)} disabled={pdfDoc && pageNumber >= pdfDoc.numPages} className="p-2 text-white hover:bg-slate-700 rounded disabled:opacity-30"><ChevronRight className="w-5 h-5" /></button>
+                    <button onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30"><ChevronLeft className="w-5 h-5" /></button>
+                    <button onClick={() => onPageChange(pdfDoc ? Math.min(pdfDoc.numPages, pageNumber + 1) : pageNumber + 1)} disabled={pdfDoc && pageNumber >= pdfDoc.numPages} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30"><ChevronRight className="w-5 h-5" /></button>
                 </div>
-                <span className="text-white font-mono font-bold text-sm">Page {pageNumber} {pdfDoc ? `/ ${pdfDoc.numPages}` : ''}</span>
+                <span className="text-foreground font-mono font-bold text-sm">Page {pageNumber} {pdfDoc ? `/ ${pdfDoc.numPages}` : ''}</span>
                 <div className="flex gap-2">
-                    <button onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className="p-2 text-white hover:bg-slate-700 rounded"><ZoomOut className="w-5 h-5" /></button>
-                    <button onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className="p-2 text-white hover:bg-slate-700 rounded"><ZoomIn className="w-5 h-5" /></button>
+                    <button onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className="p-2 text-foreground hover:bg-muted rounded"><ZoomOut className="w-5 h-5" /></button>
+                    <button onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className="p-2 text-foreground hover:bg-muted rounded"><ZoomIn className="w-5 h-5" /></button>
                 </div>
             </div>
         </div>

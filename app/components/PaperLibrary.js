@@ -77,15 +77,15 @@ export const PaperLibrary = ({ onSelectPaper }) => {
     return (
         <div className="w-full">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-primary" /> Saved Papers
                 </h3>
                 <button onClick={fetchPapers} className="text-xs text-primary hover:text-orange-700 font-medium">Refresh</button>
             </div>
 
             {papers.length === 0 ? (
-                <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50">
-                    <p className="text-slate-400 text-sm">No papers saved yet.</p>
+                <div className="text-center p-8 border-2 border-dashed border-border/50 rounded-xl bg-muted/50">
+                    <p className="text-muted-foreground text-sm">No papers saved yet.</p>
                 </div>
             ) : (
                 <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
@@ -93,22 +93,22 @@ export const PaperLibrary = ({ onSelectPaper }) => {
                         <div
                             key={paper.id}
                             onClick={() => handleSelect(paper)}
-                            className="group flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl hover:border-primary/50 hover:shadow-md cursor-pointer transition-all"
+                            className="group flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/50 hover:shadow-md cursor-pointer transition-all"
                         >
                             <div className="flex items-start gap-3">
-                                <div className="bg-orange-50 p-2 rounded-lg text-primary">
+                                <div className="bg-primary/10 p-2 rounded-lg text-primary">
                                     <FileText className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h4 className="font-semibold text-slate-800 text-sm group-hover:text-primary transition-colors line-clamp-1">
+                                    <h4 className="font-semibold text-card-foreground text-sm group-hover:text-primary transition-colors line-clamp-1">
                                         {paper.subject && paper.subject !== 'Unknown Subject'
                                             ? `${paper.subject} - ${paper.section}`
                                             : paper.name}
                                     </h4>
-                                    <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                         <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {paper.year} {paper.season || ''}</span>
                                         {paper.board && paper.board !== 'Unknown Board' && (
-                                            <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-medium">{paper.board}</span>
+                                            <span className="bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground font-medium">{paper.board}</span>
                                         )}
                                         {paper.scheme_path && <span className="flex items-center gap-1 text-primary"><Check className="w-3 h-3" /> Scheme</span>}
                                         {paper.insert_path && <span className="flex items-center gap-1 text-orange-600"><Check className="w-3 h-3" /> Insert</span>}
@@ -119,7 +119,7 @@ export const PaperLibrary = ({ onSelectPaper }) => {
                             <button
                                 onClick={(e) => handleDelete(e, paper)}
                                 disabled={deletingId === paper.id}
-                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                                 title="Delete Paper"
                             >
                                 {deletingId === paper.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
