@@ -148,7 +148,7 @@ export default function GCSEMarkerApp() {
             // 2. From current auth state via supabase.auth.getUser()
             // 3. From hook value as fallback
             let effectiveStudentId = studentId;
-            
+
             // Try sign-in result first
             if (authResult?.data?.user?.id) {
                 effectiveStudentId = authResult.data.user.id;
@@ -180,6 +180,9 @@ export default function GCSEMarkerApp() {
                 const blob = await res.blob();
                 const file = new File([blob], data.name, { type: 'application/pdf' });
                 file.fromLibrary = true;
+                if (data.parsedQuestions) file.parsedQuestions = data.parsedQuestions;
+                if (data.parsedMarkScheme) file.parsedMarkScheme = data.parsedMarkScheme;
+                if (data.metadata) file.parsedMetadata = data.metadata;
                 return file;
             };
             const [p, s, i] = await Promise.all([
@@ -204,7 +207,49 @@ export default function GCSEMarkerApp() {
 
         try {
             setParsingStatus('AI analyzing exam paper...');
-            const { questions, metadata } = await AIService.extractQuestions(files.paper, files.insert, customApiKey, null, studentId);
+            let questions = [];
+            let metadata = {};
+
+            // 1. Check for duplicate upload (if not explicitly from library) to save API calls
+            if (!files.paper.fromLibrary) {
+                try {
+                    setParsingStatus('Checking for existing analysis...');
+                    // Ensure auth for check
+                    if (!user) await signInAnonymously();
+
+                    const duplicate = await PaperStorage.checkForDuplicate(files.paper, studentId);
+                    if (duplicate && duplicate.parsed_questions) {
+                        console.log("Found duplicate paper with cached data, reusing:", duplicate.id);
+                        files.paper.fromLibrary = true;
+                        files.paper.parsedQuestions = duplicate.parsed_questions;
+                        files.paper.parsedMarkScheme = duplicate.parsed_mark_scheme;
+                        files.paper.parsedMetadata = {
+                            subject: duplicate.subject,
+                            board: duplicate.board,
+                            year: duplicate.year,
+                            season: duplicate.season,
+                            section: duplicate.section,
+                            ...duplicate // keep other fields
+                        };
+                    }
+                } catch (dupErr) {
+                    console.warn("Duplicate check failed:", dupErr);
+                }
+            }
+
+            // 2. Check for cached questions (from library OR duplicate check)
+            if (files.paper.fromLibrary && files.paper.parsedQuestions) {
+                console.log("Using cached questions");
+                setParsingStatus('Restoring previous analysis...');
+                questions = files.paper.parsedQuestions;
+                metadata = files.paper.parsedMetadata || {};
+            } else {
+                setParsingStatus('AI analyzing exam paper (API Call)...');
+                const res = await AIService.extractQuestions(files.paper, files.insert, customApiKey, null, studentId);
+                questions = res.questions;
+                metadata = res.metadata;
+            }
+
             setPaperMeta(metadata || null);
 
             const sid = studentId;
@@ -221,15 +266,21 @@ export default function GCSEMarkerApp() {
             if (files.insert) {
                 setParsingStatus('Processing source material...');
                 try {
+                    // Logic could be added here to cache insert content too if needed usually less heavy
                     const insertContent = await AIService.extractInsertContent(files.insert, customApiKey, null, studentId);
                     exam.setInsertContent(insertContent);
                 } catch (e) { console.error('Insert extraction failed:', e); }
             }
 
-            if (files.scheme) {
+            let markScheme = {};
+            if (files.paper.fromLibrary && files.paper.parsedMarkScheme) {
+                console.log("Using cached mark scheme from library");
+                markScheme = files.paper.parsedMarkScheme;
+                exam.setParsedMarkScheme(markScheme);
+            } else if (files.scheme) {
                 setParsingStatus('Parsing mark scheme...');
                 try {
-                    const markScheme = await AIService.parseMarkScheme(files.scheme, customApiKey, null, studentId);
+                    markScheme = await AIService.parseMarkScheme(files.scheme, customApiKey, null, studentId);
                     exam.setParsedMarkScheme(markScheme);
                 } catch (e) { console.error('Mark scheme parsing failed:', e); }
             }
@@ -256,7 +307,7 @@ export default function GCSEMarkerApp() {
                     // 2. From current auth state via supabase.auth.getUser()
                     // 3. From hook value as fallback
                     let effectiveStudentId = studentId;
-                    
+
                     // Try sign-in result first
                     if (authResult?.data?.user?.id) {
                         effectiveStudentId = authResult.data.user.id;
@@ -268,7 +319,9 @@ export default function GCSEMarkerApp() {
 
                     await PaperStorage.uploadPaper(files.paper, files.scheme, files.insert, {
                         name: files.paper.name.replace(/\.pdf$/i, ''),
-                        ...metadata
+                        ...metadata,
+                        parsed_questions: questions,
+                        parsed_mark_scheme: markScheme
                     }, effectiveStudentId);
                 } catch (storageErr) {
                     console.error("Failed to auto-save paper:", storageErr);

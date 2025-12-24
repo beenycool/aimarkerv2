@@ -11,6 +11,43 @@ async function requireAuthenticatedUser() {
 
 export const PaperStorage = {
     /**
+     * Calculate SHA-256 hash of a file
+     */
+    async calculateFileHash(file) {
+        const buffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+    },
+
+    /**
+     * Check if a paper with the same hash already exists
+     */
+    async checkForDuplicate(file, studentId) {
+        if (!file) return null;
+        try {
+            const fileHash = await this.calculateFileHash(file);
+            const authUser = await requireAuthenticatedUser();
+            if (!authUser) return null;
+
+            const effectiveStudentId = authUser.id || studentId;
+
+            const { data: existingPaper } = await supabase
+                .from('papers')
+                .select('*')
+                .eq('file_hash', fileHash)
+                .eq('student_id', effectiveStudentId)
+                .maybeSingle();
+
+            return existingPaper;
+        } catch (e) {
+            console.warn("Error checking for duplicate:", e);
+            return null;
+        }
+    },
+
+    /**
      * Upload a paper to Supabase Storage and save metadata to the DB
      */
     async uploadPaper(file, schemeFile, insertFile, metadata, studentId = null) {
@@ -20,6 +57,30 @@ export const PaperStorage = {
         if (!authUser) throw new Error("Authentication required to save papers.");
 
         const ownerId = authUser.id;
+        const effectiveStudentId = ownerId || studentId;
+
+        // Calculate hash of the main question paper
+        let fileHash = null;
+        try {
+            fileHash = await this.calculateFileHash(file);
+
+            // Check for duplicate paper for this user
+            const { data: existingPaper } = await supabase
+                .from('papers')
+                .select('*')
+                .eq('file_hash', fileHash)
+                .eq('student_id', effectiveStudentId)
+                .maybeSingle();
+
+            if (existingPaper) {
+                console.log("Duplicate paper detected. Using existing record:", existingPaper);
+                return existingPaper;
+            }
+        } catch (err) {
+            console.warn("Failed to calculate hash or check duplicates:", err);
+            // Proceed with upload if hash check fails
+        }
+
         const timestamp = Date.now();
         const safeName = (name) => name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const generatePath = (f) => `${ownerId}/${timestamp}_${safeName(f.name)}`;
@@ -61,8 +122,6 @@ export const PaperStorage = {
             if (insertError) throw insertError;
         }
 
-        const effectiveStudentId = ownerId || studentId;
-
         // 4. Save Metadata
         const { data, error: dbError } = await supabase
             .from('papers')
@@ -76,7 +135,10 @@ export const PaperStorage = {
                 student_id: effectiveStudentId,
                 pdf_path: pdfPath,
                 scheme_path: schemePath,
-                insert_path: insertPath
+                insert_path: insertPath,
+                file_hash: fileHash,
+                parsed_questions: metadata.parsed_questions || null,
+                parsed_mark_scheme: metadata.parsed_mark_scheme || null
             })
             .select()
             .single();

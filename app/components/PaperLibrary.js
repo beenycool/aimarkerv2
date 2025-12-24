@@ -60,7 +60,19 @@ export const PaperLibrary = ({ onSelectPaper }) => {
             const insertUrl = PaperStorage.getPublicUrl(paper.insert_path);
 
             onSelectPaper({
-                paper: { url: pdfUrl, name: paper.name },
+                paper: {
+                    url: pdfUrl,
+                    name: paper.name,
+                    parsedQuestions: paper.parsed_questions,
+                    parsedMarkScheme: paper.parsed_mark_scheme,
+                    metadata: {
+                        subject: paper.subject,
+                        board: paper.board,
+                        year: paper.year,
+                        season: paper.season,
+                        section: paper.section
+                    }
+                },
                 scheme: schemeUrl ? { url: schemeUrl, name: "Mark Scheme" } : null,
                 insert: insertUrl ? { url: insertUrl, name: "Insert" } : null
             });
