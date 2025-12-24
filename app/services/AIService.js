@@ -581,12 +581,9 @@ export async function searchWeb(query, options = {}) {
 
 
 export const AIService = {
-    checkServerKey: async () => { /* ... existing ... */ return true; }, // keeping implementations light here, actual checks should be done same as before
-    // (Re-implementing checkServerKeys below properly)
-
     checkServerKey: async () => {
         try {
-            const response = await fetchWithRetry('/api/key-status', {}, { maxAttempts: 2 });
+            const response = await fetchWithRetry('/api/key-status', {}, { maxAttempts: 3 });
             if (!response.ok) return false;
             const data = await response.json();
             return !!data.openrouter;
@@ -597,7 +594,7 @@ export const AIService = {
 
     checkHackClubServerKey: async () => {
         try {
-            const response = await fetchWithRetry('/api/key-status', {}, { maxAttempts: 2 });
+            const response = await fetchWithRetry('/api/key-status', {}, { maxAttempts: 3 });
             if (!response.ok) return false;
             const data = await response.json();
             return !!data.hackclub;

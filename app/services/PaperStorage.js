@@ -76,7 +76,7 @@ export const PaperStorage = {
                         .maybeSingle();
                     return data;
                 },
-                { maxAttempts: 2, baseDelay: 500 }
+                { maxAttempts: 3, baseDelay: 1000 }
             );
 
             if (existingPaper) {

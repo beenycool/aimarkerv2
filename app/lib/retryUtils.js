@@ -46,8 +46,9 @@ export function calculateBackoff(attempt, baseDelay = 1000, maxDelay = 10000) {
     // Exponential backoff: baseDelay * 2^attempt
     const exponentialDelay = baseDelay * Math.pow(2, attempt);
     
-    // Add jitter (random factor between 0 and 1) to prevent thundering herd
-    const jitter = Math.random();
+    // Add jitter (±20% random variation) to prevent thundering herd
+    // This ensures delays are 80-120% of the exponential value
+    const jitter = 0.8 + (Math.random() * 0.4);
     
     // Cap at maxDelay
     return Math.min(exponentialDelay * jitter, maxDelay);
