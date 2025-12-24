@@ -40,6 +40,41 @@ export const AI_FEATURE_DESCRIPTIONS = {
     }
 };
 
+// --- LOCAL HELPERS ---
+const normalizeText = (text) => (text || '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
+
+export const stringifyAnswer = (answer) => {
+    if (answer === undefined || answer === null) return '';
+    if (typeof answer === 'string' || typeof answer === 'number') return String(answer);
+    if (Array.isArray(answer)) {
+        if (answer.length && Array.isArray(answer[0])) return answer.map(row => row.join(' | ')).join('\n');
+        return answer.join('\n');
+    }
+    if (typeof answer === 'object' && answer.points) {
+        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} `;
+    }
+    return JSON.stringify(answer);
+};
+
+const extractImprovedAnswer = (markdown) => {
+    if (!markdown) return null;
+    const match = markdown.match(/Improved Answer \(Changes in Bold\)[:\-]*\s*([\s\S]*)/i);
+    if (!match) return null;
+    const chunk = match[1].split(/\n\s*\n/)[0];
+    return chunk?.trim() || null;
+};
+
+export const checkRegex = (regexStr, value) => {
+    try {
+        const safeRegex = regexStr.replace(/(^|[^\\'])(\/)/g, '$1\\/');
+        const re = new RegExp(safeRegex, 'i');
+        return re.test(String(value).trim());
+    } catch (e) {
+        console.warn("Invalid Regex provided by AI:", regexStr, e);
+        return false;
+    }
+};
+
 const PROMPTS = {
     EXTRACTION: `You are an exam paper parser. Extract all questions from the provided question paper PDF.
 
@@ -583,14 +618,68 @@ export const AIService = {
     },
 
     markQuestion: async (question, answer, scheme, hackClubKey, customApiKey, model, studentId) => {
+        const studentAnswerText = stringifyAnswer(answer);
+        const totalMarks = question.marks || scheme?.totalMarks || 0;
+
+        // SPECIAL CASE: Multiple Choice Optimization
+        // If correct: No API calls needed. If wrong: Skip Kimi (grading) and go to Gemini (tutor).
+        if (question.type === 'multiple_choice') {
+            const normalizedAnswer = normalizeText(studentAnswerText);
+            const acceptable = scheme?.acceptableAnswers || [];
+
+            // Local check for correctness
+            const isCorrect = acceptable.some(acc => normalizeText(acc) === normalizedAnswer);
+
+            if (isCorrect) {
+                return {
+                    score: totalMarks,
+                    totalMarks,
+                    text: "Correct! Your selection matches the mark scheme.",
+                    rewrite: `**${studentAnswerText}**`,
+                    primaryFlaw: "none"
+                };
+            }
+
+            // If wrong, we skip the Grading API (Kimi) and go straight to Tutor (Gemini)
+            const numericScore = 0;
+            const primaryFlaw = "Incorrect multiple choice selection.";
+
+            // Resolve Tutor Config (usually Gemini on OpenRouter)
+            const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model, 'openrouter');
+            const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
+            const personalizationNote = memoryContext
+                ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
+                : '';
+
+            const tutorPrompt = `You are a professional exam tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${totalMarks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nOPTIONS: ${JSON.stringify(question.options || [])}\nCORRECT ANSWER: ${JSON.stringify(acceptable)}\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why their choice was wrong and why the correct choice is better.\n3) Write an "Improved Answer (Changes in Bold)" that matches the correct option.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis.`;
+
+            let tutorText = "";
+            try {
+                tutorText = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
+                    apiKey: tutorConfig.apiKey,
+                    customConfig: tutorConfig.customConfig
+                });
+            } catch (tutorErr) {
+                tutorText = `Score: ${numericScore}/${totalMarks}. The correct answer was ${acceptable[0] || 'different'}.`;
+            }
+
+            const rewrite = extractImprovedAnswer(tutorText) || (acceptable[0] ? `Correct choice: **${acceptable[0]}**` : studentAnswerText);
+
+            return {
+                score: numericScore,
+                totalMarks,
+                text: tutorText,
+                rewrite,
+                primaryFlaw
+            };
+        }
+
+        // STANDARD FLOW: Non-MCQ questions
         // Resolve Grading Config
         const gradingConfig = await resolveConfig(studentId, 'grading', hackClubKey, model, 'hackclub');
         const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model, 'openrouter');
-        // Note: hackClubKey passed as override for grading, customApiKey for tutor, preserving loose legacy mapping 
 
-        const studentAnswerText = stringifyAnswer(answer);
-
-        // STEP 1: Strict grader
+        // STEP 1: Strict grader (often Kimi)
         const graderMessages = [
             { role: "system", content: PROMPTS.GRADER_SYSTEM },
             { role: "user", content: `Question (${question.marks} marks): ${question.question}\nScheme: ${JSON.stringify(scheme)}\nStudent: ${studentAnswerText}` }
@@ -603,8 +692,8 @@ export const AIService = {
                 customConfig: gradingConfig.customConfig
             });
         } catch (e) {
-            console.warn("Grading failed, using fallback logic internally if needed or throwing", e);
-            throw e; // Let UI handle fallback to local
+            console.warn("Grading failed, using fallback logic internally", e);
+            throw e;
         }
 
         const cleanedGrader = cleanGeminiJSON(graderResponseText);
@@ -614,13 +703,13 @@ export const AIService = {
         const numericScore = Math.min(question.marks, Number(parsedGrader.score ?? 0));
         const primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw ?? "Missing analysis or contextual insight.";
 
-        // STEP 2: Tutor with personalization
+        // STEP 2: Tutor (often Gemini) with personalization
         const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
         const personalizationNote = memoryContext
-            ? `\n\nSTUDENT PERSONALIZATION (adapt your teaching style accordingly):\n${memoryContext}`
+            ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
             : '';
 
-        const tutorPrompt = `You are an expert English Literature tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write a short Model Paragraph that fixes the flaw.\n4) Keep it concise, encouraging, Markdown formatted.`;
+        const tutorPrompt = `You are a professional exam tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis.`;
 
         let tutorText = "";
         try {
@@ -632,7 +721,7 @@ export const AIService = {
             tutorText = `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`;
         }
 
-        const rewrite = extractModelParagraph(tutorText) || "Model paragraph included in feedback.";
+        const rewrite = extractImprovedAnswer(tutorText) || "Improved Answer (Changes in Bold)";
 
         return {
             score: numericScore,
@@ -665,7 +754,7 @@ export const AIService = {
         const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'tutor', hackClubKey, null, 'hackclub');
         const historyMessages = chatHistory.map(m => ({ role: m.role, content: m.text }));
         const messages = [
-            { role: "system", content: "Act as a friendly tutor. Keep replies concise and practical." },
+            { role: "system", content: "Act as a professional tutor. Keep replies concise and practical. Do NOT use emojis." },
             { role: "user", content: `Question: ${question.question}\nStudent answer: ${stringifyAnswer(answer)}\nFeedback: ${feedback.text}` },
             ...historyMessages
         ];
@@ -1007,41 +1096,6 @@ Return a JSON object with this exact structure:
     }
 };
 
-// --- LOCAL HELPERS ---
-const normalizeText = (text) => (text || '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
-
-export const stringifyAnswer = (answer) => {
-    if (answer === undefined || answer === null) return '';
-    if (typeof answer === 'string' || typeof answer === 'number') return String(answer);
-    if (Array.isArray(answer)) {
-        if (answer.length && Array.isArray(answer[0])) return answer.map(row => row.join(' | ')).join('\n');
-        return answer.join('\n');
-    }
-    if (typeof answer === 'object' && answer.points) {
-        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} `;
-    }
-    return JSON.stringify(answer);
-};
-
-const extractModelParagraph = (markdown) => {
-    if (!markdown) return null;
-    const match = markdown.match(/Model Paragraph[:\-]*\s*([\s\S]*)/i);
-    if (!match) return null;
-    const chunk = match[1].split(/\n\s*\n/)[0];
-    return chunk?.trim() || null;
-};
-
-export const checkRegex = (regexStr, value) => {
-    try {
-        const safeRegex = regexStr.replace(/(^|[^\\'])(\/)/g, '$1\\/');
-        const re = new RegExp(safeRegex, 'i');
-        return re.test(String(value).trim());
-    } catch (e) {
-        console.warn("Invalid Regex provided by AI:", regexStr, e);
-        return false;
-    }
-};
-
 export const evaluateAnswerLocally = (question, answer, scheme) => {
     const totalMarks = question.marks || scheme?.totalMarks || 0;
     const answerText = stringifyAnswer(answer);
@@ -1073,7 +1127,7 @@ export const evaluateAnswerLocally = (question, answer, scheme) => {
             score: cappedScore,
             totalMarks,
             text: feedbackParts.join(' ') || "Partial credit awarded based on keyword matches.",
-            rewrite: acceptable[0] ? `Model answer idea: ** ${acceptable[0]}** ` : answerText
+            rewrite: acceptable[0] ? `Improved Answer: ** ${acceptable[0]}** ` : answerText
         };
     }
 

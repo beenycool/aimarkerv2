@@ -860,7 +860,13 @@ export default function GCSEMarkerApp() {
                                         variant = "default";
                                         className = "ring-2 ring-primary/30";
                                     } else if (isDone) {
-                                        className = "bg-success/10 text-success border-success/30 hover:bg-success/20";
+                                        const feedback = exam.feedbacks[q.id];
+                                        const isWrong = feedback && feedback.score < q.marks;
+                                        if (isWrong) {
+                                            className = "bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20";
+                                        } else {
+                                            className = "bg-success/10 text-success border-success/30 hover:bg-success/20";
+                                        }
                                     } else if (isSkipped) {
                                         className = "bg-warning/10 text-warning-foreground border-warning/30 hover:bg-warning/20";
                                     }

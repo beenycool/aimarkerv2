@@ -82,7 +82,7 @@ export async function generateDashboardInsights(studentData, hackClubKey = null)
         ? subjects.map(s => s.name).join(', ')
         : 'No subjects added yet';
 
-    const prompt = `You are an encouraging GCSE study coach. Generate personalized dashboard content for a student.
+    const prompt = `You are a professional GCSE study coach. Generate personalized dashboard content for a student.
 
 STUDENT DATA:
 - Name: ${name}
@@ -98,8 +98,8 @@ ${memoryContext}
 ` : ''}
 OUTPUT STRICT JSON (no markdown, no explanation):
 {
-  "greeting": "A warm, personalized greeting using their name and time of day. Include a relevant emoji. Max 12 words.",
-  "trendInsight": "Brief insight about their week-over-week progress. Max 10 words. Be encouraging.",
+  "greeting": "A professional, personalized greeting using their name and time of day. Max 12 words. Do NOT use emojis.",
+  "trendInsight": "Brief insight about their week-over-week progress. Max 10 words. Be professional.",
   "streakMessage": "Motivational message about their streak. Max 8 words.",
   "nextSession": {
     "topic": "The specific topic they should focus on next",
@@ -111,7 +111,7 @@ OUTPUT STRICT JSON (no markdown, no explanation):
 
     try {
         const messages = [
-            { role: "system", content: "You are a supportive GCSE study coach. Output ONLY valid JSON." },
+            { role: "system", content: "You are a professional GCSE study coach. Output ONLY valid JSON. Do NOT use emojis." },
             { role: "user", content: prompt }
         ];
 
@@ -151,9 +151,9 @@ function generateFallbackInsights(studentData, timeOfDay, trendChange) {
     const { name = 'Student', topWeaknesses = [], subjects = [], streakDays = 0 } = studentData;
 
     const greetings = {
-        morning: `Good morning, ${name}! Ready for a great study session? ☀️`,
-        afternoon: `Good afternoon, ${name}! Let's keep that momentum going! 💪`,
-        evening: `Good evening, ${name}! Time for some effective revision! ✨`
+        morning: `Good morning, ${name}.`,
+        afternoon: `Good afternoon, ${name}.`,
+        evening: `Good evening, ${name}.`
     };
 
     return {
