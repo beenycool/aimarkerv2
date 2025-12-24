@@ -73,6 +73,7 @@ interface AIPreferences {
     tutor: FeatureConfig;
     planning: FeatureConfig;
     hints: FeatureConfig;
+    verification: FeatureConfig;
 }
 
 export interface CustomAPIConfig {
@@ -113,6 +114,7 @@ const BUILTIN_PROFILES: { [key: string]: ProfileData } = {
             tutor: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
             planning: { enabled: true, provider: 'hackclub', model: 'moonshotai/kimi-k2-thinking' },
             hints: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
+            verification: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
         }
     },
     quality: {
@@ -126,6 +128,7 @@ const BUILTIN_PROFILES: { [key: string]: ProfileData } = {
             tutor: { enabled: true, provider: 'openrouter', model: 'anthropic/claude-sonnet-4' },
             planning: { enabled: true, provider: 'hackclub', model: 'moonshotai/kimi-k2-thinking' },
             hints: { enabled: true, provider: 'hackclub', model: 'moonshotai/kimi-k2-thinking' },
+            verification: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
         }
     },
     speed: {
@@ -139,6 +142,7 @@ const BUILTIN_PROFILES: { [key: string]: ProfileData } = {
             tutor: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
             planning: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
             hints: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
+            verification: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
         }
     },
     free: {
@@ -153,6 +157,7 @@ const BUILTIN_PROFILES: { [key: string]: ProfileData } = {
             tutor: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
             planning: { enabled: true, provider: 'hackclub', model: 'moonshotai/kimi-k2-thinking' },
             hints: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
+            verification: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
         }
     }
 };
@@ -224,6 +229,19 @@ const FEATURES = {
             gemini: 'gemini-2.0-flash-001',
             custom_openai: 'local-model'
         }
+    },
+    verification: {
+        key: 'verification',
+        name: 'Fact Checker',
+        description: 'Fast model that decides what to search for (Orchestrator)',
+        icon: Search,
+        requiresVision: false,
+        defaultModel: {
+            openrouter: 'google/gemini-2.0-flash-001',
+            hackclub: 'qwen/qwen3-32b',
+            gemini: 'gemini-2.0-flash-001',
+            custom_openai: 'local-model'
+        }
     }
 };
 
@@ -233,7 +251,8 @@ const DEFAULT_PREFERENCES: AIPreferences = {
     grading: { enabled: true, provider: 'hackclub', model: 'moonshotai/kimi-k2-thinking' },
     tutor: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' },
     planning: { enabled: true, provider: 'hackclub', model: 'moonshotai/kimi-k2-thinking' },
-    hints: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' }
+    hints: { enabled: true, provider: 'hackclub', model: 'qwen/qwen3-32b' },
+    verification: { enabled: true, provider: 'openrouter', model: 'google/gemini-2.0-flash-001' }
 };
 
 interface AIConfigTableProps {
@@ -271,6 +290,7 @@ export default function AIConfigTable({
         tutor: { ...DEFAULT_PREFERENCES.tutor, ...preferences?.tutor },
         planning: { ...DEFAULT_PREFERENCES.planning, ...preferences?.planning },
         hints: { ...DEFAULT_PREFERENCES.hints, ...preferences?.hints },
+        verification: { ...DEFAULT_PREFERENCES.verification, ...preferences?.verification },
     };
 
     const updateFeature = (featureKey: keyof AIPreferences, field: keyof FeatureConfig, value: boolean | string) => {
