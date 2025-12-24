@@ -49,6 +49,7 @@ interface AIPreferences {
     tutor: FeatureConfig;
     planning: FeatureConfig;
     hints: FeatureConfig;
+    verification: FeatureConfig;
 }
 
 interface CustomProfile {
