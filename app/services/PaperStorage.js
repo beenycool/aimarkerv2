@@ -1,5 +1,14 @@
 import { supabase } from './supabaseClient';
 
+async function requireAuthenticatedUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) return user;
+
+    const { data, error } = await supabase.auth.signInAnonymously();
+    if (error) throw new Error(`Authentication required to save papers: ${error.message}`);
+    return data?.user || null;
+}
+
 export const PaperStorage = {
     /**
      * Upload a paper to Supabase Storage and save metadata to the DB
@@ -7,14 +16,22 @@ export const PaperStorage = {
     async uploadPaper(file, schemeFile, insertFile, metadata, studentId = null) {
         if (!file) throw new Error("Question paper is required");
 
+        const authUser = await requireAuthenticatedUser();
+        if (!authUser) throw new Error("Authentication required to save papers.");
+
+        const ownerId = authUser.id;
         const timestamp = Date.now();
-        const generatePath = (f) => `${timestamp}_${f.name.replace(/\s+/g, '_')}`;
+        const safeName = (name) => name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const generatePath = (f) => `${ownerId}/${timestamp}_${safeName(f.name)}`;
 
         // 1. Upload Question Paper
         const pdfPath = generatePath(file);
         const { error: uploadError } = await supabase.storage
             .from('exam-papers')
-            .upload(pdfPath, file);
+            .upload(pdfPath, file, {
+                contentType: file.type || 'application/pdf',
+                upsert: false
+            });
 
         if (uploadError) throw uploadError;
 
@@ -24,7 +41,10 @@ export const PaperStorage = {
             schemePath = generatePath(schemeFile);
             const { error: schemeError } = await supabase.storage
                 .from('exam-papers')
-                .upload(schemePath, schemeFile);
+                .upload(schemePath, schemeFile, {
+                    contentType: schemeFile.type || 'application/pdf',
+                    upsert: false
+                });
             if (schemeError) throw schemeError;
         }
 
@@ -34,9 +54,14 @@ export const PaperStorage = {
             insertPath = generatePath(insertFile);
             const { error: insertError } = await supabase.storage
                 .from('exam-papers')
-                .upload(insertPath, insertFile);
+                .upload(insertPath, insertFile, {
+                    contentType: insertFile.type || 'application/pdf',
+                    upsert: false
+                });
             if (insertError) throw insertError;
         }
+
+        const effectiveStudentId = ownerId || studentId;
 
         // 4. Save Metadata
         const { data, error: dbError } = await supabase
@@ -48,7 +73,7 @@ export const PaperStorage = {
                 subject: metadata.subject || 'Unknown Subject',
                 board: metadata.board || 'Unknown Board',
                 season: metadata.season || 'June',
-                student_id: studentId,
+                student_id: effectiveStudentId,
                 pdf_path: pdfPath,
                 scheme_path: schemePath,
                 insert_path: insertPath

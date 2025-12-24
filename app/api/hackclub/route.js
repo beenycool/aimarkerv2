@@ -18,14 +18,14 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { messages, model = "qwen/qwen3-32b", temperature = 0.2 } = body;
+        const { messages, model = "qwen/qwen3-32b", temperature = 0.2, apiKey: clientApiKey } = body;
 
-        // Use server-side key only (no longer accept client keys for security)
-        const apiKey = HACKCLUB_API_KEY;
+        // Prefer a client-provided key when present, fall back to server key.
+        const apiKey = clientApiKey || HACKCLUB_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json(
-                { error: "Hack Club API key not configured on server." },
+                { error: "Hack Club API key not configured. Add a server key or provide one in the client." },
                 { status: 500 }
             );
         }

@@ -64,14 +64,14 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { prompt, files, messages, model, temperature = 0.2, maxTokens = 16384 } = body;
+        const { prompt, files, messages, model, temperature = 0.2, maxTokens = 16384, apiKey: clientApiKey } = body;
 
-        // Use server-side key only (no longer accept client keys for security)
-        const apiKey = OPENROUTER_API_KEY;
+        // Prefer a client-provided key when present, fall back to server key.
+        const apiKey = clientApiKey || OPENROUTER_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json(
-                { error: "OpenRouter API key not configured on server." },
+                { error: "OpenRouter API key not configured. Add a server key or provide one in the client." },
                 { status: 500 }
             );
         }
@@ -105,12 +105,18 @@ export async function POST(request) {
             );
         }
 
+        const origin = request.headers.get("origin");
+        const host = request.headers.get("host");
+        const forwardedProto = request.headers.get("x-forwarded-proto");
+        const fallbackOrigin = host ? `${forwardedProto || "https"}://${host}` : null;
+        const referer = origin || fallbackOrigin || process.env.NEXT_PUBLIC_APP_URL || "https://aimarker.app";
+
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiKey}`,
-                "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://aimarker.app",
+                "HTTP-Referer": referer,
                 "X-Title": "AI GCSE Marker"
             },
             body: JSON.stringify({

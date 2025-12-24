@@ -506,30 +506,28 @@ export const AIService = {
 
     checkServerKey: async () => {
         try {
-            const response = await fetch('/api/openrouter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: 'test', apiKey: null })
-            });
+            const response = await fetch('/api/key-status');
+            if (!response.ok) return false;
             const data = await response.json();
-            return !(response.status === 400 && data.error?.includes('not configured'));
-        } catch { return false; }
+            return !!data.openrouter;
+        } catch {
+            return false;
+        }
     },
 
     checkHackClubServerKey: async () => {
         try {
-            const response = await fetch('/api/hackclub', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: [{ role: 'user', content: 'test' }], apiKey: null })
-            });
+            const response = await fetch('/api/key-status');
+            if (!response.ok) return false;
             const data = await response.json();
-            return !(response.status === 400 && data.error?.includes('not configured'));
-        } catch { return false; }
+            return !!data.hackclub;
+        } catch {
+            return false;
+        }
     },
 
     extractQuestions: async (paperFile, insertFile, customApiKey, model, studentId) => {
-        const { provider, model: activeModel, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', customApiKey, model);
+        const { provider, model: activeModel, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', customApiKey, model, 'openrouter');
 
         const paperBase64 = await fileToBase64(paperFile);
         let insertBase64 = null;
@@ -558,7 +556,7 @@ export const AIService = {
     },
 
     extractInsertContent: async (insertFile, customApiKey, model, studentId) => {
-        const { provider, model: activeModel, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', customApiKey, model);
+        const { provider, model: activeModel, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', customApiKey, model, 'openrouter');
 
         const insertBase64 = await fileToBase64(insertFile);
         const content = [
@@ -570,7 +568,7 @@ export const AIService = {
     },
 
     parseMarkScheme: async (schemeFile, customApiKey, model, studentId) => {
-        const { provider, model: activeModel, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', customApiKey, model);
+        const { provider, model: activeModel, apiKey, customConfig } = await resolveConfig(studentId, 'parsing', customApiKey, model, 'openrouter');
 
         const schemeBase64 = await fileToBase64(schemeFile);
         const content = [
@@ -586,8 +584,8 @@ export const AIService = {
 
     markQuestion: async (question, answer, scheme, hackClubKey, customApiKey, model, studentId) => {
         // Resolve Grading Config
-        const gradingConfig = await resolveConfig(studentId, 'grading', hackClubKey, model);
-        const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model);
+        const gradingConfig = await resolveConfig(studentId, 'grading', hackClubKey, model, 'hackclub');
+        const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model, 'openrouter');
         // Note: hackClubKey passed as override for grading, customApiKey for tutor, preserving loose legacy mapping 
 
         const studentAnswerText = stringifyAnswer(answer);
@@ -646,7 +644,7 @@ export const AIService = {
     },
 
     getHint: async (question, scheme, hackClubKey, studentId) => {
-        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'hints', hackClubKey, null);
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'hints', hackClubKey, null, 'hackclub');
         const messages = [
             { role: "system", content: "Provide a short, exam-specific hint. Do NOT give the full answer." },
             { role: "user", content: `Question: ${question.question}\nContext: ${question.context?.content || 'N/A'}\nMark scheme: ${JSON.stringify(scheme)}` }
@@ -655,7 +653,7 @@ export const AIService = {
     },
 
     explainFeedback: async (question, answer, feedback, scheme, hackClubKey, studentId) => {
-        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'tutor', hackClubKey, null);
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'tutor', hackClubKey, null, 'hackclub');
         const messages = [
             { role: "system", content: "Explain the marking decision briefly in Markdown. Focus on what was missing relative to the mark scheme." },
             { role: "user", content: `Question: ${question.question}\nStudent answer: ${stringifyAnswer(answer)}\nFeedback: ${feedback.text}\nMark scheme: ${JSON.stringify(scheme)}\nScore: ${feedback.score}/${feedback.totalMarks}` }
@@ -664,7 +662,7 @@ export const AIService = {
     },
 
     followUp: async (question, answer, feedback, chatHistory, hackClubKey, studentId) => {
-        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'tutor', hackClubKey, null);
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'tutor', hackClubKey, null, 'hackclub');
         const historyMessages = chatHistory.map(m => ({ role: m.role, content: m.text }));
         const messages = [
             { role: "system", content: "Act as a friendly tutor. Keep replies concise and practical." },
@@ -675,7 +673,7 @@ export const AIService = {
     },
 
     generateStudyPlan: async (percentage, weaknessCounts, questionCount, hackClubKey, studentId) => {
-        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', hackClubKey, null);
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', hackClubKey, null, 'hackclub');
         const weaknessSummary = Object.entries(weaknessCounts).map(([k, v]) => `"${k}" (${v}x)`).join(', ');
         const messages = [
             { role: "system", content: "Create a concise 3-step revision plan in Markdown that targets the repeated weaknesses listed." },
@@ -685,7 +683,7 @@ export const AIService = {
     },
 
     generateWeeklySchedule: async (context, hackClubKey, studentId) => {
-        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', hackClubKey, null);
+        const { provider, model, apiKey, customConfig } = await resolveConfig(studentId, 'planning', hackClubKey, null, 'hackclub');
 
         const {
             subjects = [],

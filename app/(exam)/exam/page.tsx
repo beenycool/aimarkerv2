@@ -49,6 +49,7 @@ export default function GCSEMarkerApp() {
     const [hasSavedSession, setHasSavedSession] = useState(false);
     const [hasServerKey, setHasServerKey] = useState(true);
     const [hasHackClubServerKey, setHasHackClubServerKey] = useState(true);
+    const canUseHackClub = Boolean(hackClubApiKey || hasHackClubServerKey);
 
     // Loading states
     const [loadingFeedback, setLoadingFeedback] = useState(false);
@@ -323,8 +324,8 @@ export default function GCSEMarkerApp() {
 
         try {
             const scheme = exam.parsedMarkScheme[q.id];
-            const keyToUse = hackClubApiKey;
-            if (!keyToUse) throw new Error("Hack Club API key missing for marking.");
+            const keyToUse = hackClubApiKey || null;
+            if (!canUseHackClub) throw new Error("Hack Club API key missing for marking.");
 
             const feedback = await AIService.markQuestion(q, answer, scheme, keyToUse, customApiKey, null, studentId);
             exam.setQuestionFeedback(q.id, feedback);
@@ -389,9 +390,9 @@ export default function GCSEMarkerApp() {
         const q = exam.currentQuestion;
         setHintData({ loading: true, text: null });
         const scheme = exam.parsedMarkScheme[q.id];
-        const keyToUse = hackClubApiKey;
+        const keyToUse = hackClubApiKey || null;
 
-        if (!keyToUse) {
+        if (!canUseHackClub) {
             setHintData({ loading: false, text: buildHintFromScheme(q, scheme) });
             return;
         }
@@ -409,9 +410,9 @@ export default function GCSEMarkerApp() {
         const feedback = exam.feedbacks[q.id];
         setExplanationData({ loading: true, text: null });
         const scheme = exam.parsedMarkScheme[q.id];
-        const keyToUse = hackClubApiKey;
+        const keyToUse = hackClubApiKey || null;
 
-        if (!keyToUse) {
+        if (!canUseHackClub) {
             setExplanationData({ loading: false, text: buildExplanationFromFeedback(q, answer, feedback, scheme) });
             return;
         }
@@ -430,9 +431,9 @@ export default function GCSEMarkerApp() {
         setSendingFollowUp(true);
 
         const feedback = exam.feedbacks[q.id] || {};
-        const keyToUse = hackClubApiKey;
+        const keyToUse = hackClubApiKey || null;
 
-        if (!keyToUse) {
+        if (!canUseHackClub) {
             const response = buildFollowUpReply(userText, q, feedback);
             exam.addFollowUpMessage(q.id, { role: 'ai', text: response });
             setSendingFollowUp(false);
@@ -451,9 +452,9 @@ export default function GCSEMarkerApp() {
     const handleGenerateStudyPlan = async (percentage) => {
         setStudyPlan({ loading: true, content: null });
         const stats = exam.getSummaryStats();
-        const keyToUse = hackClubApiKey;
+        const keyToUse = hackClubApiKey || null;
 
-        if (!keyToUse) {
+        if (!canUseHackClub) {
             setStudyPlan({ loading: false, content: buildStudyPlan(percentage, stats.weaknessCounts) });
             return;
         }
@@ -503,27 +504,28 @@ export default function GCSEMarkerApp() {
                                 </div>
                             )}
 
-                            {!hasServerKey && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="apiKey">OpenRouter API Key</Label>
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Key className="h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <Input
-                                            id="apiKey"
-                                            type="password"
-                                            value={customApiKey}
-                                            onChange={(e) => updateApiKey(e.target.value)}
-                                            className="pl-10"
-                                            placeholder="Enter your OpenRouter API Key"
-                                        />
+                            <div className="space-y-2">
+                                <Label htmlFor="apiKey">OpenRouter API Key{hasServerKey ? ' (optional override)' : ''}</Label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Key className="h-4 w-4 text-muted-foreground" />
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Get your key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openrouter.ai/keys</a>
-                                    </p>
+                                    <Input
+                                        id="apiKey"
+                                        type="password"
+                                        value={customApiKey}
+                                        onChange={(e) => updateApiKey(e.target.value)}
+                                        className="pl-10"
+                                        placeholder="Enter your OpenRouter API Key"
+                                    />
                                 </div>
-                            )}
+                                <p className="text-xs text-muted-foreground">
+                                    {hasServerKey
+                                        ? "Server key detected. Add your own key if requests fail or you want to override."
+                                        : <>Get your key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openrouter.ai/keys</a></>
+                                    }
+                                </p>
+                            </div>
 
                             {!hasHackClubServerKey && (
                                 <div className="space-y-2">
