@@ -20,7 +20,7 @@ import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, 
 
 // Import custom hooks and services
 import useExamLogic from '../../hooks/useExamLogic';
-import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, stringifyAnswer } from '../../services/AIService';
+import { AIService, evaluateAnswerLocally, buildHintFromScheme, buildExplanationFromFeedback, buildFollowUpReply, buildStudyPlan, checkRegex, getMarkSchemeForQuestion, stringifyAnswer } from '../../services/AIService';
 import { PaperStorage } from '../../services/PaperStorage';
 import { useAuth, useStudentId } from '../../components/AuthProvider';
 import { ensureSubjectForStudent, logQuestionAttemptSafe } from '../../services/studentOS';
@@ -482,9 +482,9 @@ export default function GCSEMarkerApp() {
 
         setLoadingFeedback(true);
         setExplanationData({ loading: false, text: null });
+        const scheme = getMarkSchemeForQuestion(exam.parsedMarkScheme, q.id);
 
         try {
-            const scheme = exam.parsedMarkScheme[q.id];
             const keyToUse = hackClubApiKey || null;
             if (!canUseHackClub) throw new Error("Hack Club API key missing for marking.");
 
@@ -508,7 +508,6 @@ export default function GCSEMarkerApp() {
                 });
             }
         } catch (err) {
-            const scheme = exam.parsedMarkScheme[q.id];
             const fallback = evaluateAnswerLocally(q, answer, scheme);
             const message = err?.message?.includes("Hack Club") ? "Add a Hack Club API key for marking. Local estimate:" : "Marking failed. Local estimate:";
             exam.setQuestionFeedback(q.id, { score: Math.min(fallback.score || 0, q.marks), totalMarks: q.marks, text: `${message} ${fallback.text}`, rewrite: fallback.rewrite });
@@ -550,7 +549,7 @@ export default function GCSEMarkerApp() {
     const handleGetHint = async () => {
         const q = exam.currentQuestion;
         setHintData({ loading: true, text: null });
-        const scheme = exam.parsedMarkScheme[q.id];
+        const scheme = getMarkSchemeForQuestion(exam.parsedMarkScheme, q.id);
         const keyToUse = hackClubApiKey || null;
 
         if (!canUseHackClub) {
@@ -570,7 +569,7 @@ export default function GCSEMarkerApp() {
         const answer = exam.userAnswers[q.id];
         const feedback = exam.feedbacks[q.id];
         setExplanationData({ loading: true, text: null });
-        const scheme = exam.parsedMarkScheme[q.id];
+        const scheme = getMarkSchemeForQuestion(exam.parsedMarkScheme, q.id);
         const keyToUse = hackClubApiKey || null;
 
         if (!canUseHackClub) {

@@ -47,6 +47,7 @@ export const AI_FEATURE_DESCRIPTIONS = {
 
 // --- LOCAL HELPERS ---
 const normalizeText = (text) => (text || '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
+const normalizeQuestionId = (value) => (value || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export const stringifyAnswer = (answer) => {
     if (answer === undefined || answer === null) return '';
@@ -78,6 +79,19 @@ export const checkRegex = (regexStr, value) => {
         console.warn("Invalid Regex provided by AI:", regexStr, e);
         return false;
     }
+};
+
+export const getMarkSchemeForQuestion = (markScheme, questionId) => {
+    if (!markScheme || !questionId) return undefined;
+    if (Object.prototype.hasOwnProperty.call(markScheme, questionId)) return markScheme[questionId];
+    const normalizedTarget = normalizeQuestionId(questionId);
+    if (!normalizedTarget) return undefined;
+    for (const [key, value] of Object.entries(markScheme)) {
+        if (normalizeQuestionId(key) === normalizedTarget) {
+            return value;
+        }
+    }
+    return undefined;
 };
 
 const PROMPTS = {
