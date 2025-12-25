@@ -138,13 +138,15 @@ Rules:
 - Summarize marking points into concise "criteria" bullet strings.
 - Provide short model answers in "acceptableAnswers" when available.
 - Output JSON only, no markdown or extra text.`,
-    GRADER_SYSTEM: `You are a strict exam marker. Use ONLY the provided mark scheme.
+    GRADER_SYSTEM: `You are a fair exam marker. Use ONLY the provided mark scheme (and VERIFIED FACTS if provided).
 Return JSON only in this exact format:
 {"score": number, "primary_flaw": "short reason"}
 
 Rules:
+- Award marks for valid points even if phrased differently; accept reasonable synonyms.
+- Do NOT invent new criteria or demand extra detail beyond the scheme.
 - "score" must be an integer between 0 and the question's max marks.
-- "primary_flaw" should be a concise, specific reason for lost marks.
+- "primary_flaw" should be a concise, specific reason for lost marks tied to the scheme.
 - Output JSON only, no markdown or extra text.`,
     ORCHESTRATOR: `You are a marking assistant. Your goal is to decide if the student's answer needs FACTUAL verification using a web search to be marked correctly (e.g. specific dates, chemical properties, grade boundaries, or facts not in the mark scheme).
 
@@ -721,8 +723,11 @@ export const AIService = {
         }
 
         // STEP 1: Strict grader (often Kimi)
+        const graderSystemPrompt = level
+            ? `You are a fair ${level} exam marker. Use ONLY the provided mark scheme (and any VERIFIED FACTS provided). Award marks for valid points even if phrased differently, and do not invent extra criteria. Return JSON only in the required format.`
+            : PROMPTS.GRADER_SYSTEM;
         const graderMessages = [
-            { role: "system", content: level ? `You are a strict ${level} exam marker. Use ONLY the provided mark scheme and any VERIFIED FACTS provided.` : PROMPTS.GRADER_SYSTEM },
+            { role: "system", content: graderSystemPrompt },
             { role: "user", content: `Question (${question.marks} marks): ${question.question}\nScheme: ${JSON.stringify(scheme)}\nStudent: ${studentAnswerText}${searchContext}` }
         ];
 
@@ -741,8 +746,15 @@ export const AIService = {
         let parsedGrader = {};
         try { parsedGrader = JSON.parse(cleanedGrader); } catch (e) { }
 
-        const numericScore = Math.min(question.marks, Number(parsedGrader.score ?? 0));
-        const primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw ?? "Missing analysis or contextual insight.";
+        let numericScore = Number(parsedGrader.score);
+        let primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw;
+        if (!Number.isFinite(numericScore)) {
+            const local = evaluateAnswerLocally(question, answer, scheme);
+            numericScore = local.score;
+            primaryFlaw = local.score >= totalMarks ? "none" : "Missing key points from the mark scheme.";
+        }
+        numericScore = Math.min(question.marks, numericScore);
+        if (!primaryFlaw) primaryFlaw = "Missing key points from the mark scheme.";
 
         // STEP 2: Tutor (often Gemini) with personalization
         const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
@@ -750,7 +762,7 @@ export const AIService = {
             ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
             : '';
 
-        const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis. If relevant, reference the verified facts.`;
+        const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nMARK SCHEME: ${JSON.stringify(scheme)}\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw using ONLY points from the mark scheme.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis. If relevant, reference the verified facts.`;
 
         let tutorText = "";
         try {
