@@ -538,6 +538,16 @@ export default function GCSEMarkerApp() {
         else setPhase('summary');
     };
 
+    const handleRetryQuestion = () => {
+        const q = exam.currentQuestion;
+        if (!q) return;
+        exam.clearFeedbackForQuestion(q.id);
+        setLoadingFeedback(false);
+        setHintData({ loading: false, text: null });
+        setExplanationData({ loading: false, text: null });
+        setSendingFollowUp(false);
+    };
+
     const handleNext = () => {
         setHintData({ loading: false, text: null });
         setExplanationData({ loading: false, text: null });
@@ -991,6 +1001,7 @@ export default function GCSEMarkerApp() {
                                 onFollowUp={handleFollowUp}
                                 followUpChat={exam.followUpChats[question.id]}
                                 sendingFollowUp={sendingFollowUp}
+                                onRetry={handleRetryQuestion}
                             />
                         </div>
 

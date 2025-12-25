@@ -180,6 +180,27 @@ export const useExamLogic = () => {
         setQuoteDrafts(prev => ({ ...prev, [questionId]: "" }));
     }, [quoteDrafts, userAnswers]);
 
+    const clearFeedbackForQuestion = useCallback((questionId) => {
+        setFeedbacks(prev => {
+            if (!prev?.[questionId]) return prev;
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+        });
+        setFollowUpChats(prev => {
+            if (!prev?.[questionId]) return prev;
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+        });
+        setQuoteDrafts(prev => {
+            if (!prev?.[questionId]) return prev;
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+        });
+    }, [setFeedbacks, setFollowUpChats, setQuoteDrafts]);
+
     // Jump to specific question
     const jumpToQuestion = useCallback((index) => {
         setCurrentQIndex(index);
@@ -256,6 +277,7 @@ export const useExamLogic = () => {
         addFollowUpMessage,
         updateQuoteDraft,
         insertQuoteIntoAnswer,
+        clearFeedbackForQuestion,
         jumpToQuestion,
         getSummaryStats,
 

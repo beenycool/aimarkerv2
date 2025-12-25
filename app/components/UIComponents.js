@@ -2,7 +2,7 @@
 
 import React, { useState, memo } from 'react';
 import DOMPurify from 'dompurify';
-import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send } from 'lucide-react';
+import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw } from 'lucide-react';
 import katex from 'katex';
 
 
@@ -259,7 +259,7 @@ FileUploadZone.displayName = 'FileUploadZone';
 /**
  * Feedback Block Component - Shows marking results and follow-up chat
  */
-export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, explaining, questionId, onFollowUp, followUpChat, sendingFollowUp }) => {
+export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, explaining, questionId, onFollowUp, followUpChat, sendingFollowUp, onRetry }) => {
     const [followUpText, setFollowUpText] = useState("");
 
     if (!feedback) return null;
@@ -328,6 +328,12 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                     </div>
                 </div>
 
+                {onRetry && (
+                    <button onClick={onRetry} className="w-full mt-2 py-3 border border-border rounded-lg font-semibold flex items-center justify-center gap-2 text-sm text-foreground hover:bg-muted/30 transition-colors">
+                        <RotateCcw className="w-4 h-4" />
+                        Retry question
+                    </button>
+                )}
                 <button onClick={onNext} className="w-full mt-2 py-3 bg-primary hover:bg-orange-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors">
                     Next Question <ChevronRight className="w-4 h-4" />
                 </button>
