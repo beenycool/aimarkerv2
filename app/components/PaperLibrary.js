@@ -12,16 +12,24 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [error, setError] = useState(null);
 
     const fetchPapers = async () => {
         try {
             setLoading(true);
+            setError(null);
             const data = await PaperStorage.listPapers();
             // detailed sort: newest first
             const sorted = data.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
             setPapers(sorted);
         } catch (err) {
             console.error("Failed to load papers:", err);
+            const errorMsg = err.message || 'Unknown error';
+            if (errorMsg.includes('Failed to fetch') || errorMsg.includes('Network')) {
+                setError("Network error. Please check your connection and try again.");
+            } else {
+                setError("Failed to load papers. Please try again.");
+            }
         } finally {
             setLoading(false);
         }
@@ -135,6 +143,23 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                     />
                 </div>
             </div>
+
+            {/* Error Display */}
+            {error && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-destructive">{error}</p>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={fetchPapers}
+                            className="text-destructive hover:text-destructive"
+                        >
+                            Retry
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Content */}
             {papers.length === 0 ? (
