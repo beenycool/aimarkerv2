@@ -671,7 +671,36 @@ export const AIService = {
                 };
             }
 
-            // If wrong, we skip the Grading API (Kimi) and go straight to Tutor (Gemini)
+            // SPECIAL OPTIMIZATION: For 1 mark MCQs, provide immediate feedback without AI
+            if (totalMarks === 1) {
+                const numericScore = 0;
+                const correctAnswer = acceptable.length > 0 ? acceptable[0] : 'See mark scheme';
+                const primaryFlaw = "Incorrect multiple choice selection.";
+                
+                // Generate simple, clear feedback without AI
+                const feedbackText = acceptable.length > 0
+                    ? `**Score: ${numericScore}/${totalMarks}**
+
+Your answer: **${studentAnswerText}**
+Correct answer: **${correctAnswer}**
+
+For this multiple choice question, the correct option is **${correctAnswer}**. Review the question and the mark scheme to understand why this is the correct answer.`
+                    : `**Score: ${numericScore}/${totalMarks}**
+
+Your answer: **${studentAnswerText}**
+
+This answer is incorrect. Please review the mark scheme to identify the correct answer.`;
+
+                return {
+                    score: numericScore,
+                    totalMarks,
+                    text: feedbackText,
+                    rewrite: acceptable.length > 0 ? `**${correctAnswer}**` : studentAnswerText,
+                    primaryFlaw
+                };
+            }
+
+            // For multi-mark MCQs, we skip the Grading API (Kimi) and go straight to Tutor (Gemini)
             const numericScore = 0;
             const primaryFlaw = "Incorrect multiple choice selection.";
 
@@ -726,7 +755,7 @@ export const AIService = {
 
             if (cleanedQuery && cleanedQuery !== "NO_SEARCH") {
                 console.log("Orchestrator requested search:", cleanedQuery);
-                const searchRes = await searchWeb(cleanedQuery, { strategy: 'hackclub', count: 3 });
+                const searchRes = await searchWeb(cleanedQuery, { strategy: 'fallback', count: 3 });
                 if (searchRes.results?.length) {
                     searchContext = `\n\nVERIFIED FACTS (FROM WEB SEARCH - ${searchRes.source}):\n` +
                         searchRes.results.map(r => `- ${r.title}: ${r.snippet}`).join('\n');
