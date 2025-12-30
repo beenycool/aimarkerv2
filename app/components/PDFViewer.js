@@ -138,20 +138,23 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         const y = (e.clientY - rect.top) * (canvas.height / rect.height);
         
         if (annotationMode === 'draw') {
-            setCurrentStroke(prev => [...prev, { x, y }]);
-            // Draw current stroke
-            const ctx = canvas.getContext('2d');
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            if (currentStroke.length > 0) {
-                const lastPoint = currentStroke[currentStroke.length - 1];
-                ctx.beginPath();
-                ctx.moveTo(lastPoint.x, lastPoint.y);
-                ctx.lineTo(x, y);
-                ctx.stroke();
-            }
+            setCurrentStroke(prev => {
+                const newStroke = [...prev, { x, y }];
+                // Draw current stroke
+                const ctx = canvas.getContext('2d');
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                if (prev.length > 0) {
+                    const lastPoint = prev[prev.length - 1];
+                    ctx.beginPath();
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                }
+                return newStroke;
+            });
         }
     };
 
@@ -191,6 +194,20 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         redrawAnnotations();
     };
 
+    const handleMouseLeave = () => {
+        if (isDrawing) {
+            setIsDrawing(false);
+            if (annotationMode === 'draw' && currentStroke.length > 1) {
+                setAnnotations(prev => ({
+                    ...prev,
+                    [pageNumber]: [...(prev[pageNumber] || []), { type: 'draw', points: currentStroke }]
+                }));
+            }
+            setCurrentStroke([]);
+            redrawAnnotations();
+        }
+    };
+
     const clearAnnotationsOnPage = () => {
         setAnnotations(prev => ({
             ...prev,
@@ -208,7 +225,9 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         if (!isResizing) return;
         
         const handleMouseMove = (e) => {
-            const containerWidth = window.innerWidth;
+            // Use the parent container's width for accurate calculation
+            const parentContainer = containerRef.current?.parentElement?.parentElement;
+            const containerWidth = parentContainer ? parentContainer.offsetWidth : window.innerWidth;
             const newWidth = (e.clientX / containerWidth) * 100;
             setPdfViewerWidth(Math.max(30, Math.min(70, newWidth)));
         };
@@ -282,9 +301,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                         onMouseDown={handleMouseDown}
                         onMouseMove={handleMouseMove}
                         onMouseUp={handleMouseUp}
-                        onMouseLeave={() => {
-                            if (isDrawing) handleMouseUp({ clientX: 0, clientY: 0 });
-                        }}
+                        onMouseLeave={handleMouseLeave}
                     />
                 </div>
                 {!pdfDoc && <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground"><RefreshCw className="w-8 h-8 animate-spin mb-2" /><p>Loading PDF...</p></div>}
