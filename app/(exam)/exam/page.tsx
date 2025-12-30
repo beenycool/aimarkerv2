@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, BookOpen, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle
 } from 'lucide-react';
 
 // Import Shadcn UI components
@@ -796,7 +796,7 @@ export default function GCSEMarkerApp() {
                             size="lg"
                             className="w-full gap-2 font-semibold shadow-lg shadow-primary/20"
                         >
-                            <BookOpen className="w-4 h-4" />
+                            <GraduationCap className="w-4 h-4" />
                             Select Paper from Library
                         </Button>
                     </Card>
@@ -939,33 +939,6 @@ export default function GCSEMarkerApp() {
                                     value={exam.userAnswers[question.id]}
                                     onChange={onAnswerChange}
                                 />
-                                {question.type === 'long_text' && (
-                                    <Card className="mt-4 bg-secondary/50">
-                                        <CardContent className="p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-2 text-sm font-semibold">
-                                                    <BookOpen className="w-4 h-4 text-primary" /> Quote Scratchpad
-                                                </div>
-                                                <span className="text-xs text-muted-foreground">Paste lines from the PDF, then insert.</span>
-                                            </div>
-                                            <textarea
-                                                className="w-full h-20 p-3 rounded-md border bg-background focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-                                                placeholder="Copy a key quote or stage direction here..."
-                                                value={exam.quoteDrafts[question.id] || ''}
-                                                onChange={(e) => exam.updateQuoteDraft(question.id, e.target.value)}
-                                            />
-                                            <div className="flex justify-end mt-2">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => exam.insertQuoteIntoAnswer(question.id)}
-                                                    disabled={!exam.quoteDrafts[question.id]?.trim()}
-                                                >
-                                                    Insert Quote into Answer
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                )}
                             </div>
 
                             {!hasFeedback && (
