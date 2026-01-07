@@ -9,6 +9,7 @@
 
 import { getOrCreateSettings, DEFAULT_AI_PREFERENCES } from './studentOS';
 import { getMemoryContextForAI } from './memoryService';
+import { fetchWithRetry } from '../lib/retryUtils';
 
 // Feature descriptions for UI
 export const AI_FEATURE_DESCRIPTIONS = {
@@ -227,7 +228,7 @@ async function callOpenRouterAPI(messages, files = [], apiKey = null, model = nu
         // If 'files' arg is present and 'messages' is string, we use legacy prop.
     }
 
-    const response = await fetch('/api/openrouter', {
+    const response = await fetchWithRetry('/api/openrouter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -237,6 +238,11 @@ async function callOpenRouterAPI(messages, files = [], apiKey = null, model = nu
             temperature,
             maxTokens: 16384
         })
+    }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+            console.log(`Retrying OpenRouter API call (attempt ${attempt})...`);
+        }
     });
 
     const data = await response.json();
@@ -248,7 +254,7 @@ async function callOpenRouterAPI(messages, files = [], apiKey = null, model = nu
  * Call Hack Club via server-side API route
  */
 async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b") {
-    const response = await fetch('/api/hackclub', {
+    const response = await fetchWithRetry('/api/hackclub', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -257,6 +263,11 @@ async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b"
             model,
             temperature: 0.2
         })
+    }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+            console.log(`Retrying Hack Club API call (attempt ${attempt})...`);
+        }
     });
 
     const data = await response.json();
@@ -274,7 +285,7 @@ async function callGeminiAPI(messages, apiKey = null, model = "gemini-2.0-flash-
         formattedMessages = [{ role: 'user', content: messages }];
     }
 
-    const response = await fetch('/api/gemini', {
+    const response = await fetchWithRetry('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -283,6 +294,11 @@ async function callGeminiAPI(messages, apiKey = null, model = "gemini-2.0-flash-
             model,
             temperature: 0.2
         })
+    }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+            console.log(`Retrying Gemini API call (attempt ${attempt})...`);
+        }
     });
 
     const data = await response.json();
@@ -299,7 +315,7 @@ async function callCustomOpenAIAPI(messages, endpoint, apiKey, model) {
         formattedMessages = [{ role: 'user', content: messages }];
     }
 
-    const response = await fetch('/api/custom_openai', {
+    const response = await fetchWithRetry('/api/custom_openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -309,6 +325,11 @@ async function callCustomOpenAIAPI(messages, endpoint, apiKey, model) {
             model,
             temperature: 0.2
         })
+    }, {
+        maxAttempts: 3,
+        onRetry: (error, attempt) => {
+            console.log(`Retrying Custom OpenAI API call (attempt ${attempt})...`);
+        }
     });
 
     const data = await response.json();
@@ -466,7 +487,16 @@ export async function searchWeb(query, options = {}) {
             headers['x-hackclub-search-key'] = hackclubSearchKey;
         }
 
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&count=${count}`, { headers });
+        const res = await fetchWithRetry(
+            `/api/search?q=${encodeURIComponent(query)}&count=${count}`, 
+            { headers },
+            { 
+                maxAttempts: 3,
+                onRetry: (error, attempt) => {
+                    console.log(`Retrying Hack Club Search (attempt ${attempt})...`);
+                }
+            }
+        );
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             throw new Error(err.error || `Hack Club Search API Error ${res.status}`);
@@ -571,12 +601,9 @@ export async function searchWeb(query, options = {}) {
 
 
 export const AIService = {
-    checkServerKey: async () => { /* ... existing ... */ return true; }, // keeping implementations light here, actual checks should be done same as before
-    // (Re-implementing checkServerKeys below properly)
-
     checkServerKey: async () => {
         try {
-            const response = await fetch('/api/key-status');
+            const response = await fetchWithRetry('/api/key-status', {}, { maxAttempts: 3 });
             if (!response.ok) return false;
             const data = await response.json();
             return !!data.openrouter;
@@ -587,7 +614,7 @@ export const AIService = {
 
     checkHackClubServerKey: async () => {
         try {
-            const response = await fetch('/api/key-status');
+            const response = await fetchWithRetry('/api/key-status', {}, { maxAttempts: 3 });
             if (!response.ok) return false;
             const data = await response.json();
             return !!data.hackclub;
