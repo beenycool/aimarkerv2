@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
-import { TableIcon, BarChart2, PenTool, Trash2, Calculator } from 'lucide-react';
+import { TableIcon, BarChart2, PenTool, Trash2, Calculator, Pencil, Type, ImageOff } from 'lucide-react';
 
 // Math Keyboard Component
 const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
@@ -32,13 +32,20 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
 MathKeyboard.displayName = 'MathKeyboard';
 
 // Graph Canvas Component
-const GraphCanvas = memo(({ config, value, onChange }) => {
+const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBackground }) => {
     const canvasRef = useRef(null);
     const [tool, setTool] = useState('point');
     const [isDragging, setIsDragging] = useState(false);
     const [startPoint, setStartPoint] = useState(null);
+    const [isSketching, setIsSketching] = useState(false);
+    const currentPathRef = useRef([]);
+    const [background, setBackground] = useState(null);
 
-    const state = value || { points: [], lines: [] };
+    const state = value || { points: [], lines: [], labels: [], paths: [] };
+    const points = state.points || [];
+    const lines = state.lines || [];
+    const labels = state.labels || [];
+    const paths = state.paths || [];
     const xMin = config?.xMin ?? 0;
     const xMax = (config?.xMax ?? 10) > xMin ? (config?.xMax ?? 10) : xMin + 1;
     const yMin = config?.yMin ?? 0;
@@ -46,6 +53,16 @@ const GraphCanvas = memo(({ config, value, onChange }) => {
     const xLabel = config?.xLabel ?? "X Axis";
     const yLabel = config?.yLabel ?? "Y Axis";
     const width = 600, height = 400, padding = 50;
+
+    useEffect(() => {
+        if (!backgroundImage) {
+            setBackground(null);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => setBackground(img);
+        img.src = backgroundImage;
+    }, [backgroundImage]);
 
     const draw = useCallback(() => {
         const canvas = canvasRef.current;
@@ -60,6 +77,22 @@ const GraphCanvas = memo(({ config, value, onChange }) => {
         const graphHeight = height - 2 * padding;
         const toCanvasX = (val) => padding + ((val - xMin) / (xMax - xMin)) * graphWidth;
         const toCanvasY = (val) => height - padding - ((val - yMin) / (yMax - yMin)) * graphHeight;
+
+        if (background) {
+            const imageAspect = background.width / background.height;
+            let drawWidth = graphWidth;
+            let drawHeight = graphWidth / imageAspect;
+            if (drawHeight > graphHeight) {
+                drawHeight = graphHeight;
+                drawWidth = graphHeight * imageAspect;
+            }
+            const offsetX = padding + (graphWidth - drawWidth) / 2;
+            const offsetY = padding + (graphHeight - drawHeight) / 2;
+            ctx.save();
+            ctx.globalAlpha = 0.35;
+            ctx.drawImage(background, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.restore();
+        }
 
         // Grid
         ctx.strokeStyle = '#e2e8f0';
@@ -87,17 +120,39 @@ const GraphCanvas = memo(({ config, value, onChange }) => {
         // Lines
         ctx.strokeStyle = '#2563eb';
         ctx.lineWidth = 2;
-        state.lines.forEach(line => { ctx.beginPath(); ctx.moveTo(line.x1, line.y1); ctx.lineTo(line.x2, line.y2); ctx.stroke(); });
+        paths.forEach(path => {
+            if (!path || path.length < 2) return;
+            ctx.beginPath();
+            path.forEach((point, index) => {
+                if (index === 0) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+            });
+            ctx.stroke();
+        });
+
+        lines.forEach(line => { ctx.beginPath(); ctx.moveTo(line.x1, line.y1); ctx.lineTo(line.x2, line.y2); ctx.stroke(); });
 
         // Points
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2;
-        state.points.forEach(p => {
+        points.forEach(p => {
             const cx = toCanvasX(p.x), cy = toCanvasY(p.y), size = 4;
             ctx.beginPath(); ctx.moveTo(cx - size, cy - size); ctx.lineTo(cx + size, cy + size);
             ctx.moveTo(cx + size, cy - size); ctx.lineTo(cx - size, cy + size); ctx.stroke();
         });
-    }, [state, xMin, xMax, yMin, yMax, xLabel, yLabel]);
+
+        if (labels.length > 0) {
+            ctx.fillStyle = '#111827';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            labels.forEach(label => {
+                const lx = toCanvasX(label.x);
+                const ly = toCanvasY(label.y);
+                ctx.fillText(label.text, lx + 6, ly - 6);
+            });
+        }
+    }, [points, lines, labels, paths, xMin, xMax, yMin, yMax, xLabel, yLabel, background]);
 
     useEffect(() => { draw(); }, [draw]);
 
@@ -112,8 +167,14 @@ const GraphCanvas = memo(({ config, value, onChange }) => {
     const handleMouseDown = (e) => {
         const coords = getGraphCoordinates(e);
         if (coords.cx < padding || coords.cx > width - padding || coords.cy < padding || coords.cy > height - padding) return;
-        if (tool === 'point') { onChange({ ...state, points: [...state.points, { x: coords.x, y: coords.y }] }); }
+        if (tool === 'point') { onChange({ ...state, points: [...points, { x: coords.x, y: coords.y }] }); }
         else if (tool === 'line') { setIsDragging(true); setStartPoint({ cx: coords.cx, cy: coords.cy }); }
+        else if (tool === 'sketch') { setIsSketching(true); currentPathRef.current = [{ x: coords.cx, y: coords.cy }]; }
+        else if (tool === 'label') {
+            const labelText = typeof window !== 'undefined' ? window.prompt('Label text:') : '';
+            const trimmed = labelText ? labelText.trim() : '';
+            if (trimmed) onChange({ ...state, labels: [...labels, { x: coords.x, y: coords.y, text: trimmed }] });
+        }
     };
 
     const handleMouseMove = (e) => {
@@ -129,9 +190,46 @@ const GraphCanvas = memo(({ config, value, onChange }) => {
     const handleMouseUp = (e) => {
         if (isDragging && tool === 'line') {
             const coords = getGraphCoordinates(e);
-            onChange({ ...state, lines: [...state.lines, { x1: startPoint.cx, y1: startPoint.cy, x2: coords.cx, y2: coords.cy }] });
+            onChange({ ...state, lines: [...lines, { x1: startPoint.cx, y1: startPoint.cy, x2: coords.cx, y2: coords.cy }] });
         }
-        setIsDragging(false); setStartPoint(null); draw();
+        if (isSketching && tool === 'sketch') {
+            if (currentPathRef.current.length > 1) {
+                onChange({ ...state, paths: [...paths, currentPathRef.current] });
+            }
+        }
+        setIsDragging(false);
+        setIsSketching(false);
+        setStartPoint(null);
+        currentPathRef.current = [];
+        draw();
+    };
+
+    const handleSketchMove = (e) => {
+        if (!isSketching || tool !== 'sketch') return;
+        const coords = getGraphCoordinates(e);
+        currentPathRef.current = [...currentPathRef.current, { x: coords.cx, y: coords.cy }];
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        draw();
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        currentPathRef.current.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+        });
+        ctx.stroke();
+    };
+
+    const handleMouseLeave = () => {
+        if (isSketching && tool === 'sketch' && currentPathRef.current.length > 1) {
+            onChange({ ...state, paths: [...paths, currentPathRef.current] });
+        }
+        setIsDragging(false);
+        setIsSketching(false);
+        setStartPoint(null);
+        currentPathRef.current = [];
+        draw();
     };
 
     return (
@@ -143,11 +241,22 @@ const GraphCanvas = memo(({ config, value, onChange }) => {
                 <button onClick={() => setTool('line')} className={`p-2 rounded ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
                     <div className="flex items-center gap-1 text-xs font-bold"><PenTool className="w-4 h-4" /> Line</div>
                 </button>
+                <button onClick={() => setTool('sketch')} className={`p-2 rounded ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                    <div className="flex items-center gap-1 text-xs font-bold"><Pencil className="w-4 h-4" /> Sketch</div>
+                </button>
+                <button onClick={() => setTool('label')} className={`p-2 rounded ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                    <div className="flex items-center gap-1 text-xs font-bold"><Type className="w-4 h-4" /> Label</div>
+                </button>
                 <div className="h-6 w-px bg-border mx-2"></div>
-                <button onClick={() => onChange({ points: [], lines: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
+                {backgroundImage && onClearBackground && (
+                    <button onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground" title="Remove figure background">
+                        <ImageOff className="w-4 h-4" />
+                    </button>
+                )}
+                <button onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
             </div>
             <div className="border border-border rounded-lg overflow-hidden shadow-inner bg-white self-start">
-                <canvas ref={canvasRef} width={width} height={height} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={() => setIsDragging(false)} className="cursor-crosshair block" />
+                <canvas ref={canvasRef} width={width} height={height} onMouseDown={handleMouseDown} onMouseMove={(e) => { handleMouseMove(e); handleSketchMove(e); }} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave} className="cursor-crosshair block" />
             </div>
         </div>
     );
@@ -158,12 +267,21 @@ GraphCanvas.displayName = 'GraphCanvas';
  * AdaptiveInput - Renders the appropriate input type based on question type
  * IMPORTANT: Use key={question.id} when rendering this component to prevent state bleeding
  */
-const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange }) => {
+const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }) => {
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+    const [figureBackground, setFigureBackground] = useState(null);
 
     const handleSymbolInsert = useCallback((symbol) => {
         onChange((value || "") + symbol);
     }, [value, onChange]);
+
+    useEffect(() => {
+        if (!graphFigure) {
+            setFigureBackground(null);
+            return;
+        }
+        setFigureBackground(graphFigure);
+    }, [graphFigure]);
 
     if (type === 'multiple_choice') {
         return (
@@ -231,7 +349,13 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
         return (
             <div className="bg-card p-4 rounded-xl border border-border">
                 <div className="mb-2 flex items-center gap-2 text-primary font-bold text-sm"><BarChart2 className="w-4 h-4" /> Interactive Graph Paper</div>
-                <GraphCanvas config={graphConfig} value={value} onChange={onChange} />
+                <GraphCanvas
+                    config={graphConfig}
+                    value={value}
+                    onChange={onChange}
+                    backgroundImage={figureBackground}
+                    onClearBackground={() => setFigureBackground(null)}
+                />
             </div>
         );
     }
