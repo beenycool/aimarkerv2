@@ -338,6 +338,9 @@ export async function callAI(provider, messages, model, options = {}) {
         case 'custom_openai':
             const { openai_endpoint, openai_key } = customConfig;
             return callCustomOpenAIAPI(messages, openai_endpoint, openai_key, model);
+        case 'perplexity':
+            // Perplexity is accessed via OpenRouter
+            return callOpenRouterAPI(messages, files, apiKey, model, temperature);
         default:
             throw new Error(`Unknown provider: ${provider}`);
     }
@@ -746,27 +749,52 @@ This answer is incorrect. Please review the mark scheme to identify the correct 
 
         // STEP 0: Orchestrator & Search (Fact Verification)
         let searchContext = "";
-        try {
-            const orchestMsg = [
-                { role: "system", content: "You are a helpful marking assistant." },
-                { role: "user", content: PROMPTS.ORCHESTRATOR.replace("{question}", question.question).replace("{answer}", studentAnswerText) }
-            ];
-            const searchQuery = await callAI(orchestratorConfig.provider, orchestMsg, orchestratorConfig.model, {
-                apiKey: orchestratorConfig.apiKey,
-                customConfig: orchestratorConfig.customConfig
-            });
-            const cleanedQuery = cleanGeminiJSON(searchQuery).replace(/["']/g, "").trim();
 
-            if (cleanedQuery && cleanedQuery !== "NO_SEARCH") {
-                console.log("Orchestrator requested search:", cleanedQuery);
-                const searchRes = await searchWeb(cleanedQuery, { strategy: 'fallback', count: 3 });
-                if (searchRes.results?.length) {
-                    searchContext = `\n\nVERIFIED FACTS (FROM WEB SEARCH - ${searchRes.source}):\n` +
-                        searchRes.results.map(r => `- ${r.title}: ${r.snippet}`).join('\n');
+        // Check if Perplexity is the selected verification provider (Direct Verification)
+        if (orchestratorConfig.provider === 'perplexity') {
+            try {
+                console.log("Using Direct Perplexity Verification");
+                const perplexityMessages = [
+                    { role: "system", content: "You are a helpful fact-checker for academic exams. Verify the facts in the student's answer against the question. Return a concise summary of any factual errors or confirm the facts are correct." },
+                    { role: "user", content: `Question: "${question.question}"\nStudent Answer: "${studentAnswerText}"` }
+                ];
+
+                const perplexityResponse = await callAI('perplexity', perplexityMessages, orchestratorConfig.model, {
+                    apiKey: orchestratorConfig.apiKey,
+                    customConfig: orchestratorConfig.customConfig
+                });
+
+                if (perplexityResponse) {
+                    searchContext = `\n\nVERIFIED FACTS (Perplexity): ${perplexityResponse}`;
                 }
+            } catch (err) {
+                console.warn("Perplexity verification failed:", err);
             }
-        } catch (err) {
-            console.warn("Orchestrator check failed, proceeding without search:", err);
+        } else {
+            // Standard Orchestrator Logic (Decide -> Search)
+            try {
+                const orchestMsg = [
+                    { role: "system", content: "You are a helpful marking assistant." },
+                    { role: "user", content: PROMPTS.ORCHESTRATOR.replace("{question}", question.question).replace("{answer}", studentAnswerText) }
+                ];
+                const searchQuery = await callAI(orchestratorConfig.provider, orchestMsg, orchestratorConfig.model, {
+                    apiKey: orchestratorConfig.apiKey,
+                    customConfig: orchestratorConfig.customConfig
+                });
+                const cleanedQuery = cleanGeminiJSON(searchQuery).replace(/["']/g, "").trim();
+
+                if (cleanedQuery && cleanedQuery !== "NO_SEARCH") {
+                    console.log("Orchestrator requested search:", cleanedQuery);
+                    // Use 'fallback' strategy which tries Hack Club first, unless configured otherwise
+                    const searchRes = await searchWeb(cleanedQuery, { strategy: 'fallback', count: 3 });
+                    if (searchRes.results?.length) {
+                        searchContext = `\n\nVERIFIED FACTS (FROM WEB SEARCH - ${searchRes.source}):\n` +
+                            searchRes.results.map(r => `- ${r.title}: ${r.snippet}`).join('\n');
+                    }
+                }
+            } catch (err) {
+                console.warn("Orchestrator check failed, proceeding without search:", err);
+            }
         }
 
         // STEP 1: Generous grader (often Kimi)

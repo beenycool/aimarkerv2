@@ -63,7 +63,7 @@ import {
 // Types for AI preferences
 interface FeatureConfig {
     enabled: boolean;
-    provider: 'openrouter' | 'hackclub' | 'gemini' | 'custom_openai';
+    provider: 'openrouter' | 'hackclub' | 'gemini' | 'custom_openai' | 'perplexity';
     model: string;
 }
 
@@ -240,7 +240,8 @@ const FEATURES = {
             openrouter: 'google/gemini-2.0-flash-001',
             hackclub: 'qwen/qwen3-32b',
             gemini: 'gemini-2.0-flash-001',
-            custom_openai: 'local-model'
+            custom_openai: 'local-model',
+            perplexity: 'perplexity/sonar-pro'
         }
     }
 };
@@ -305,9 +306,10 @@ export default function AIConfigTable({
         onChange(newPrefs);
     };
 
-    const handleProviderChange = (featureKey: keyof AIPreferences, provider: 'openrouter' | 'hackclub' | 'gemini' | 'custom_openai') => {
+    const handleProviderChange = (featureKey: keyof AIPreferences, provider: 'openrouter' | 'hackclub' | 'gemini' | 'custom_openai' | 'perplexity') => {
         const feature = FEATURES[featureKey];
-        const defaultModel = feature.defaultModel[provider];
+        // @ts-ignore
+        const defaultModel = feature.defaultModel[provider] || '';
 
         const newPrefs = {
             ...mergedPrefs,
@@ -520,6 +522,14 @@ export default function AIConfigTable({
                                                         <SelectItem value="hackclub"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500" /> Hack Club</span></SelectItem>
                                                         <SelectItem value="gemini"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-indigo-500" /> Gemini (Direct)</span></SelectItem>
                                                         <SelectItem value="custom_openai"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-slate-500" /> Custom OpenAI</span></SelectItem>
+
+                                                        {featureKey === 'verification' && (
+                                                            <SelectItem value="perplexity">
+                                                                <span className="flex items-center gap-2">
+                                                                    <span className="w-2 h-2 rounded-full bg-teal-500" /> Perplexity
+                                                                </span>
+                                                            </SelectItem>
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                                 {showVisionWarning && (
@@ -596,98 +606,6 @@ export default function AIConfigTable({
                             </div>
                         )}
 
-                        {/* Custom OpenAI settings */}
-                        {Object.values(mergedPrefs).some(p => p.provider === 'custom_openai') && (
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="custom-endpoint" className="text-xs">Custom OpenAI Endpoint</Label>
-                                    <Input
-                                        id="custom-endpoint"
-                                        className="h-8 text-sm"
-                                        placeholder="http://localhost:11434/v1"
-                                        value={customAPIConfig.openai_endpoint || ''}
-                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_endpoint: e.target.value })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="custom-key" className="text-xs">Custom API Key (Optional)</Label>
-                                    <Input
-                                        id="custom-key"
-                                        type="password"
-                                        className="h-8 text-sm"
-                                        placeholder="sk-..."
-                                        value={customAPIConfig.openai_key || ''}
-                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_key: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Search Provider Configuration */}
-                <Card className="border-muted bg-muted/30">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <Search className="h-4 w-4 text-primary" />
-                            Web Search (Topic Verification)
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                            Configure how the AI verifies syllabus topics using web search. Used for schedule planning.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* Search Strategy Selector */}
-                        <div className="space-y-2">
-                            <Label htmlFor="search-strategy" className="text-xs">Search Provider Strategy</Label>
-                            <Select
-                                value={customAPIConfig.search_strategy || 'fallback'}
-                                onValueChange={(v) => onCustomAPIConfigChange({
-                                    ...customAPIConfig,
-                                    search_strategy: v as 'hackclub' | 'perplexity' | 'both' | 'fallback'
-                                })}
-                            >
-                                <SelectTrigger id="search-strategy" className="h-9 text-sm">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="fallback">
-                                        <span className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-green-500" />
-                                            Auto (Hack Club → Perplexity fallback)
-                                        </span>
-                                    </SelectItem>
-                                    <SelectItem value="hackclub">
-                                        <span className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-orange-500" />
-                                            Hack Club Search Only (Free)
-                                        </span>
-                                    </SelectItem>
-                                    <SelectItem value="perplexity">
-                                        <span className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-purple-500" />
-                                            Perplexity Only (via OpenRouter)
-                                        </span>
-                                    </SelectItem>
-                                    <SelectItem value="both">
-                                        <span className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500" />
-                                            Both (Combined Results)
-                                        </span>
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p className="text-[11px] text-muted-foreground">
-                                <strong>Auto:</strong> Tries Hack Club Search first, falls back to Perplexity if unavailable.
-                                <br />
-                                <strong>Hack Club:</strong> Free search via search.hackclub.com (Brave-powered).
-                                <br />
-                                <strong>Perplexity:</strong> AI-powered search via OpenRouter (may incur costs).
-                                <br />
-                                <strong>Both:</strong> Combines results from both for maximum accuracy.
-                            </p>
-                        </div>
-
                         {/* Hack Club Search API Key Input */}
                         <div className="space-y-2">
                             <Label htmlFor="hackclub-search-key" className="text-xs flex items-center gap-2">
@@ -718,14 +636,30 @@ export default function AIConfigTable({
                             )}
                         </div>
 
-                        {/* Cost Warning */}
-                        {(customAPIConfig.search_strategy === 'perplexity' || customAPIConfig.search_strategy === 'both') && (
-                            <div className="flex items-start gap-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                <p className="text-xs text-amber-700 dark:text-amber-400">
-                                    <strong>Cost Notice:</strong> Perplexity search via OpenRouter may incur API charges.
-                                    Consider using "Hack Club Only" or "Auto" mode to minimize costs.
-                                </p>
+                        {/* Custom OpenAI settings */}
+                        {Object.values(mergedPrefs).some(p => p.provider === 'custom_openai') && (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="custom-endpoint" className="text-xs">Custom OpenAI Endpoint</Label>
+                                    <Input
+                                        id="custom-endpoint"
+                                        className="h-8 text-sm"
+                                        placeholder="http://localhost:11434/v1"
+                                        value={customAPIConfig.openai_endpoint || ''}
+                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_endpoint: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="custom-key" className="text-xs">Custom API Key (Optional)</Label>
+                                    <Input
+                                        id="custom-key"
+                                        type="password"
+                                        className="h-8 text-sm"
+                                        placeholder="sk-..."
+                                        value={customAPIConfig.openai_key || ''}
+                                        onChange={(e) => onCustomAPIConfigChange({ ...customAPIConfig, openai_key: e.target.value })}
+                                    />
+                                </div>
                             </div>
                         )}
                     </CardContent>
