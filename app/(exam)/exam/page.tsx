@@ -63,6 +63,8 @@ export default function GCSEMarkerApp() {
 
     // Use custom exam logic hook
     const exam = useExamLogic();
+    const currentQuestion = exam.currentQuestion;
+    const handleAnswerChange = exam.handleAnswerChange;
 
     // Load API keys from localStorage, check server keys
     useEffect(() => {
@@ -166,33 +168,15 @@ export default function GCSEMarkerApp() {
         }
     }, [exam.currentQuestion, exam.handleAnswerChange]);
 
+    const BRIGHTNESS_THRESHOLD = 140;
+    const POINT_GRID_X = 120;
+    const POINT_GRID_Y = 80;
+
     const handleCopyFigureToGraph = useCallback(async () => {
-        const q = exam.currentQuestion;
+        const q = currentQuestion;
         if (!q?.figurePage || q.type !== 'graph_drawing' || !files.paper) return;
         try {
-            if (!window.pdfjsLib) {
-                const existingScript = document.querySelector('script[data-pdfjs]');
-                if (existingScript) {
-                    await new Promise((resolve, reject) => {
-                        existingScript.addEventListener('load', resolve, { once: true });
-                        existingScript.addEventListener('error', reject, { once: true });
-                    });
-                } else {
-                    const script = document.createElement('script');
-                    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-                    script.async = true;
-                    script.dataset.pdfjs = 'true';
-                    await new Promise((resolve, reject) => {
-                        script.onload = resolve;
-                        script.onerror = reject;
-                        document.body.appendChild(script);
-                    });
-                }
-                if (window.pdfjsLib) {
-                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-                }
-            }
-            if (!window.pdfjsLib) return;
+            if (!window.pdfjsLib?.getDocument) return;
             const page = await window.pdfjsLib.getDocument(await files.paper.arrayBuffer()).promise.then(doc => doc.getPage(q.figurePage));
             const viewport = page.getViewport({ scale: 2.0 });
             const canvas = document.createElement('canvas');
@@ -204,9 +188,9 @@ export default function GCSEMarkerApp() {
             const fillPoints = [];
             if (canvas.width && canvas.height && q.graphConfig) {
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-                const threshold = 140;
-                const stepX = Math.max(1, Math.round(canvas.width / 120));
-                const stepY = Math.max(1, Math.round(canvas.height / 80));
+                const threshold = BRIGHTNESS_THRESHOLD;
+                const stepX = Math.max(1, Math.round(canvas.width / POINT_GRID_X));
+                const stepY = Math.max(1, Math.round(canvas.height / POINT_GRID_Y));
                 const seen = new Set();
                 for (let y = 0; y < canvas.height; y += stepY) {
                     for (let x = 0; x < canvas.width; x += stepX) {
@@ -235,14 +219,14 @@ export default function GCSEMarkerApp() {
                     x: xMin + (x / canvas.width) * (xMax - xMin),
                     y: yMax - (y / canvas.height) * (yMax - yMin)
                 }));
-                exam.handleAnswerChange(q.id, {
+                handleAnswerChange(q.id, {
                     points,
                     lines: [],
                     labels: [],
                     paths: []
                 });
             } else {
-                exam.handleAnswerChange(q.id, {
+                handleAnswerChange(q.id, {
                     points: [],
                     lines: [],
                     labels: [],
@@ -252,7 +236,7 @@ export default function GCSEMarkerApp() {
         } catch (err) {
             console.error('Failed to copy figure:', err);
         }
-    }, [exam, files.paper]);
+    }, [currentQuestion, files.paper, handleAnswerChange]);
 
     useEffect(() => {
         if (phase === 'exam') {
@@ -261,10 +245,11 @@ export default function GCSEMarkerApp() {
     }, [phase, exam.currentQuestion?.id]);
 
     useEffect(() => {
+        const question = currentQuestion;
         if (phase !== 'exam') return;
-        if (exam.currentQuestion?.type !== 'graph_drawing') return;
-        if (!exam.currentQuestion?.figurePage) return;
-        const existing = exam.currentQuestion?.id ? exam.userAnswers[exam.currentQuestion.id] : null;
+        if (question?.type !== 'graph_drawing') return;
+        if (!question?.figurePage) return;
+        const existing = question?.id ? exam.userAnswers[question.id] : null;
         const hasExisting = existing && (
             (existing.points?.length > 0) ||
             (existing.lines?.length > 0) ||
@@ -272,12 +257,14 @@ export default function GCSEMarkerApp() {
             (existing.paths?.length > 0)
         );
         if (graphFigure || hasExisting) return;
+        if (!window.pdfjsLib?.getDocument) {
+            const retry = setTimeout(() => handleCopyFigureToGraph(), 400);
+            return () => clearTimeout(retry);
+        }
         handleCopyFigureToGraph();
     }, [
         phase,
-        exam.currentQuestion?.id,
-        exam.currentQuestion?.type,
-        exam.currentQuestion?.figurePage,
+        currentQuestion,
         exam.userAnswers,
         graphFigure,
         handleCopyFigureToGraph

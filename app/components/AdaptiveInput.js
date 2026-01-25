@@ -39,6 +39,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
     const [startPoint, setStartPoint] = useState(null);
     const [isSketching, setIsSketching] = useState(false);
     const currentPathRef = useRef([]);
+    const [labelText, setLabelText] = useState('');
     const [background, setBackground] = useState(null);
 
     const state = value || { points: [], lines: [], labels: [], paths: [] };
@@ -171,8 +172,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         else if (tool === 'line') { setIsDragging(true); setStartPoint({ cx: coords.cx, cy: coords.cy }); }
         else if (tool === 'sketch') { setIsSketching(true); currentPathRef.current = [{ x: coords.cx, y: coords.cy }]; }
         else if (tool === 'label') {
-            const labelText = typeof window !== 'undefined' ? window.prompt('Label text:') : '';
-            const trimmed = labelText ? labelText.trim() : '';
+            const trimmed = labelText.trim();
             if (trimmed) onChange({ ...state, labels: [...labels, { x: coords.x, y: coords.y, text: trimmed }] });
         }
     };
@@ -247,6 +247,15 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 <button onClick={() => setTool('label')} className={`p-2 rounded ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
                     <div className="flex items-center gap-1 text-xs font-bold"><Type className="w-4 h-4" /> Label</div>
                 </button>
+                {tool === 'label' && (
+                    <input
+                        type="text"
+                        value={labelText}
+                        onChange={(e) => setLabelText(e.target.value)}
+                        placeholder="Label text"
+                        className="h-8 w-32 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                )}
                 <div className="h-6 w-px bg-border mx-2"></div>
                 {backgroundImage && onClearBackground && (
                     <button onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground" title="Remove figure background">
