@@ -57,7 +57,7 @@ export const stringifyAnswer = (answer) => {
         return answer.join('\n');
     }
     if (typeof answer === 'object' && answer.points) {
-        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} `;
+        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} labels ${JSON.stringify(answer.labels || [])} paths ${JSON.stringify(answer.paths || [])} `;
     }
     return JSON.stringify(answer);
 };
@@ -129,7 +129,7 @@ Return JSON only with this shape:
 Rules:
 - Use the exact question numbering from the paper (e.g., "1", "1a", "2bii") with no extra punctuation.
 - Each sub-question is its own entry in "questions".
-- Infer "type" from the question wording; use "list" for multi-point answers, "table" for table completion, "graph_drawing" for drawing/plotting tasks.
+- Infer "type" from the question wording; use "list" for multi-point answers, "table" for table completion, "graph_drawing" for drawing/plotting/sketching/labeling on graphs or figures.
 - Include only relevant fields for each question; omit fields that do not apply.
 - Output JSON only, no markdown or extra text.`,
     MARK_SCHEME: `You are a mark scheme parser. Extract the mark scheme for each question from the PDF.

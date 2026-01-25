@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle, Copy
 } from 'lucide-react';
 
 // Import Shadcn UI components
@@ -59,9 +59,12 @@ export default function GCSEMarkerApp() {
     const [sendingFollowUp, setSendingFollowUp] = useState(false);
     const [timeElapsed, setTimeElapsed] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
+    const [graphFigure, setGraphFigure] = useState(null);
 
     // Use custom exam logic hook
     const exam = useExamLogic();
+    const currentQuestion = exam.currentQuestion;
+    const handleAnswerChange = exam.handleAnswerChange;
 
     // Load API keys from localStorage, check server keys
     useEffect(() => {
@@ -164,6 +167,108 @@ export default function GCSEMarkerApp() {
             exam.handleAnswerChange(exam.currentQuestion.id, val);
         }
     }, [exam.currentQuestion, exam.handleAnswerChange]);
+
+    const BRIGHTNESS_THRESHOLD = 140;
+    const POINT_GRID_X = 120;
+    const POINT_GRID_Y = 80;
+
+    const handleCopyFigureToGraph = useCallback(async () => {
+        const q = currentQuestion;
+        if (!q?.figurePage || q.type !== 'graph_drawing' || !files.paper) return;
+        try {
+            if (!window.pdfjsLib?.getDocument) return;
+            const page = await window.pdfjsLib.getDocument(await files.paper.arrayBuffer()).promise.then(doc => doc.getPage(q.figurePage));
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            const dataUrl = canvas.toDataURL('image/png');
+            const fillPoints = [];
+            if (canvas.width && canvas.height && q.graphConfig) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                const threshold = BRIGHTNESS_THRESHOLD;
+                const stepX = Math.max(1, Math.round(canvas.width / POINT_GRID_X));
+                const stepY = Math.max(1, Math.round(canvas.height / POINT_GRID_Y));
+                const seen = new Set();
+                for (let y = 0; y < canvas.height; y += stepY) {
+                    for (let x = 0; x < canvas.width; x += stepX) {
+                        const idx = (y * canvas.width + x) * 4;
+                        const r = imageData[idx];
+                        const g = imageData[idx + 1];
+                        const b = imageData[idx + 2];
+                        const a = imageData[idx + 3];
+                        const brightness = (r + g + b) / 3;
+                        if (a > 40 && brightness < threshold) {
+                            const key = `${Math.round(x / stepX)}-${Math.round(y / stepY)}`;
+                            if (seen.has(key)) continue;
+                            seen.add(key);
+                            fillPoints.push({ x, y });
+                        }
+                    }
+                }
+            }
+            setGraphFigure(dataUrl);
+            if (q.graphConfig && fillPoints.length > 0) {
+                const xMin = q.graphConfig?.xMin ?? 0;
+                const xMax = (q.graphConfig?.xMax ?? 10) > xMin ? (q.graphConfig?.xMax ?? 10) : xMin + 1;
+                const yMin = q.graphConfig?.yMin ?? 0;
+                const yMax = (q.graphConfig?.yMax ?? 10) > yMin ? (q.graphConfig?.yMax ?? 10) : yMin + 1;
+                const points = fillPoints.map(({ x, y }) => ({
+                    x: xMin + (x / canvas.width) * (xMax - xMin),
+                    y: yMax - (y / canvas.height) * (yMax - yMin)
+                }));
+                handleAnswerChange(q.id, {
+                    points,
+                    lines: [],
+                    labels: [],
+                    paths: []
+                });
+            } else {
+                handleAnswerChange(q.id, {
+                    points: [],
+                    lines: [],
+                    labels: [],
+                    paths: []
+                });
+            }
+        } catch (err) {
+            console.error('Failed to copy figure:', err);
+        }
+    }, [currentQuestion, files.paper, handleAnswerChange]);
+
+    useEffect(() => {
+        if (phase === 'exam') {
+            setGraphFigure(null);
+        }
+    }, [phase, exam.currentQuestion?.id]);
+
+    useEffect(() => {
+        const question = currentQuestion;
+        if (phase !== 'exam') return;
+        if (question?.type !== 'graph_drawing') return;
+        if (!question?.figurePage) return;
+        const existing = question?.id ? exam.userAnswers[question.id] : null;
+        const hasExisting = existing && (
+            (existing.points?.length > 0) ||
+            (existing.lines?.length > 0) ||
+            (existing.labels?.length > 0) ||
+            (existing.paths?.length > 0)
+        );
+        if (graphFigure || hasExisting) return;
+        if (!window.pdfjsLib?.getDocument) {
+            const retry = setTimeout(() => handleCopyFigureToGraph(), 400);
+            return () => clearTimeout(retry);
+        }
+        handleCopyFigureToGraph();
+    }, [
+        phase,
+        currentQuestion,
+        exam.userAnswers,
+        graphFigure,
+        handleCopyFigureToGraph
+    ]);
 
     const handleSavePaper = async () => {
         if (!files.paper) return;
@@ -449,7 +554,14 @@ export default function GCSEMarkerApp() {
         }
 
         let hasContent = false;
-        if (q.type === 'graph_drawing') hasContent = answer && (answer.points?.length > 0 || answer.lines?.length > 0);
+        if (q.type === 'graph_drawing') {
+            hasContent = answer && (
+                (answer.points?.length > 0) ||
+                (answer.lines?.length > 0) ||
+                (answer.labels?.length > 0) ||
+                (answer.paths?.length > 0)
+            );
+        }
         else hasContent = Array.isArray(answer) ? answer.flat().some(cell => cell && String(cell).trim() !== '') : (answer !== undefined && answer !== null && String(answer).trim() !== '');
 
         if (!forcedAnswer && !hasContent) return;
@@ -901,7 +1013,7 @@ export default function GCSEMarkerApp() {
 
                                 {question.relatedFigure && (
                                     <Card className="mt-4 border-accent/30 bg-accent/5">
-                                        <CardContent className="p-4 flex justify-between items-center">
+                                        <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                             <div className="flex items-center gap-3">
                                                 <ImageIcon className="w-5 h-5 text-accent" />
                                                 <div>
@@ -909,11 +1021,19 @@ export default function GCSEMarkerApp() {
                                                     <p className="text-xs text-muted-foreground">{question.relatedFigure}</p>
                                                 </div>
                                             </div>
-                                            {question.figurePage && (
-                                                <Button variant="outline" size="sm" onClick={() => jumpToPdfPage(question.figurePage)}>
-                                                    View Figure (Pg {question.figurePage})
-                                                </Button>
-                                            )}
+                                            <div className="flex flex-wrap gap-2">
+                                                {question.figurePage && (
+                                                    <Button variant="outline" size="sm" onClick={() => jumpToPdfPage(question.figurePage)}>
+                                                        View Figure (Pg {question.figurePage})
+                                                    </Button>
+                                                )}
+                                                {question.figurePage && question.type === 'graph_drawing' && (
+                                                    <Button variant="secondary" size="sm" onClick={handleCopyFigureToGraph} className="gap-2">
+                                                        <Copy className="w-4 h-4" />
+                                                        Copy figure to graph
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 )}
@@ -938,6 +1058,7 @@ export default function GCSEMarkerApp() {
                                     graphConfig={question.graphConfig}
                                     value={exam.userAnswers[question.id]}
                                     onChange={onAnswerChange}
+                                    graphFigure={question.type === 'graph_drawing' ? graphFigure : null}
                                 />
                             </div>
 
