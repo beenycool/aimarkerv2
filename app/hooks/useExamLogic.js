@@ -73,7 +73,11 @@ const useExamLogic = () => {
     // Clear saved session
     const clearSession = useCallback(async () => {
         if (typeof window === 'undefined') return;
-        await del('gcse_marker_state');
+        try {
+            await del('gcse_marker_state');
+        } catch (err) {
+            console.error('Failed to clear session from IndexedDB', err);
+        }
     }, []);
 
     // Check if a session exists for a specific paper

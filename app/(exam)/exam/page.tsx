@@ -960,7 +960,7 @@ export default function GCSEMarkerApp() {
 
 
                 <main className="flex-1 flex overflow-hidden h-[calc(100vh-96px)]">
-                    <PanelGroup direction="horizontal" className="h-full w-full">
+                    <PanelGroup orientation="horizontal" className="h-full w-full">
                         <Panel defaultSize={50} minSize={20}>
                             <PDFViewer
                         file={activePdfTab === 'paper' ? files.paper : files.insert}
