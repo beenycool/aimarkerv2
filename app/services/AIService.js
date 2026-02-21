@@ -59,7 +59,7 @@ export const stringifyAnswer = (answer) => {
         return answer.join('\n');
     }
     if (typeof answer === 'object' && answer.points) {
-        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} labels ${JSON.stringify(answer.labels || [])} paths ${JSON.stringify(answer.paths || [])} `;
+        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} labels ${JSON.stringify(answer.labels || [])} paths ${JSON.stringify(answer.paths || [])}`;
     }
     return JSON.stringify(answer);
 };
@@ -191,28 +191,53 @@ Output ONLY the query string or "NO_SEARCH". No other text.`
 };
 
 // --- API Enable Check ---
-let cachedSettings = null;
-let cacheExpiry = 0;
+const settingsCache = new Map();
 const CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 1000; // Prevent unbounded growth
+
+/**
+ * Clean up expired cache entries to prevent memory leaks
+ */
+function cleanupExpiredCache() {
+    const now = Date.now();
+    for (const [key, value] of settingsCache.entries()) {
+        if (now >= value.expiry) {
+            settingsCache.delete(key);
+        }
+    }
+}
 
 /**
  * Get the feature configuration + global settings
  */
 export function clearSettingsCache() {
-    cachedSettings = null;
-    cacheExpiry = 0;
+    settingsCache.clear();
 }
 
 export async function getFullAISettings(studentId) {
     if (!studentId) return { ai_preferences: DEFAULT_AI_PREFERENCES, custom_api_config: {} };
 
     try {
-        if (cachedSettings && Date.now() < cacheExpiry) {
-            return cachedSettings;
+        // Periodic cleanup of expired entries (1% chance per call to avoid performance impact)
+        if (Math.random() < 0.01) {
+            cleanupExpiredCache();
+        }
+
+        // Enforce max cache size by removing oldest entries (FIFO)
+        if (settingsCache.size >= MAX_CACHE_SIZE) {
+            const firstKey = settingsCache.keys().next().value;
+            settingsCache.delete(firstKey);
+        }
+
+        const cached = settingsCache.get(studentId);
+        if (cached && Date.now() < cached.expiry) {
+            return cached.settings;
         }
         const settings = await getOrCreateSettings(studentId);
-        cachedSettings = settings;
-        cacheExpiry = Date.now() + CACHE_TTL;
+        settingsCache.set(studentId, {
+            settings,
+            expiry: Date.now() + CACHE_TTL
+        });
         return settings;
     } catch (e) {
         console.warn('Failed to get AI settings:', e);
