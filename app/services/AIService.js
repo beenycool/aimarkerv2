@@ -95,43 +95,28 @@ export const getMarkSchemeForQuestion = (markScheme, questionId) => {
 };
 
 const PROMPTS = {
-    EXTRACTION: `You are an exam paper parser. Extract all questions from the provided question paper PDF.
+    EXTRACTION: `Extract every single question from this GCSE exam paper.
 
-Return JSON only with this shape:
+RULES:
+- Treat sub-questions (e.g., 1a, 1b) as individual questions.
+- If a question refers to "Figure 1", include a description of Figure 1 in the context.
+- Identify the input type required (multiple_choice, short_text, long_text, math, table).
+
+OUTPUT STRICT JSON:
 {
-  "metadata": {
-    "subject": "string",
-    "board": "string",
-    "season": "string",
-    "year": "YYYY",
-    "paperNumber": "Paper 1",
-    "level": "GCSE | A-Level | IB | University"
-  },
   "questions": [
     {
-      "id": "1",
-      "section": "Section A",
-      "question": "Full question text",
-      "marks": 4,
-      "type": "multiple_choice|short_text|long_text|list|table|graph_drawing",
-      "options": ["A", "B", "C", "D"],
-      "listCount": 3,
-      "tableStructure": { "headers": ["Col 1", "Col 2"], "rows": 3, "initialData": [[null, null]] },
-      "graphConfig": { "xMin": 0, "xMax": 10, "yMin": 0, "yMax": 10, "xLabel": "x", "yLabel": "y" },
-      "pageNumber": 2,
-      "relatedFigure": "Figure 2",
-      "figurePage": 3,
-      "markingRegex": "optional regex for exact answers"
+      "id": "1a",
+      "number": "1",
+      "part": "a",
+      "text": "Explain the process of...",
+      "context": "Context from the previous paragraph or figure...",
+      "marks": 3,
+      "type": "long_text",
+      "page_number": 2
     }
   ]
-}
-
-Rules:
-- Use the exact question numbering from the paper (e.g., "1", "1a", "2bii") with no extra punctuation.
-- Each sub-question is its own entry in "questions".
-- Infer "type" from the question wording; use "list" for multi-point answers, "table" for table completion, "graph_drawing" for drawing/plotting/sketching/labeling on graphs or figures.
-- Include only relevant fields for each question; omit fields that do not apply.
-- Output JSON only, no markdown or extra text.`,
+}`,
     MARK_SCHEME: `You are a mark scheme parser. Extract the mark scheme for each question from the PDF.
 
 Return JSON only with this shape:
@@ -603,6 +588,7 @@ export const AIService = {
         let insertBase64 = null;
         if (insertFile) insertBase64 = await fileToBase64(insertFile);
 
+        // God-Tier Extraction Prompt is now in PROMPTS.EXTRACTION
         let extractionPrompt = PROMPTS.EXTRACTION;
 
         // Construct messages with images
@@ -619,8 +605,14 @@ export const AIService = {
 
         const cleanedJson = cleanGeminiJSON(responseText);
         const parsed = JSON.parse(cleanedJson);
+
+        // Ensure strictly typed structure
         return {
-            questions: parsed.questions || [],
+            questions: (parsed.questions || []).map(q => ({
+                ...q,
+                marks: Number(q.marks) || 0,
+                pageNumber: Number(q.pageNumber) || null
+            })),
             metadata: parsed.metadata || {}
         };
     },
@@ -657,12 +649,9 @@ export const AIService = {
         const totalMarks = question.marks || scheme?.totalMarks || 0;
 
         // SPECIAL CASE: Multiple Choice Optimization
-        // If correct: No API calls needed. If wrong: Skip Kimi (grading) and go to Gemini (tutor).
         if (question.type === 'multiple_choice') {
             const normalizedAnswer = normalizeText(studentAnswerText);
             const acceptable = scheme?.acceptableAnswers || [];
-
-            // Local check for correctness
             const isCorrect = acceptable.some(acc => normalizeText(acc) === normalizedAnswer);
 
             if (isCorrect) {
@@ -675,158 +664,119 @@ export const AIService = {
                 };
             }
 
-            // SPECIAL OPTIMIZATION: For 1 mark MCQs, provide immediate feedback without AI
             if (totalMarks === 1) {
-                const numericScore = 0;
                 const correctAnswer = acceptable.length > 0 ? acceptable[0] : 'See mark scheme';
-                const primaryFlaw = "Incorrect multiple choice selection.";
-                
-                // Generate simple, clear feedback without AI
-                const feedbackText = acceptable.length > 0
-                    ? `**Score: ${numericScore}/${totalMarks}**
-
-Your answer: **${studentAnswerText}**
-Correct answer: **${correctAnswer}**
-
-For this multiple choice question, the correct option is **${correctAnswer}**. Review the question and the mark scheme to understand why this is the correct answer.`
-                    : `**Score: ${numericScore}/${totalMarks}**
-
-Your answer: **${studentAnswerText}**
-
-This answer is incorrect. Please review the mark scheme to identify the correct answer.`;
-
                 return {
-                    score: numericScore,
+                    score: 0,
                     totalMarks,
-                    text: feedbackText,
-                    rewrite: acceptable.length > 0 ? `**${correctAnswer}**` : studentAnswerText,
-                    primaryFlaw
+                    text: `**Score: 0/${totalMarks}**\n\nYour answer: **${studentAnswerText}**\nCorrect answer: **${correctAnswer}**\n\nThis answer is incorrect. Please review the mark scheme.`,
+                    rewrite: `**${correctAnswer}**`,
+                    primaryFlaw: "Incorrect selection"
                 };
             }
-
-            // For multi-mark MCQs, we skip the Grading API (Kimi) and go straight to Tutor (Gemini)
-            const numericScore = 0;
-            const primaryFlaw = "Incorrect multiple choice selection.";
-
-            // Resolve Tutor Config (usually Gemini on OpenRouter)
-            const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model, 'openrouter');
-            const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
-            const personalizationNote = memoryContext
-                ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
-                : '';
-
-            const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${totalMarks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nOPTIONS: ${JSON.stringify(question.options || [])}\nCORRECT ANSWER: ${JSON.stringify(acceptable)}\nSTUDENT ANSWER: "${studentAnswerText}"\n\nTASK:\n1) Tell the student their score.\n2) Explain why their choice was wrong and why the correct choice is better.\n3) Write an "Improved Answer (Changes in Bold)" that matches the correct option.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis.`;
-
-            let tutorText = "";
-            try {
-                tutorText = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
-                    apiKey: tutorConfig.apiKey,
-                    customConfig: tutorConfig.customConfig
-                });
-            } catch (tutorErr) {
-                tutorText = `Score: ${numericScore}/${totalMarks}. The correct answer was ${acceptable[0] || 'different'}.`;
-            }
-
-            const rewrite = extractImprovedAnswer(tutorText) || (acceptable[0] ? `Correct choice: **${acceptable[0]}**` : studentAnswerText);
-
-            return {
-                score: numericScore,
-                totalMarks,
-                text: tutorText,
-                rewrite,
-                primaryFlaw
-            };
         }
 
-        // STANDARD FLOW: Non-MCQ questions
-        // Resolve Grading Config
-        const gradingConfig = await resolveConfig(studentId, 'grading', hackClubKey, model, 'hackclub');
-        const tutorConfig = await resolveConfig(studentId, 'tutor', customApiKey, model, 'openrouter');
-        const orchestratorConfig = await resolveConfig(studentId, 'verification', customApiKey, model, 'openrouter'); // Use dedicated verification config
+        // STANDARD FLOW: God-Tier Grading
+        const gradingConfig = await resolveConfig(studentId, 'grading', hackClubKey, model, 'hackclub'); // Use grading config (likely Hack Club)
 
-        // STEP 0: Orchestrator & Search (Fact Verification)
-        let searchContext = "";
-        try {
-            const orchestMsg = [
-                { role: "system", content: "You are a helpful marking assistant." },
-                { role: "user", content: PROMPTS.ORCHESTRATOR.replace("{question}", question.question).replace("{answer}", studentAnswerText) }
-            ];
-            const searchQuery = await callAI(orchestratorConfig.provider, orchestMsg, orchestratorConfig.model, {
-                apiKey: orchestratorConfig.apiKey,
-                customConfig: orchestratorConfig.customConfig
-            });
-            const cleanedQuery = cleanGeminiJSON(searchQuery).replace(/["']/g, "").trim();
+        // Prepare the prompt
+        const promptText = `SYSTEM PROMPT:
+You are a ruthless, highly accurate GCSE Chief Examiner for the [AQA/Edexcel/OCR] board.
+Your job is to mark the student's answer strictly against the provided Mark Scheme.
 
-            if (cleanedQuery && cleanedQuery !== "NO_SEARCH") {
-                console.log("Orchestrator requested search:", cleanedQuery);
-                const searchRes = await searchWeb(cleanedQuery, { strategy: 'fallback', count: 3 });
-                if (searchRes.results?.length) {
-                    searchContext = `\n\nVERIFIED FACTS (FROM WEB SEARCH - ${searchRes.source}):\n` +
-                        searchRes.results.map(r => `- ${r.title}: ${r.snippet}`).join('\n');
-                }
-            }
-        } catch (err) {
-            console.warn("Orchestrator check failed, proceeding without search:", err);
-        }
+RULES:
+1. DO NOT award "benefit of the doubt" marks.
+2. DO NOT award marks for general knowledge that is not explicitly credited in the mark scheme.
+3. If the question requires specific terminology (e.g., "osmosis", "kinetic energy"), zero marks are awarded if the exact term or a valid permitted alternative is missing.
+4. Ignore spelling and grammar unless it is explicitly an SPaG (Spelling, Punctuation and Grammar) assessed question.
 
-        // STEP 1: Generous grader (often Kimi)
-        const graderSystemPrompt = level
-            ? `You are a generous and supportive ${level} exam marker. Use the provided mark scheme as a guide, but be flexible. Award marks for answers that demonstrate understanding, even if wording differs. Accept synonyms and alternative phrasings. When in doubt, award the higher score. Return JSON only in the required format.`
-            : PROMPTS.GRADER_SYSTEM;
-        const graderMessages = [
-            { role: "system", content: graderSystemPrompt },
-            { role: "user", content: `Question (${question.marks} marks): ${question.question}\nScheme: ${JSON.stringify(scheme)}\nStudent: ${studentAnswerText}${searchContext}` }
+MARK SCHEME:
+{mark_scheme}
+
+INSTRUCTIONS:
+You must return your assessment in the exact JSON format below. Do not output any markdown or conversational text.
+
+{
+  "chain_of_thought": "Step-by-step analysis comparing the student's answer to the mark scheme criteria.",
+  "awarded_marks": [
+    {
+      "mark_scheme_point": "The specific point from the mark scheme",
+      "student_evidence": "Exact quote from the student's answer that earns this mark",
+      "awarded": true
+    }
+  ],
+  "missed_marks": [
+    {
+      "mark_scheme_point": "What the student failed to mention",
+      "how_to_improve": "One sentence on what they should have written"
+    }
+  ],
+  "primary_flaw": "A 1-3 word tag describing the main error (e.g., 'Lack of keywords', 'Misread question', 'Calculation error', 'None').",
+  "score": 2,
+  "total_possible": 3,
+  "student_friendly_feedback": "A constructive, encouraging paragraph written directly to the student explaining their score and how to get full marks next time."
+}`
+            .replace('{mark_scheme}', JSON.stringify(scheme, null, 2))
+            .replace('[AQA/Edexcel/OCR]', 'GCSE'); // Default to GCSE generic if board unknown, or pass it in.
+
+        const messages = [
+            { role: "system", content: promptText },
+            { role: "user", content: `Question: "${question.question}"\n\nStudent Answer: "${studentAnswerText}"` }
         ];
 
-        let graderResponseText = "";
+        let responseText = "";
         try {
-            graderResponseText = await callAI(gradingConfig.provider, graderMessages, gradingConfig.model, {
+            responseText = await callAI(gradingConfig.provider, messages, gradingConfig.model, {
                 apiKey: gradingConfig.apiKey,
                 customConfig: gradingConfig.customConfig
             });
         } catch (e) {
-            console.warn("Grading failed, using fallback logic internally", e);
-            throw e;
-        }
-
-        const cleanedGrader = cleanGeminiJSON(graderResponseText);
-        let parsedGrader = {};
-        try { parsedGrader = JSON.parse(cleanedGrader); } catch (e) { }
-
-        let numericScore = Number(parsedGrader.score);
-        let primaryFlaw = parsedGrader.primary_flaw ?? parsedGrader.primaryFlaw;
-        if (!Number.isFinite(numericScore)) {
+            console.error("Grading failed", e);
+            // Fallback
             const local = evaluateAnswerLocally(question, answer, scheme);
-            numericScore = local.score;
-            primaryFlaw = local.score >= totalMarks ? "none" : "Missing key points from the mark scheme.";
+            return {
+                score: local.score,
+                totalMarks,
+                text: "AI Grading Failed. " + local.text,
+                rewrite: local.rewrite,
+                primaryFlaw: "AI Error"
+            };
         }
-        numericScore = Math.min(question.marks, numericScore);
-        if (!primaryFlaw) primaryFlaw = "Missing key points from the mark scheme.";
 
-        // STEP 2: Tutor (often Gemini) with personalization
-        const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
-        const personalizationNote = memoryContext
-            ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
-            : '';
-
-        const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nMARK SCHEME: ${JSON.stringify(scheme)}\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw using ONLY points from the mark scheme.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis. If relevant, reference the verified facts.`;
-
-        let tutorText = "";
+        const cleaned = cleanGeminiJSON(responseText);
+        let parsed = {};
         try {
-            tutorText = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
-                apiKey: tutorConfig.apiKey,
-                customConfig: tutorConfig.customConfig
-            });
-        } catch (tutorErr) {
-            tutorText = `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`;
+            parsed = JSON.parse(cleaned);
+        } catch (e) {
+            console.error("Failed to parse grading JSON", e);
+             const local = evaluateAnswerLocally(question, answer, scheme);
+            return {
+                score: local.score,
+                totalMarks,
+                text: "AI Grading Response Invalid. " + local.text,
+                rewrite: local.rewrite,
+                primaryFlaw: "AI Error"
+            };
         }
 
-        const rewrite = extractImprovedAnswer(tutorText) || "Improved Answer (Changes in Bold)";
+        // Map God-Tier JSON to App Structure
+        const score = typeof parsed.score === 'number' ? parsed.score : 0;
+        const feedbackText = parsed.student_friendly_feedback || "No feedback provided.";
+        const primaryFlaw = parsed.primary_flaw || "None";
+
+        // Construct "rewrite" or improved answer if not explicitly provided, maybe append missed marks
+        let rewrite = "See mark scheme for details.";
+        if (parsed.missed_marks && parsed.missed_marks.length > 0) {
+             rewrite = "**Improvements Needed:**\n" + parsed.missed_marks.map(m => `- ${m.how_to_improve}`).join('\n');
+        }
+
+        // Append detailed breakdown to text if desired, or keep it simple
+        const detailedText = `**Score: ${score}/${totalMarks}**\n\n${feedbackText}`;
 
         return {
-            score: numericScore,
-            totalMarks: question.marks,
-            text: tutorText,
+            score,
+            totalMarks,
+            text: detailedText,
             rewrite,
             primaryFlaw
         };
