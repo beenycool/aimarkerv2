@@ -18,7 +18,11 @@ export function daysUntil(dateISO) {
 
 export function formatShort(dateISO) {
   try {
-    return new Date(dateISO + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    // Handle both date-only strings (YYYY-MM-DD) and full datetime strings
+    const datePart = dateISO.split('T')[0];
+    const date = new Date(datePart + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateISO;
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   } catch {
     return dateISO;
   }
