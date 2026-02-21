@@ -1,0 +1,391 @@
+'use client';
+
+import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
+import { TableIcon, BarChart2, PenTool, Trash2, Calculator, Pencil, Type, ImageOff } from 'lucide-react';
+
+// Math Keyboard Component
+const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
+    const symbols = ['²', '³', '½', '¼', '√', '∞', '×', '÷', '±', '≈', '≠', '≡', '≤', '≥', '°', '℃', '℉', 'µ', 'π', 'Ω', 'λ', 'Δ', 'Σ', '→', '←', '↔', '↑', '↓'];
+
+    if (!isOpen) {
+        return (
+            <button onClick={toggleOpen} className="mt-2 text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
+                <Calculator className="w-3 h-3" /> Show Math Keyboard
+            </button>
+        );
+    }
+
+    return (
+        <div className="mt-2 animate-in slide-in-from-top-2">
+            <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-bold text-muted-foreground uppercase">Scientific Symbols</span>
+                <button onClick={toggleOpen} className="text-xs text-muted-foreground hover:text-destructive">Close</button>
+            </div>
+            <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 bg-muted p-2 rounded-lg border border-border">
+                {symbols.map(s => (
+                    <button key={s} onClick={() => onInsert(s)} className="h-8 bg-card rounded shadow-sm border border-border hover:bg-primary/10 hover:border-primary/30 hover:text-primary font-mono font-bold text-foreground transition-all active:scale-95">{s}</button>
+                ))}
+            </div>
+        </div>
+    );
+});
+MathKeyboard.displayName = 'MathKeyboard';
+
+// Graph Canvas Component
+const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBackground }) => {
+    const canvasRef = useRef(null);
+    const [tool, setTool] = useState('point');
+    const [isDragging, setIsDragging] = useState(false);
+    const [startPoint, setStartPoint] = useState(null);
+    const [isSketching, setIsSketching] = useState(false);
+    const currentPathRef = useRef([]);
+    const [labelText, setLabelText] = useState('');
+    const [background, setBackground] = useState(null);
+
+    const state = value || { points: [], lines: [], labels: [], paths: [] };
+    const points = state.points || [];
+    const lines = state.lines || [];
+    const labels = state.labels || [];
+    const paths = state.paths || [];
+    const xMin = config?.xMin ?? 0;
+    const xMax = (config?.xMax ?? 10) > xMin ? (config?.xMax ?? 10) : xMin + 1;
+    const yMin = config?.yMin ?? 0;
+    const yMax = (config?.yMax ?? 10) > yMin ? (config?.yMax ?? 10) : yMin + 1;
+    const xLabel = config?.xLabel ?? "X Axis";
+    const yLabel = config?.yLabel ?? "Y Axis";
+    const width = 600, height = 400, padding = 50;
+
+    useEffect(() => {
+        if (!backgroundImage) {
+            setBackground(null);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => setBackground(img);
+        img.src = backgroundImage;
+    }, [backgroundImage]);
+
+    const draw = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        // Use a known background color for the canvas content itself so it's readable
+        // Graphs usually need white/light background unless we invert all colors.
+        // Let's keep it white for clarity but maybe careful with text.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        const graphWidth = width - 2 * padding;
+        const graphHeight = height - 2 * padding;
+        const toCanvasX = (val) => padding + ((val - xMin) / (xMax - xMin)) * graphWidth;
+        const toCanvasY = (val) => height - padding - ((val - yMin) / (yMax - yMin)) * graphHeight;
+
+        if (background) {
+            const imageAspect = background.width / background.height;
+            let drawWidth = graphWidth;
+            let drawHeight = graphWidth / imageAspect;
+            if (drawHeight > graphHeight) {
+                drawHeight = graphHeight;
+                drawWidth = graphHeight * imageAspect;
+            }
+            const offsetX = padding + (graphWidth - drawWidth) / 2;
+            const offsetY = padding + (graphHeight - drawHeight) / 2;
+            ctx.save();
+            ctx.globalAlpha = 0.35;
+            ctx.drawImage(background, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.restore();
+        }
+
+        // Grid
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = xMin; i <= xMax; i += (xMax - xMin) / 10) { const x = toCanvasX(i); ctx.moveTo(x, padding); ctx.lineTo(x, height - padding); }
+        for (let i = yMin; i <= yMax; i += (yMax - yMin) / 10) { const y = toCanvasY(i); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); }
+        ctx.stroke();
+
+        // Axes
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding); ctx.lineTo(padding, height - padding);
+        ctx.moveTo(padding, height - padding); ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+
+        // Labels
+        ctx.fillStyle = '#000';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(xLabel, width / 2, height - 10);
+        ctx.save(); ctx.translate(15, height / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(yLabel, 0, 0); ctx.restore();
+
+        // Lines
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2;
+        paths.forEach(path => {
+            if (!path || path.length < 2) return;
+            ctx.beginPath();
+            path.forEach((point, index) => {
+                if (index === 0) ctx.moveTo(point.x, point.y);
+                else ctx.lineTo(point.x, point.y);
+            });
+            ctx.stroke();
+        });
+
+        lines.forEach(line => { ctx.beginPath(); ctx.moveTo(line.x1, line.y1); ctx.lineTo(line.x2, line.y2); ctx.stroke(); });
+
+        // Points
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        points.forEach(p => {
+            const cx = toCanvasX(p.x), cy = toCanvasY(p.y), size = 4;
+            ctx.beginPath(); ctx.moveTo(cx - size, cy - size); ctx.lineTo(cx + size, cy + size);
+            ctx.moveTo(cx + size, cy - size); ctx.lineTo(cx - size, cy + size); ctx.stroke();
+        });
+
+        if (labels.length > 0) {
+            ctx.fillStyle = '#111827';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            labels.forEach(label => {
+                const lx = toCanvasX(label.x);
+                const ly = toCanvasY(label.y);
+                ctx.fillText(label.text, lx + 6, ly - 6);
+            });
+        }
+    }, [points, lines, labels, paths, xMin, xMax, yMin, yMax, xLabel, yLabel, background]);
+
+    useEffect(() => { draw(); }, [draw]);
+
+    const getGraphCoordinates = (e) => {
+        const canvas = canvasRef.current;
+        const rect = canvas.getBoundingClientRect();
+        const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+        const graphWidth = width - 2 * padding, graphHeight = height - 2 * padding;
+        return { x: ((cx - padding) / graphWidth) * (xMax - xMin) + xMin, y: ((height - padding - cy) / graphHeight) * (yMax - yMin) + yMin, cx, cy };
+    };
+
+    const handleMouseDown = (e) => {
+        const coords = getGraphCoordinates(e);
+        if (coords.cx < padding || coords.cx > width - padding || coords.cy < padding || coords.cy > height - padding) return;
+        if (tool === 'point') { onChange({ ...state, points: [...points, { x: coords.x, y: coords.y }] }); }
+        else if (tool === 'line') { setIsDragging(true); setStartPoint({ cx: coords.cx, cy: coords.cy }); }
+        else if (tool === 'sketch') { setIsSketching(true); currentPathRef.current = [{ x: coords.cx, y: coords.cy }]; }
+        else if (tool === 'label') {
+            const trimmed = labelText.trim();
+            if (trimmed) onChange({ ...state, labels: [...labels, { x: coords.x, y: coords.y, text: trimmed }] });
+        }
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging || tool !== 'line') return;
+        const coords = getGraphCoordinates(e);
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        draw();
+        ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2; ctx.beginPath();
+        ctx.moveTo(startPoint.cx, startPoint.cy); ctx.lineTo(coords.cx, coords.cy); ctx.stroke();
+    };
+
+    const handleMouseUp = (e) => {
+        if (isDragging && tool === 'line') {
+            const coords = getGraphCoordinates(e);
+            onChange({ ...state, lines: [...lines, { x1: startPoint.cx, y1: startPoint.cy, x2: coords.cx, y2: coords.cy }] });
+        }
+        if (isSketching && tool === 'sketch') {
+            if (currentPathRef.current.length > 1) {
+                onChange({ ...state, paths: [...paths, currentPathRef.current] });
+            }
+        }
+        setIsDragging(false);
+        setIsSketching(false);
+        setStartPoint(null);
+        currentPathRef.current = [];
+        draw();
+    };
+
+    const handleSketchMove = (e) => {
+        if (!isSketching || tool !== 'sketch') return;
+        const coords = getGraphCoordinates(e);
+        currentPathRef.current = [...currentPathRef.current, { x: coords.cx, y: coords.cy }];
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        draw();
+        ctx.strokeStyle = '#16a34a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        currentPathRef.current.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+        });
+        ctx.stroke();
+    };
+
+    const handleMouseLeave = () => {
+        if (isSketching && tool === 'sketch' && currentPathRef.current.length > 1) {
+            onChange({ ...state, paths: [...paths, currentPathRef.current] });
+        }
+        setIsDragging(false);
+        setIsSketching(false);
+        setStartPoint(null);
+        currentPathRef.current = [];
+        draw();
+    };
+
+    return (
+        <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
+                <button onClick={() => setTool('point')} className={`p-2 rounded ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                    <div className="flex items-center gap-1 text-xs font-bold"><span className="text-lg">×</span> Point</div>
+                </button>
+                <button onClick={() => setTool('line')} className={`p-2 rounded ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                    <div className="flex items-center gap-1 text-xs font-bold"><PenTool className="w-4 h-4" /> Line</div>
+                </button>
+                <button onClick={() => setTool('sketch')} className={`p-2 rounded ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                    <div className="flex items-center gap-1 text-xs font-bold"><Pencil className="w-4 h-4" /> Sketch</div>
+                </button>
+                <button onClick={() => setTool('label')} className={`p-2 rounded ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                    <div className="flex items-center gap-1 text-xs font-bold"><Type className="w-4 h-4" /> Label</div>
+                </button>
+                {tool === 'label' && (
+                    <input
+                        type="text"
+                        value={labelText}
+                        onChange={(e) => setLabelText(e.target.value)}
+                        placeholder="Label text"
+                        className="h-8 w-32 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                )}
+                <div className="h-6 w-px bg-border mx-2"></div>
+                {backgroundImage && onClearBackground && (
+                    <button onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground" title="Remove figure background">
+                        <ImageOff className="w-4 h-4" />
+                    </button>
+                )}
+                <button onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
+            </div>
+            <div className="border border-border rounded-lg overflow-hidden shadow-inner bg-white self-start">
+                <canvas ref={canvasRef} width={width} height={height} onMouseDown={handleMouseDown} onMouseMove={(e) => { handleMouseMove(e); handleSketchMove(e); }} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave} className="cursor-crosshair block" />
+            </div>
+        </div>
+    );
+});
+GraphCanvas.displayName = 'GraphCanvas';
+
+/**
+ * AdaptiveInput - Renders the appropriate input type based on question type
+ * IMPORTANT: Use key={question.id} when rendering this component to prevent state bleeding
+ */
+const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }) => {
+    const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+    const [figureBackground, setFigureBackground] = useState(null);
+
+    const handleSymbolInsert = useCallback((symbol) => {
+        onChange((value || "") + symbol);
+    }, [value, onChange]);
+
+    useEffect(() => {
+        if (!graphFigure) {
+            setFigureBackground(null);
+            return;
+        }
+        setFigureBackground(graphFigure);
+    }, [graphFigure]);
+
+    if (type === 'multiple_choice') {
+        return (
+            <div className="space-y-2">
+                {options.map((opt, idx) => (
+                    <label key={idx} className={`flex items-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-all ${value === opt ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border'}`}>
+                        <input type="radio" name="mcq" className="w-4 h-4 text-primary focus:ring-primary" checked={value === opt} onChange={() => onChange(opt)} />
+                        <span className="ml-3 text-foreground font-medium">{opt}</span>
+                    </label>
+                ))}
+            </div>
+        );
+    }
+
+    if (type === 'list') {
+        const listValues = Array.isArray(value) ? value : Array(listCount).fill('');
+        const handleListChange = (idx, text) => { const newList = [...listValues]; newList[idx] = text; onChange(newList); };
+        return (
+            <div className="space-y-3">
+                {Array.from({ length: listCount }).map((_, idx) => (
+                    <div key={idx} className="flex items-center">
+                        <span className="text-muted-foreground font-bold mr-3 w-6 text-right">{idx + 1})</span>
+                        <input type="text" className="flex-1 p-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none" value={listValues[idx] || ''} onChange={(e) => handleListChange(idx, e.target.value)} placeholder={`Point ${idx + 1}`} />
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (type === 'table') {
+        const headers = tableStructure?.headers || ['Column 1', 'Column 2'];
+        const initialData = tableStructure?.initialData || [];
+        const rowCount = initialData.length > 0 ? initialData.length : (tableStructure?.rows || 3);
+        const currentData = Array.isArray(value) ? value : (initialData.length > 0 ? initialData.map(row => row.map(cell => cell === null ? '' : cell)) : Array(rowCount).fill().map(() => Array(headers.length).fill('')));
+        const handleCellChange = (rowIndex, colIndex, val) => { const newData = currentData.map(r => [...r]); newData[rowIndex][colIndex] = val; onChange(newData); };
+        return (
+            <div className="border border-border rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-muted border-b border-border px-4 py-2 flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider"><TableIcon className="w-4 h-4" /> Table Input</div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-muted-foreground uppercase bg-muted/50"><tr>{headers.map((h, i) => (<th key={i} className="px-6 py-3 border-b border-border min-w-[150px]">{h}</th>))}</tr></thead>
+                        <tbody>
+                            {currentData.map((row, rIndex) => (
+                                <tr key={rIndex} className="bg-card border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                                    {row.map((cell, cIndex) => {
+                                        const isPrefilled = initialData.length > 0 && initialData[rIndex] && initialData[rIndex][cIndex] !== null;
+                                        return (
+                                            <td key={cIndex} className="p-0 border-r border-border last:border-0 relative">
+                                                {isPrefilled ? (<div className="w-full h-full px-6 py-4 bg-muted/40 text-muted-foreground font-medium select-none">{initialData[rIndex][cIndex]}</div>) : (
+                                                    <input type="text" className="w-full h-full px-6 py-4 bg-transparent outline-none focus:ring-2 focus:ring-inset focus:ring-primary text-foreground placeholder-muted-foreground/50" value={cell} onChange={(e) => handleCellChange(rIndex, cIndex, e.target.value)} placeholder="Type..." />
+                                                )}
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
+    if (type === 'graph_drawing') {
+        return (
+            <div className="bg-card p-4 rounded-xl border border-border">
+                <div className="mb-2 flex items-center gap-2 text-primary font-bold text-sm"><BarChart2 className="w-4 h-4" /> Interactive Graph Paper</div>
+                <GraphCanvas
+                    config={graphConfig}
+                    value={value}
+                    onChange={onChange}
+                    backgroundImage={figureBackground}
+                    onClearBackground={() => setFigureBackground(null)}
+                />
+            </div>
+        );
+    }
+
+    if (type === 'long_text') {
+        return (
+            <div className="relative">
+
+                <textarea className="w-full h-48 p-4 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none font-serif leading-relaxed text-foreground" placeholder="Type your answer here..." value={value || ''} onChange={(e) => onChange(e.target.value)} />
+                <MathKeyboard onInsert={handleSymbolInsert} isOpen={isKeyboardOpen} toggleOpen={() => setIsKeyboardOpen(!isKeyboardOpen)} />
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <input type="text" className="w-full p-3 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground" placeholder="Type your answer here..." value={value || ''} onChange={(e) => onChange(e.target.value)} />
+            <MathKeyboard onInsert={handleSymbolInsert} isOpen={isKeyboardOpen} toggleOpen={() => setIsKeyboardOpen(!isKeyboardOpen)} />
+        </div>
+    );
+});
+
+AdaptiveInput.displayName = 'AdaptiveInput';
+export default AdaptiveInput;
