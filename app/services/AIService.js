@@ -46,6 +46,8 @@ export const AI_FEATURE_DESCRIPTIONS = {
 };
 
 // --- LOCAL HELPERS ---
+const regexCache = new Map();
+const MAX_CACHE_SIZE = 100;
 const normalizeText = (text) => (text || '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
 const normalizeQuestionId = (value) => (value || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -73,14 +75,25 @@ const extractImprovedAnswer = (markdown) => {
 export const checkRegex = (regexStr, value) => {
     try {
         const safeRegex = regexStr.replace(/(^|[^\\'])(\/)/g, '$1\\/');
+
+        if (regexCache.has(safeRegex)) {
+            return regexCache.get(safeRegex).test(String(value).trim());
+        }
+
         const re = new RegExp(safeRegex, 'i');
+
+        if (regexCache.size >= MAX_CACHE_SIZE) {
+            const firstKey = regexCache.keys().next().value;
+            regexCache.delete(firstKey);
+        }
+        regexCache.set(safeRegex, re);
+
         return re.test(String(value).trim());
     } catch (e) {
         console.warn("Invalid Regex provided by AI:", regexStr, e);
         return false;
     }
 };
-
 export const getMarkSchemeForQuestion = (markScheme, questionId) => {
     if (!markScheme || !questionId) return undefined;
     if (Object.prototype.hasOwnProperty.call(markScheme, questionId)) return markScheme[questionId];
