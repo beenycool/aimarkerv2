@@ -408,7 +408,7 @@ export default function AssessmentsPage() {
             const { path } = await uploadAssessmentFile(studentId, item.file);
             if (cleanupPendingRef.current || pendingRemovalRef.current.has(item.id)) {
                 pendingRemovalRef.current.delete(item.id);
-                await deleteAssessmentFiles([path]);
+                await deleteAssessmentFiles([path as string]);
                 return;
             }
             setUploadedFiles((prev) => prev.map((f) => (

@@ -5,7 +5,11 @@ import { createClient } from '@/app/lib/supabase/server';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
 
-function buildFileContent(files: any[] = []) {
+type OpenRouterContent =
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string } };
+
+function buildFileContent(files: any[] = []): OpenRouterContent[] {
     return files.map(file => ({
         type: "image_url",
         image_url: {
@@ -96,7 +100,7 @@ export async function POST(request: Request) {
             requestMessages = attachFilesToMessages(messages, files);
         } else if (prompt) {
             // Legacy approach: build content array with text and optional images
-            const content = [{ type: "text", text: prompt }];
+            const content: OpenRouterContent[] = [{ type: "text", text: prompt }];
 
             if (files && files.length > 0) {
                 content.push(...buildFileContent(files));
@@ -151,8 +155,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ text, usage: data.usage });
     } catch (error) {
         console.error("OpenRouter API route error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json(
-            { error: error.message || "Internal server error" },
+            { error: errorMessage },
             { status: 500 }
         );
     }

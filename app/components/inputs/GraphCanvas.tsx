@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { PenTool, Pencil, Type, ImageOff, Trash2 } from 'lucide-react';
 

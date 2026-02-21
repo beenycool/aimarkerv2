@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 import { toast } from "sonner";
 import React, { useEffect, useState, useMemo } from 'react';

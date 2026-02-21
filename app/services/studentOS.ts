@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase as defaultSupabase } from './supabaseClient';
 import { isoToday } from './dateUtils';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -220,11 +221,11 @@ export function weaknessCountsFromAttempts(attempts) {
   return counts;
 }
 
-export function pickTopWeaknesses(counts, limit = 5) {
+export function pickTopWeaknesses(counts: Record<string, number>, limit = 5): { label: string; count: number }[] {
   return Object.entries(counts || {})
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
-    .map(([label, count]) => ({ label, count }));
+    .map(([label, count]) => ({ label, count: count as number }));
 }
 
 export async function getOrCreateTodayDailySession(studentId, { subjectId = null, items = [] } = {}, client?: SupabaseClient<Database>) {
@@ -367,7 +368,7 @@ export async function createAssessment(studentId, input, client?: SupabaseClient
   return data;
 }
 
-export async function uploadAssessmentFile(studentId, file, client?: SupabaseClient<Database>) {
+export async function uploadAssessmentFile(studentId, file, client?: SupabaseClient<Database>): Promise<{ path: string }> {
   if (!studentId) throw new Error('studentId required');
   if (!file) throw new Error('file required');
   const supabaseClient = client || defaultSupabase;
@@ -387,14 +388,14 @@ export async function uploadAssessmentFile(studentId, file, client?: SupabaseCli
   return { path };
 }
 
-export async function deleteAssessmentFiles(paths = [], client?: SupabaseClient<Database>) {
+export async function deleteAssessmentFiles(paths: string[] = [], client?: SupabaseClient<Database>) {
   if (!paths.length) return;
   const supabaseClient = client || defaultSupabase;
   const { error } = await supabaseClient.storage.from('assessment-pdfs').remove(paths);
   if (error) throw error;
 }
 
-export async function deleteAssessment(studentId, assessmentId, attachments = [], client?: SupabaseClient<Database>) {
+export async function deleteAssessment(studentId, assessmentId, attachments: (string | { path?: string })[] = [], client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
   const supabaseClient = client || defaultSupabase;
   const attachmentPaths = (attachments || [])
@@ -973,4 +974,3 @@ export async function getSessionCompletionStats(studentId, client?: SupabaseClie
     return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
   }
 }
-

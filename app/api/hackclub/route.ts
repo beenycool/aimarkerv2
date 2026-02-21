@@ -63,8 +63,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ content, usage: data.usage });
     } catch (error) {
         console.error("Hack Club API route error:", error);
+        const errorMessage = error instanceof Error ? error.message : "Internal server error";
         return NextResponse.json(
-            { error: error.message || "Internal server error" },
+            { error: errorMessage },
             { status: 500 }
         );
     }

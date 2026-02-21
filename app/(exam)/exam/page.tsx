@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
     CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle, Copy
 } from 'lucide-react';
@@ -17,7 +18,11 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 
 // Import modular components
-import { PDFViewer, AdaptiveInput, MarkdownText, FileUploadZone, FeedbackBlock, PaperLibrary } from '../../components';
+import AdaptiveInput from '../../components/AdaptiveInput';
+import { PaperLibrary } from '../../components/PaperLibrary';
+import { MarkdownText, FileUploadZone, FeedbackBlock } from '../../components/UIComponents';
+
+const PDFViewer = dynamic(() => import('../../components/PDFViewer'), { ssr: false });
 
 // Import custom hooks and services
 import useExamLogic from '../../hooks/useExamLogic';
