@@ -104,6 +104,14 @@ RULES:
 
 OUTPUT STRICT JSON:
 {
+  "metadata": {
+    "subject": "string (e.g., Physics, Mathematics, Biology)",
+    "board": "string (e.g., AQA, Edexcel, OCR)",
+    "season": "string (e.g., Summer, Winter, June, November)",
+    "year": "YYYY",
+    "paperNumber": "Paper 1",
+    "level": "GCSE | A-Level | IB | University"
+  },
   "questions": [
     {
       "id": "1a",

@@ -200,6 +200,22 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 newPaths[newPaths.length - 1] = [...currentPath, { x, y }];
                 onChange({ ...value, paths: newPaths });
             }
+        } else if (tool === 'line' && startPoint) {
+            // Draw temporary preview line for better UX
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                draw(); // Redraw base state
+                // Draw temporary line from start point to current position
+                const startX = toCanvasX(startPoint.x);
+                const startY = toCanvasY(startPoint.y);
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
         }
     };
 
