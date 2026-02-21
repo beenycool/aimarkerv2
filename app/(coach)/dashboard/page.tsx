@@ -315,16 +315,37 @@ export default function DashboardPage() {
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Link href="/daily">
-                        <Button className="gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
-                            <Play className="h-4 w-4" />
-                            Start Revision
-                            <ArrowRight className="h-4 w-4" />
-                        </Button>
-                    </Link>
-                </div>
+
             </div>
+
+
+            {/* NEXT BEST ACTION HERO */}
+            <Link href="/daily" className="block group">
+                <div className="relative overflow-hidden rounded-xl bg-primary p-1 shadow-lg animate-in slide-in-from-top-4 duration-700 transition-transform hover:scale-[1.01] active:scale-[0.99]">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:animate-shimmer"></div>
+                    <div className="relative bg-primary text-primary-foreground rounded-lg p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="space-y-2 text-center md:text-left flex-1">
+                            <div className="inline-flex items-center gap-2 bg-background/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md border border-background/10 text-yellow-300">
+                                <Sparkles className="w-3 h-3" />
+                                RECOMMENDED NOW
+                            </div>
+                            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+                                Start Next Session: Daily 5-a-Day
+                            </h2>
+                            <p className="text-primary-foreground/80 max-w-lg">
+                                Targeting your weakest topics to boost your predicted grades.
+                                Est. time: 15 mins.
+                            </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                            <Button size="lg" className="h-14 px-8 text-lg font-bold shadow-xl bg-background text-foreground hover:bg-background/90 transition-all group-hover:shadow-2xl">
+                                <Play className="mr-2 h-5 w-5 fill-current" />
+                                Start Session
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </Link>
 
             {/* Error State */}
             {error && (

@@ -2,7 +2,7 @@
 
 import React, { useState, memo } from 'react';
 import DOMPurify from 'dompurify';
-import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw } from 'lucide-react';
+import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw, X, Check } from 'lucide-react';
 import katex from 'katex';
 
 
@@ -283,28 +283,60 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
             </div>
 
             <div className="p-5 space-y-4">
-                <div>
-                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Feedback</h4>
-                    <div className="text-card-foreground text-sm"><MarkdownText text={feedback.text} /></div>
-                </div>
+                {/* Checklist (New Feature) */}
+                {feedback.checklist && feedback.checklist.length > 0 ? (
+                    <div className="space-y-3 mb-4">
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Marking Points</h4>
+                        {feedback.checklist.map((item, idx) => (
+                            <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${item.achieved ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
+                                <div className="mt-0.5 flex-shrink-0">
+                                    {item.achieved ? <Check className="w-5 h-5 text-success" /> : <X className="w-5 h-5 text-destructive" />}
+                                </div>
+                                <span className={`text-sm leading-snug ${item.achieved ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                                    {item.point}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">Feedback</h4>
+                        <div className="text-card-foreground text-sm"><MarkdownText text={feedback.text} /></div>
+                    </div>
+                )}
 
                 <div className="bg-muted/30 p-4 rounded-lg border border-border">
                     <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Improved Answer (Changes in Bold)</h4>
                     <div className="text-foreground font-serif text-sm"><MarkdownText text={feedback.rewrite} /></div>
                 </div>
 
-                {!explanation && (
-                    <button onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
-                        {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        {explaining ? "Preparing explanation..." : "Explain Why"}
-                    </button>
-                )}
+                {/* Explanation Logic: If checklist exists, feedback.text IS the explanation. Otherwise use legacy explanation state. */}
+                {feedback.checklist && feedback.checklist.length > 0 ? (
+                    <details className="group">
+                        <summary className="list-none w-full py-2 bg-primary/5 text-primary border border-primary/10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors cursor-pointer select-none">
+                            <Sparkles className="w-4 h-4" /> Explain This Result
+                        </summary>
+                         <div className="mt-3 bg-primary/5 border border-primary/10 p-4 rounded-lg animate-in fade-in">
+                            <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2"><Brain className="w-4 h-4" /> Detailed Explanation</h4>
+                            <div className="text-foreground text-sm leading-relaxed"><MarkdownText text={feedback.text} /></div>
+                        </div>
+                    </details>
+                ) : (
+                    <>
+                        {!explanation && (
+                            <button onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
+                                {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                                {explaining ? "Preparing explanation..." : "Explain Why"}
+                            </button>
+                        )}
 
-                {explanation && (
-                    <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg animate-in fade-in">
-                        <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2"><Sparkles className="w-4 h-4" /> Explanation</h4>
-                        <div className="text-foreground text-sm leading-relaxed"><MarkdownText text={explanation} /></div>
-                    </div>
+                        {explanation && (
+                            <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg animate-in fade-in">
+                                <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2"><Sparkles className="w-4 h-4" /> Explanation</h4>
+                                <div className="text-foreground text-sm leading-relaxed"><MarkdownText text={explanation} /></div>
+                            </div>
+                        )}
+                    </>
                 )}
 
                 <div className="border-t border-border pt-4 mt-4">
