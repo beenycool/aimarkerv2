@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { createClient } from '@/app/lib/supabase/client';
 
 interface AuthContextType {
@@ -50,8 +50,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [supabase] = useState(() => createClient());
 
     useEffect(() => {
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
+
         // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then((result: { data: { session: Session | null } }) => {
+            const session = result.data.session;
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
@@ -60,28 +66,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listen for auth changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
         });
 
         return () => subscription.unsubscribe();
-    }, [supabase.auth]);
+    }, [supabase]);
 
     const signIn = useCallback(
         async (email: string, password: string) => {
+            if (!supabase) {
+                return { error: new Error('Supabase client not initialized') };
+            }
             const { error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
             return { error: error as Error | null };
         },
-        [supabase.auth]
+        [supabase]
     );
 
     const signUp = useCallback(
         async (email: string, password: string) => {
+            if (!supabase) {
+                return { error: new Error('Supabase client not initialized') };
+            }
             const { error } = await supabase.auth.signUp({
                 email,
                 password,
@@ -93,17 +105,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             return { error: error as Error | null };
         },
-        [supabase.auth]
+        [supabase]
     );
 
     const signInAnonymously = useCallback(async () => {
+        if (!supabase) {
+            return { data: null, error: new Error('Supabase client not initialized') };
+        }
         const { data, error } = await supabase.auth.signInAnonymously();
         return { data, error: error as Error | null };
-    }, [supabase.auth]);
+    }, [supabase]);
 
     const signOut = useCallback(async () => {
+        if (!supabase) return;
         await supabase.auth.signOut();
-    }, [supabase.auth]);
+    }, [supabase]);
 
     /**
      * Returns the effective student ID for database operations.
