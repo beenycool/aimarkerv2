@@ -13,9 +13,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
     const renderTaskRef = useRef(null);
     const [pdfDoc, setPdfDoc] = useState(null);
     const [pdfLibReady, setPdfLibReady] = useState(false);
-    const [pdfViewerWidth, setPdfViewerWidth] = useState(50); // percentage
-    const [isResizing, setIsResizing] = useState(false);
-    
+
     // Annotation state
     const [annotationMode, setAnnotationMode] = useState(null); // 'draw', 'highlight', 'erase', null
     const [isDrawing, setIsDrawing] = useState(false);
@@ -216,39 +214,14 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
     };
 
     // Handle resizing
-    const handleResizeStart = (e) => {
-        e.preventDefault();
-        setIsResizing(true);
-    };
 
-    useEffect(() => {
-        if (!isResizing) return;
-        
-        const handleMouseMove = (e) => {
-            // Use the parent container's width for accurate calculation
-            const parentContainer = containerRef.current?.parentElement?.parentElement;
-            const containerWidth = parentContainer ? parentContainer.offsetWidth : window.innerWidth;
-            const newWidth = (e.clientX / containerWidth) * 100;
-            setPdfViewerWidth(Math.max(30, Math.min(70, newWidth)));
-        };
 
-        const handleMouseUp = () => {
-            setIsResizing(false);
-        };
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isResizing]);
 
     return (
         <div 
-            className="bg-muted/30 border-r border-border flex flex-col hidden md:flex relative"
-            style={{ width: `${pdfViewerWidth}%` }}
+            className="bg-muted/30 border-r border-border flex flex-col  relative"
+            style={{ width: "100%", height: "100%" }}
         >
             <div className="bg-card border-b border-border p-2 flex gap-2">
                 <button onClick={() => onTabChange('paper')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'paper' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Question Paper</button>
@@ -318,12 +291,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                 </div>
             </div>
             
-            {/* Resize handle */}
-            <div 
-                className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/50 transition-colors"
-                onMouseDown={handleResizeStart}
-                style={{ zIndex: 100 }}
-            />
+
         </div>
     );
 }, (prev, next) => prev.file === next.file && prev.pageNumber === next.pageNumber && prev.scale === next.scale && prev.activePdfTab === next.activePdfTab && prev.hasInsert === next.hasInsert);

@@ -1,5 +1,6 @@
 // @ts-nocheck
 'use client';
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -82,7 +83,8 @@ export default function GCSEMarkerApp() {
 
     // Auto-restore session on mount
     useEffect(() => {
-        const restored = exam.restoreSession();
+        const loadSession = async () => {
+        const restored = await exam.restoreSession();
         if (restored) {
             setHasSavedSession(true);
             setPhase('exam');
@@ -120,6 +122,8 @@ export default function GCSEMarkerApp() {
                 fetchFiles();
             }
         }
+            };
+        loadSession();
     }, [exam.restoreSession]);
 
     // Persist session on changes
@@ -954,9 +958,11 @@ export default function GCSEMarkerApp() {
                     <Progress value={progressPercent} className="h-1.5" />
                 </div>
 
+
                 <main className="flex-1 flex overflow-hidden h-[calc(100vh-96px)]">
-                    {/* PDF Viewer */}
-                    <PDFViewer
+                    <PanelGroup direction="horizontal" className="h-full w-full">
+                        <Panel defaultSize={50} minSize={20}>
+                            <PDFViewer
                         file={activePdfTab === 'paper' ? files.paper : files.insert}
                         pageNumber={pdfPage}
                         scale={pdfScale}
@@ -966,6 +972,13 @@ export default function GCSEMarkerApp() {
                         onTabChange={setActivePdfTab}
                         hasInsert={!!files.insert}
                     />
+                        </Panel>
+                        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors cursor-col-resize flex flex-col justify-center items-center">
+                            <div className="h-4 w-1 bg-primary/20 rounded-full" />
+                        </PanelResizeHandle>
+                        <Panel defaultSize={50} minSize={20}>
+                            {/* PDF Viewer */}
+
 
                     {/* Right Panel: Exam Interface */}
                     <div className="flex-1 flex flex-col overflow-y-auto bg-card relative">
@@ -1140,6 +1153,8 @@ export default function GCSEMarkerApp() {
                             </div>
                         </div>
                     </div>
+                        </Panel>
+                    </PanelGroup>
                 </main>
             </div>
         );

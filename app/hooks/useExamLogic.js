@@ -1,12 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { set, get, del } from 'idb-keyval';
 
-/**
- * Custom hook to manage exam state and logic
- * Separates heavy state management from the view layer
- */
-export const useExamLogic = () => {
+const useExamLogic = () => {
     const [activeQuestions, setActiveQuestions] = useState([]);
     const [userAnswers, setUserAnswers] = useState({});
     const [feedbacks, setFeedbacks] = useState({});
@@ -20,12 +17,12 @@ export const useExamLogic = () => {
     const [paperId, setPaperId] = useState(null);
     const restoredSessionRef = useRef(false);
 
-    // Persist to LocalStorage
-    const saveSession = useCallback((phase) => {
+    // Persist to IndexedDB
+    const saveSession = useCallback(async (phase) => {
         if (typeof window === 'undefined') return;
         if (phase === 'exam' && activeQuestions.length > 0) {
             try {
-                window.localStorage.setItem('gcse_marker_state', JSON.stringify({
+                await set('gcse_marker_state', {
                     activeQuestions,
                     userAnswers,
                     feedbacks,
@@ -36,7 +33,7 @@ export const useExamLogic = () => {
                     paperFilePaths,
                     paperId,
                     timestamp: Date.now()
-                }));
+                });
             } catch (err) {
                 console.error('Failed to persist session', err);
             }
@@ -57,16 +54,13 @@ export const useExamLogic = () => {
         restoredSessionRef.current = true;
     }, []);
 
-    // Restore session from LocalStorage
-    const restoreSession = useCallback(() => {
+    // Restore session from IndexedDB
+    const restoreSession = useCallback(async () => {
         if (typeof window === 'undefined' || restoredSessionRef.current) return null;
 
-        const saved = window.localStorage.getItem('gcse_marker_state');
-        if (!saved) return null;
-
         try {
-            const parsed = JSON.parse(saved);
-            if (parsed.activeQuestions && parsed.activeQuestions.length > 0) {
+            const parsed = await get('gcse_marker_state');
+            if (parsed && parsed.activeQuestions && parsed.activeQuestions.length > 0) {
                 applySessionData(parsed);
                 return parsed;
             }
@@ -77,19 +71,18 @@ export const useExamLogic = () => {
     }, [applySessionData]);
 
     // Clear saved session
-    const clearSession = useCallback(() => {
+    const clearSession = useCallback(async () => {
         if (typeof window === 'undefined') return;
-        window.localStorage.removeItem('gcse_marker_state');
+        await del('gcse_marker_state');
     }, []);
 
     // Check if a session exists for a specific paper
-    const checkSessionForPaper = useCallback((paperIdentifier) => {
+    const checkSessionForPaper = useCallback(async (paperIdentifier) => {
         if (typeof window === 'undefined') return false;
-        const saved = window.localStorage.getItem('gcse_marker_state');
-        if (!saved) return false;
         
         try {
-            const parsed = JSON.parse(saved);
+            const parsed = await get('gcse_marker_state');
+            if (!parsed) return false;
             return parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0;
         } catch (err) {
             return false;
@@ -97,13 +90,13 @@ export const useExamLogic = () => {
     }, []);
 
     // Restore session for a specific paper
-    const restoreSessionForPaper = useCallback((paperIdentifier) => {
+    const restoreSessionForPaper = useCallback(async (paperIdentifier) => {
         if (typeof window === 'undefined') return null;
-        const saved = window.localStorage.getItem('gcse_marker_state');
-        if (!saved) return null;
 
         try {
-            const parsed = JSON.parse(saved);
+            const parsed = await get('gcse_marker_state');
+            if (!parsed) return null;
+
             if (parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0) {
                 applySessionData(parsed);
                 return parsed;
