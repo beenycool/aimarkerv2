@@ -213,14 +213,9 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         }));
     };
 
-    // Handle resizing
-
-
-
-
     return (
         <div 
-            className="bg-muted/30 border-r border-border flex flex-col  relative"
+            className="bg-muted/30 border-r border-border hidden md:flex flex-col relative"
             style={{ width: "100%", height: "100%" }}
         >
             <div className="bg-card border-b border-border p-2 flex gap-2">

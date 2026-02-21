@@ -41,10 +41,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
     const [startPoint, setStartPoint] = useState(null);
     const [labelText, setLabelText] = useState("");
 
-    const points = value?.points || [];
-    const lines = value?.lines || [];
-    const labels = value?.labels || [];
-    const paths = value?.paths || []; // array of point arrays
+    const graphState = value || { points: [], lines: [], labels: [], paths: [] };
+    const points = graphState.points || [];
+    const lines = graphState.lines || [];
+    const labels = graphState.labels || [];
+    const paths = graphState.paths || []; // array of point arrays
 
     const xMin = config?.xMin ?? 0;
     const xMax = (config?.xMax ?? 10) > xMin ? (config?.xMax ?? 10) : xMin + 1;
@@ -53,6 +54,10 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
     const xLabel = config?.xLabel ?? "X Axis";
     const yLabel = config?.yLabel ?? "Y Axis";
     const width = 600, height = 400, padding = 50;
+    const graphWidth = width - 2 * padding;
+    const graphHeight = height - 2 * padding;
+    const toCanvasX = useCallback((val) => padding + ((val - xMin) / (xMax - xMin)) * graphWidth, [padding, xMin, xMax, graphWidth]);
+    const toCanvasY = useCallback((val) => height - padding - ((val - yMin) / (yMax - yMin)) * graphHeight, [height, padding, yMin, yMax, graphHeight]);
 
     useEffect(() => {
         if (!backgroundImage) {
@@ -71,10 +76,6 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         // Use a known background color for the canvas content itself so it's readable
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, width, height);
-        const graphWidth = width - 2 * padding;
-        const graphHeight = height - 2 * padding;
-        const toCanvasX = (val) => padding + ((val - xMin) / (xMax - xMin)) * graphWidth;
-        const toCanvasY = (val) => height - padding - ((val - yMin) / (yMax - yMin)) * graphHeight;
 
         if (background) {
             const imageAspect = background.width / background.height;
@@ -145,11 +146,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
             labels.forEach(label => {
-                ctx.fillText(label.text, toCanvasX(label.x), toCanvasY(label.y));
+                ctx.fillText(label.text, toCanvasX(label.x) + 6, toCanvasY(label.y) - 6);
             });
         }
 
-    }, [points, lines, labels, paths, xMin, xMax, yMin, yMax, width, height, padding, xLabel, yLabel, background]);
+    }, [points, lines, labels, paths, width, height, padding, graphWidth, graphHeight, xLabel, yLabel, background, toCanvasX, toCanvasY]);
 
     useEffect(() => {
         draw();
@@ -174,15 +175,15 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         if (x < padding || x > width - padding || y < padding || y > height - padding) return;
 
         if (tool === 'point') {
-            onChange({ ...value, points: [...points, { x: valX, y: valY }] });
+            onChange({ ...graphState, points: [...points, { x: valX, y: valY }] }, true);
         } else if (tool === 'line') {
             setStartPoint({ x: valX, y: valY });
             setIsDrawing(true);
         } else if (tool === 'sketch') {
             setIsDrawing(true);
-            onChange({ ...value, paths: [...paths, [{ x, y }]] });
+            onChange({ ...graphState, paths: [...paths, [{ x, y }]] }, true);
         } else if (tool === 'label' && labelText) {
-             onChange({ ...value, labels: [...labels, { x: valX, y: valY, text: labelText }] });
+             onChange({ ...graphState, labels: [...labels, { x: valX, y: valY, text: labelText }] }, true);
              setLabelText("");
         }
     };
@@ -198,7 +199,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
             if (Math.abs(x - last.x) > 2 || Math.abs(y - last.y) > 2) {
                 const newPaths = [...paths];
                 newPaths[newPaths.length - 1] = [...currentPath, { x, y }];
-                onChange({ ...value, paths: newPaths });
+                onChange({ ...graphState, paths: newPaths }, true);
             }
         } else if (tool === 'line' && startPoint) {
             // Draw temporary preview line for better UX
@@ -225,17 +226,15 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         const { valX, valY } = getGraphCoordinates(e);
 
         if (tool === 'line' && startPoint) {
-            onChange({ ...value, lines: [...lines, { x1: startPoint.x, y1: startPoint.y, x2: valX, y2: valY }] });
+            onChange({ ...graphState, lines: [...lines, { x1: startPoint.x, y1: startPoint.y, x2: valX, y2: valY }] }, true);
             setStartPoint(null);
         }
     };
 
     const handleMouseLeave = () => {
-        if (isDrawing) setIsDrawing(false);
-    };
-
-    const handleSketchMove = (e) => {
-         // merged into handleMouseMove
+        if (!isDrawing) return;
+        setIsDrawing(false);
+        if (tool === 'line') setStartPoint(null);
     };
 
     return (
@@ -268,7 +267,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                         <ImageOff className="w-4 h-4" />
                     </button>
                 )}
-                <button onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] }, true)} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
             </div>
             <div className="border border-border rounded-lg overflow-hidden shadow-inner bg-white self-start">
                 <canvas ref={canvasRef} width={width} height={height} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave} className="cursor-crosshair block" />
@@ -300,25 +299,40 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
     }, [value]);
 
     // Handle local change and debounce propagation
-    const handleLocalChange = useCallback((newValue) => {
+    const flushPendingChange = useCallback((nextValue = localValue) => {
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+            debounceTimer.current = null;
+        }
+        if (nextValue !== lastPropValue.current) {
+            lastPropValue.current = nextValue;
+            onChange(nextValue);
+        }
+    }, [localValue, onChange]);
+
+    const handleLocalChange = useCallback((newValue, immediate = false) => {
         setLocalValue(newValue);
 
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        if (immediate) {
+            flushPendingChange(newValue);
+            return;
+        }
+
+        if (debounceTimer.current) {
+            clearTimeout(debounceTimer.current);
+        }
 
         debounceTimer.current = setTimeout(() => {
             lastPropValue.current = newValue; // Update ref so we don't overwrite ourselves
             onChange(newValue);
-        }, 1000); // 1 second debounce
-    }, [onChange]);
+            debounceTimer.current = null;
+        }, 500);
+    }, [onChange, flushPendingChange]);
 
     // Handle blur to commit immediately
     const handleBlur = useCallback(() => {
-        if (debounceTimer.current) clearTimeout(debounceTimer.current);
-        if (localValue !== lastPropValue.current) {
-             lastPropValue.current = localValue;
-             onChange(localValue);
-        }
-    }, [localValue, onChange]);
+        flushPendingChange(localValue);
+    }, [localValue, flushPendingChange]);
 
     // Cleanup
     useEffect(() => {
@@ -344,7 +358,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
             <div className="space-y-2">
                 {options.map((opt, idx) => (
                     <label key={idx} className={`flex items-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-all ${localValue === opt ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border'}`}>
-                        <input type="radio" name="mcq" className="w-4 h-4 text-primary focus:ring-primary" checked={localValue === opt} onChange={() => handleLocalChange(opt)} />
+                        <input type="radio" name="mcq" className="w-4 h-4 text-primary focus:ring-primary" checked={localValue === opt} onChange={() => handleLocalChange(opt, true)} />
                         <span className="ml-3 text-foreground font-medium">{opt}</span>
                     </label>
                 ))}
