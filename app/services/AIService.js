@@ -834,25 +834,31 @@ This answer is incorrect. Please review the mark scheme to identify the correct 
             ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
             : '';
 
-        const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nMARK SCHEME: ${JSON.stringify(scheme)}\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw using ONLY points from the mark scheme.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis. If relevant, reference the verified facts.`;
+        const tutorPrompt = `You are a professional ${level || "exam"} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nMARK SCHEME: ${JSON.stringify(scheme)}\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Create a STRICT JSON array of marking points as "checklist". Each item should have { "point": "string", "achieved": boolean }.\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw using ONLY points from the mark scheme.\n4) Explain why they got this score (cite the criticism).\n\nOUTPUT FORMAT: JSON object with keys: "text" (explanation from step 4), "rewrite" (improved answer from step 3), "checklist" (array from step 2). NO Markdown code blocks.`;
 
-        let tutorText = "";
+        let tutorResponse = { text: "", rewrite: "", checklist: [] };
         try {
-            tutorText = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
+            const rawResponse = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
                 apiKey: tutorConfig.apiKey,
                 customConfig: tutorConfig.customConfig
             });
+            const cleaned = cleanGeminiJSON(rawResponse);
+            tutorResponse = JSON.parse(cleaned);
         } catch (tutorErr) {
-            tutorText = `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`;
+            console.error("Tutor JSON parsing failed, falling back to text", tutorErr);
+             tutorResponse = {
+                text: `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`,
+                rewrite: "Improved Answer (Changes in Bold)",
+                checklist: []
+             };
         }
-
-        const rewrite = extractImprovedAnswer(tutorText) || "Improved Answer (Changes in Bold)";
 
         return {
             score: numericScore,
             totalMarks: question.marks,
-            text: tutorText,
-            rewrite,
+            text: tutorResponse.text || "See feedback below.",
+            rewrite: tutorResponse.rewrite || "See model answer.",
+            checklist: tutorResponse.checklist || [],
             primaryFlaw
         };
     },
