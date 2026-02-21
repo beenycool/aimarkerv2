@@ -60,14 +60,25 @@ const extractImprovedAnswer = (markdown) => {
 export const checkRegex = (regexStr, value) => {
     try {
         const safeRegex = regexStr.replace(/(^|[^\\'])(\/)/g, '$1\\/');
+
+        if (regexCache.has(safeRegex)) {
+            return regexCache.get(safeRegex).test(String(value).trim());
+        }
+
         const re = new RegExp(safeRegex, 'i');
+
+        if (regexCache.size >= MAX_CACHE_SIZE) {
+            const firstKey = regexCache.keys().next().value;
+            regexCache.delete(firstKey);
+        }
+        regexCache.set(safeRegex, re);
+
         return re.test(String(value).trim());
     } catch (e) {
         console.warn("Invalid Regex provided by AI:", regexStr, e);
         return false;
     }
 };
-
 export const getMarkSchemeForQuestion = (markScheme, questionId) => {
     if (!markScheme || !questionId) return undefined;
     if (Object.prototype.hasOwnProperty.call(markScheme, questionId)) return markScheme[questionId];
@@ -165,28 +176,61 @@ Output ONLY the query string or "NO_SEARCH". No other text.`
 };
 
 // --- API Enable Check ---
-let cachedSettings = null;
-let cacheExpiry = 0;
+const settingsCache = new Map();
 const CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 1000; // Prevent unbounded growth
+
+/**
+ * Clean up expired cache entries to prevent memory leaks
+ */
+function cleanupExpiredCache() {
+    const now = Date.now();
+    for (const [key, value] of settingsCache.entries()) {
+        if (now >= value.expiry) {
+            settingsCache.delete(key);
+        }
+    }
+}
+
+// --- Search Cache ---
+const SEARCH_CACHE = new Map();
+const SEARCH_CACHE_TTL = 3600 * 1000; // 1 hour
 
 /**
  * Get the feature configuration + global settings
  */
 export function clearSettingsCache() {
-    cachedSettings = null;
-    cacheExpiry = 0;
+    settingsCache.clear();
+}
+
+export function clearSearchCache() {
+    SEARCH_CACHE.clear();
 }
 
 export async function getFullAISettings(studentId) {
     if (!studentId) return { ai_preferences: DEFAULT_AI_PREFERENCES, custom_api_config: {} };
 
     try {
-        if (cachedSettings && Date.now() < cacheExpiry) {
-            return cachedSettings;
+        // Periodic cleanup of expired entries (1% chance per call to avoid performance impact)
+        if (Math.random() < 0.01) {
+            cleanupExpiredCache();
+        }
+
+        // Enforce max cache size by removing oldest entries (FIFO)
+        if (settingsCache.size >= MAX_CACHE_SIZE) {
+            const firstKey = settingsCache.keys().next().value;
+            settingsCache.delete(firstKey);
+        }
+
+        const cached = settingsCache.get(studentId);
+        if (cached && Date.now() < cached.expiry) {
+            return cached.settings;
         }
         const settings = await getOrCreateSettings(studentId);
-        cachedSettings = settings;
-        cacheExpiry = Date.now() + CACHE_TTL;
+        settingsCache.set(studentId, {
+            settings,
+            expiry: Date.now() + CACHE_TTL
+        });
         return settings;
     } catch (e) {
         console.warn('Failed to get AI settings:', e);
@@ -446,6 +490,19 @@ async function fallbackTopicGeneration(subject, studentId, settings) {
 export async function searchWeb(query, options = {}) {
     const { strategy = 'fallback', hackclubSearchKey = null, count = 5 } = options;
 
+    // Create a cache key based on query and options affecting result
+    const cacheKey = JSON.stringify({ query, strategy, count });
+
+    // Check Cache
+    if (SEARCH_CACHE.has(cacheKey)) {
+        const { timestamp, data } = SEARCH_CACHE.get(cacheKey);
+        if (Date.now() - timestamp < SEARCH_CACHE_TTL) {
+            return data;
+        } else {
+            SEARCH_CACHE.delete(cacheKey);
+        }
+    }
+
     // Helper to search via Hack Club Search (search.hackclub.com)
     const searchHackClub = async () => {
         const headers = {};
@@ -498,12 +555,15 @@ export async function searchWeb(query, options = {}) {
     };
 
     try {
+        let result;
         switch (strategy) {
             case 'hackclub':
-                return await searchHackClub();
+                result = await searchHackClub();
+                break;
 
             case 'perplexity':
-                return await searchPerplexity();
+                result = await searchPerplexity();
+                break;
 
             case 'both': {
                 // Run both in parallel and combine results
@@ -528,28 +588,37 @@ export async function searchWeb(query, options = {}) {
                     throw new Error('Both search providers failed');
                 }
 
-                return {
+                result = {
                     results: combined,
                     source: sources.join('+')
                 };
+                break;
             }
 
             case 'fallback':
             default: {
                 // Try Hack Club Search first, fall back to Perplexity
                 try {
-                    return await searchHackClub();
+                    result = await searchHackClub();
                 } catch (hackclubError) {
                     console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
                     try {
-                        return await searchPerplexity();
+                        result = await searchPerplexity();
                     } catch (perplexityError) {
                         console.warn('Perplexity search also failed:', perplexityError.message);
                         throw new Error('All search providers failed');
                     }
                 }
+                break;
             }
         }
+
+        // Cache the successful result
+        if (result && result.results) {
+            SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+        }
+        return result;
+
     } catch (error) {
         console.error('Web search failed:', error);
         return { results: [], source: 'none', error: error.message };
@@ -796,25 +865,31 @@ This answer is incorrect. Please review the mark scheme to identify the correct 
             ? `\n\nSTUDENT PERSONALIZATION:\n${memoryContext}`
             : '';
 
-        const tutorPrompt = `You are a professional ${level || 'exam'} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nMARK SCHEME: ${JSON.stringify(scheme)}\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Explain why they got this score (cite the criticism).\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw using ONLY points from the mark scheme.\n4) Keep it concise, professional, and Markdown formatted. Do NOT use emojis. If relevant, reference the verified facts.`;
+        const tutorPrompt = `You are a professional ${level || "exam"} tutor.${personalizationNote}\n\nSTUDENT SCORE: ${numericScore}/${question.marks}\nEXAMINER'S CRITICISM: "${primaryFlaw}"\nQUESTION: "${question.question}"\nMARK SCHEME: ${JSON.stringify(scheme)}\nSTUDENT ANSWER: "${studentAnswerText}"${searchContext}\n\nTASK:\n1) Tell the student their score.\n2) Create a STRICT JSON array of marking points as "checklist". Each item should have { "point": "string", "achieved": boolean }.\n3) Write an "Improved Answer (Changes in Bold)" that fixes the flaw using ONLY points from the mark scheme.\n4) Explain why they got this score (cite the criticism).\n\nOUTPUT FORMAT: JSON object with keys: "text" (explanation from step 4), "rewrite" (improved answer from step 3), "checklist" (array from step 2). NO Markdown code blocks.`;
 
-        let tutorText = "";
+        let tutorResponse = { text: "", rewrite: "", checklist: [] };
         try {
-            tutorText = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
+            const rawResponse = await callAI(tutorConfig.provider, [{ role: "user", content: tutorPrompt }], tutorConfig.model, {
                 apiKey: tutorConfig.apiKey,
                 customConfig: tutorConfig.customConfig
             });
+            const cleaned = cleanGeminiJSON(rawResponse);
+            tutorResponse = JSON.parse(cleaned);
         } catch (tutorErr) {
-            tutorText = `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`;
+            console.error("Tutor JSON parsing failed, falling back to text", tutorErr);
+             tutorResponse = {
+                text: `Score: ${numericScore}/${question.marks}. Focus on: ${primaryFlaw}`,
+                rewrite: "Improved Answer (Changes in Bold)",
+                checklist: []
+             };
         }
-
-        const rewrite = extractImprovedAnswer(tutorText) || "Improved Answer (Changes in Bold)";
 
         return {
             score: numericScore,
             totalMarks: question.marks,
-            text: tutorText,
-            rewrite,
+            text: tutorResponse.text || "See feedback below.",
+            rewrite: tutorResponse.rewrite || "See model answer.",
+            checklist: tutorResponse.checklist || [],
             primaryFlaw
         };
     },

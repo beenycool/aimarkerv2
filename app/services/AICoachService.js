@@ -176,4 +176,57 @@ function generateFallbackInsights(studentData, timeOfDay, trendChange) {
     };
 }
 
-export default { generateDashboardInsights };
+
+
+/**
+ * Generate 5 daily practice questions based on weaknesses
+ */
+export async function generateDailyQuestions(weaknesses, studentId, apiKey = null) {
+    const weakTopics = (weaknesses || []).map(w => w.label).join(", ");
+    const memoryContext = studentId ? await getMemoryContextForAI(studentId) : "";
+
+    const messages = [
+        {
+            role: "system",
+            content: "You are an expert GCSE tutor. Create a \"Daily 5\" mini-quiz for a student."
+        },
+        {
+            role: "user",
+            content: `Student Weaknesses: ${weakTopics || "General Science, Math, English"}
+Student Context: ${memoryContext}
+
+Task: Generate 5 specific, high-quality GCSE exam questions targeting these weaknesses.
+Mix of Question Types:
+- 2 Multiple Choice (4 options)
+- 3 Short Answer (1-3 marks)
+
+Output STRICT JSON array of objects:
+[
+  {
+    "id": "q1",
+    "type": "multiple_choice" | "short_text",
+    "question": "Question text...",
+    "options": ["A", "B", "C", "D"] (only for MCQ),
+    "marks": number,
+    "topic": "Topic Name",
+    "mark_scheme": {
+       "answer": "Correct Answer",
+       "criteria": ["Key point 1", "Key point 2"]
+    }
+  }
+]
+Do NOT return Markdown. Just the JSON array.`
+        }
+    ];
+
+    try {
+        const responseContent = await callHackClubAPI(messages, apiKey);
+        const cleaned = cleanGeminiJSON(responseContent);
+        return JSON.parse(cleaned);
+    } catch (error) {
+        console.error("Failed to generate daily questions:", error);
+        return [];
+    }
+}
+
+export default { generateDashboardInsights, generateDailyQuestions };
