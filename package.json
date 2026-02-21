@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "bun test"
+    "test": "jest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -36,7 +36,7 @@
     "dompurify": "^3.1.6",
     "katex": "^0.16.27",
     "lucide-react": "^0.447.0",
-    "next": "^16.1.1",
+    "next": "^16.1.5",
     "next-themes": "^0.4.6",
     "pdfjs-dist": "^5.4.449",
     "react": "^19.2.3",
@@ -48,15 +48,22 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.0.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "tailwindcss-animate": "^1.0.7",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }

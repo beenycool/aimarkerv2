@@ -151,7 +151,7 @@ export function AIScheduleGenerator({
 
             // Note upcoming assessments
             if (upcomingAssessments.length > 0) {
-                const urgent = upcomingAssessments.filter(a => {
+                const urgent = upcomingAssessments.filter((a: { date: string }) => {
                     const days = Math.ceil((new Date(a.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                     return days <= 7;
                 });
@@ -162,7 +162,7 @@ export function AIScheduleGenerator({
 
             // Note struggling subjects
             const performanceMap = performance as Record<string, { percentage: number | null; questionCount: number }>;
-            const strugglingSubjects = subs?.filter(s => {
+            const strugglingSubjects = subs?.filter((s: Subject) => {
                 const perf = performanceMap[s.id];
                 return perf != null && perf.percentage != null && perf.percentage < 60;
             }) || [];
@@ -182,7 +182,7 @@ export function AIScheduleGenerator({
 
             // Note recent topics for spaced repetition
             const topicsNeedingReview = recentHistory.recentTopics
-                .filter(t => t.daysAgo >= 3 && t.daysAgo <= 10)
+                .filter((t: { daysAgo: number }) => t.daysAgo >= 3 && t.daysAgo <= 10)
                 .slice(0, 3);
             if (topicsNeedingReview.length > 0) {
                 addInsight(`🔄 ${topicsNeedingReview.length} topic(s) ready for review`);
@@ -203,8 +203,8 @@ export function AIScheduleGenerator({
 
                 // Prioritize weak subjects or those with exams
                 const performanceMap = performance as Record<string, { percentage: number | null }>;
-                const prioritySubjects = (subs || []).filter(s => {
-                    const hasExam = upcomingAssessments.some((a: any) => a.subject_id === s.id);
+                const prioritySubjects = (subs || []).filter((s: Subject) => {
+                    const hasExam = upcomingAssessments.some((a: { subject_id: string }) => a.subject_id === s.id);
                     const lowPerf = performanceMap[s.id]?.percentage != null && performanceMap[s.id].percentage! < 60;
                     return hasExam || lowPerf;
                 });
@@ -212,7 +212,7 @@ export function AIScheduleGenerator({
                 const targets = prioritySubjects.length > 0 ? prioritySubjects : (subs || []).slice(0, 3);
 
                 if (targets.length > 0) {
-                    const topicsPromises = targets.map(async s => {
+                    const topicsPromises = targets.map(async (s: Subject) => {
                         const t = await AIService.researchSubjectTopics(s.name, studentId, {
                             searchStrategy,
                             hackclubSearchKey
@@ -221,7 +221,7 @@ export function AIScheduleGenerator({
                     });
 
                     const results = await Promise.all(topicsPromises);
-                    results.forEach(r => {
+                    results.forEach((r: { id: string; topics: string[] }) => {
                         if (r.topics && Array.isArray(r.topics) && r.topics.length) {
                             verifiedTopics[r.id] = r.topics;
                         }
