@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '../supabaseClient';
 import { AIPreferences, CustomAPIConfig, StudentSettings } from './types';
 

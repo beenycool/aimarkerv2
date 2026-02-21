@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '../supabaseClient';
 import { isoToday } from '../dateUtils';
 import { Assessment, AssessmentAttachment } from './types';

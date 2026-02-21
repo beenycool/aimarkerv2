@@ -1,3 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-export const supabase: SupabaseClient;
-export function getSupabase(): SupabaseClient | null;
+import { Database } from '../lib/supabase/database.types';
+
+export const supabase: SupabaseClient<Database>;
+export function getSupabase(): SupabaseClient<Database>;

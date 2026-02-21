@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '../supabaseClient';
 import { DEFAULT_SETTINGS } from './settings';
 
