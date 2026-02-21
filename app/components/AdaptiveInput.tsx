@@ -5,11 +5,36 @@ import { TableIcon, BarChart2 } from 'lucide-react';
 import MathKeyboard from './inputs/MathKeyboard';
 import GraphCanvas from './inputs/GraphCanvas';
 
+interface TableStructure {
+    headers?: string[];
+    initialData?: (string | null)[][];
+    rows?: number;
+}
+
+interface GraphConfig {
+    type?: string;
+    width?: number;
+    height?: number;
+    gridSize?: number;
+    showAxes?: boolean;
+}
+
+interface AdaptiveInputProps {
+    type: string;
+    options?: string[];
+    listCount?: number;
+    tableStructure?: TableStructure;
+    graphConfig?: GraphConfig;
+    value: any;
+    onChange: (value: any) => void;
+    graphFigure?: string | null;
+}
+
 /**
  * AdaptiveInput - Renders the appropriate input type based on question type
  * IMPORTANT: Use key={question.id} when rendering this component to prevent state bleeding
  */
-const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }) => {
+const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }: AdaptiveInputProps) => {
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const [figureBackground, setFigureBackground] = useState(null);
 

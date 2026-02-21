@@ -72,6 +72,10 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { prompt, files, messages, model, temperature = 0.2, maxTokens = 16384, apiKey: clientApiKey } = body;
 
+        // Server-side validation for maxTokens
+        const MAX_ALLOWED_TOKENS = 32768;
+        const validatedMaxTokens = Math.min(Math.max(1, maxTokens), MAX_ALLOWED_TOKENS);
+
         // Prefer a client-provided key when present, fall back to server key.
         const apiKey = clientApiKey || OPENROUTER_API_KEY;
 
@@ -129,7 +133,7 @@ export async function POST(request: Request) {
                 model: effectiveModel,
                 messages: requestMessages,
                 temperature,
-                max_tokens: maxTokens
+                max_tokens: validatedMaxTokens
             })
         });
 

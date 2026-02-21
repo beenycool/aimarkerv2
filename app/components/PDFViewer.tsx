@@ -9,6 +9,33 @@ import 'react-pdf/dist/Page/TextLayer.css';
 // Configure worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+interface Point {
+    x: number;
+    y: number;
+}
+
+interface HighlightRect {
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+}
+
+interface DrawAnnotation {
+    type: 'draw';
+    points: Point[];
+}
+
+interface HighlightAnnotation {
+    type: 'highlight';
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+type Annotation = DrawAnnotation | HighlightAnnotation;
+
 interface PDFViewerProps {
     file: string | File | ArrayBuffer;
     pageNumber: number;
@@ -30,8 +57,9 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
     // Annotation state
     const [annotationMode, setAnnotationMode] = useState<'draw' | 'highlight' | null>(null);
     const [isDrawing, setIsDrawing] = useState(false);
-    const [annotations, setAnnotations] = useState<Record<number, any[]>>({});
-    const [currentStroke, setCurrentStroke] = useState<any[] | any>([]);
+    const [annotations, setAnnotations] = useState<Record<number, Annotation[]>>({});
+    const [currentDrawStroke, setCurrentDrawStroke] = useState<Point[]>([]);
+    const [currentHighlightRect, setCurrentHighlightRect] = useState<HighlightRect | null>(null);
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -77,23 +105,23 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         });
 
         // Draw current stroke
-        if (isDrawing && currentStroke) {
-            if (annotationMode === 'draw' && Array.isArray(currentStroke) && currentStroke.length > 0) {
+        if (isDrawing) {
+            if (annotationMode === 'draw' && currentDrawStroke.length > 0) {
                 ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
                 ctx.lineWidth = 2;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.beginPath();
-                ctx.moveTo(currentStroke[0].x, currentStroke[0].y);
-                for (let i = 1; i < currentStroke.length; i++) {
-                    ctx.lineTo(currentStroke[i].x, currentStroke[i].y);
+                ctx.moveTo(currentDrawStroke[0].x, currentDrawStroke[0].y);
+                for (let i = 1; i < currentDrawStroke.length; i++) {
+                    ctx.lineTo(currentDrawStroke[i].x, currentDrawStroke[i].y);
                 }
                 ctx.stroke();
-            } else if (annotationMode === 'highlight' && !Array.isArray(currentStroke) && currentStroke.startX !== undefined && currentStroke.currentX !== undefined) {
-                 const x = Math.min(currentStroke.startX, currentStroke.currentX);
-                 const y = Math.min(currentStroke.startY, currentStroke.currentY);
-                 const width = Math.abs(currentStroke.currentX - currentStroke.startX);
-                 const height = Math.abs(currentStroke.currentY - currentStroke.startY);
+            } else if (annotationMode === 'highlight' && currentHighlightRect) {
+                 const x = Math.min(currentHighlightRect.startX, currentHighlightRect.currentX);
+                 const y = Math.min(currentHighlightRect.startY, currentHighlightRect.currentY);
+                 const width = Math.abs(currentHighlightRect.currentX - currentHighlightRect.startX);
+                 const height = Math.abs(currentHighlightRect.currentY - currentHighlightRect.startY);
                  ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
                  ctx.fillRect(x, y, width, height);
             }
@@ -103,7 +131,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
     // Effect to redraw when page or annotations change
     useEffect(() => {
         redrawAnnotations();
-    }, [pageNumber, annotations, currentStroke, scale]);
+    }, [pageNumber, annotations, currentDrawStroke, currentHighlightRect, scale]);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!annotationMode) return;
@@ -116,9 +144,11 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         const y = (e.clientY - rect.top) * (canvas.height / rect.height);
         
         if (annotationMode === 'draw') {
-            setCurrentStroke([{ x, y }]);
+            setCurrentDrawStroke([{ x, y }]);
+            setCurrentHighlightRect(null);
         } else if (annotationMode === 'highlight') {
-            setCurrentStroke({ startX: x, startY: y, currentX: x, currentY: y });
+            setCurrentHighlightRect({ startX: x, startY: y, currentX: x, currentY: y });
+            setCurrentDrawStroke([]);
         }
     };
 
@@ -132,9 +162,9 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         const y = (e.clientY - rect.top) * (canvas.height / rect.height);
         
         if (annotationMode === 'draw') {
-            setCurrentStroke((prev: any[]) => [...prev, { x, y }]);
-        } else if (annotationMode === 'highlight') {
-            setCurrentStroke((prev: any) => ({ ...prev, currentX: x, currentY: y }));
+            setCurrentDrawStroke(prev => [...prev, { x, y }]);
+        } else if (annotationMode === 'highlight' && currentHighlightRect) {
+            setCurrentHighlightRect(prev => prev ? { ...prev, currentX: x, currentY: y } : null);
         }
     };
 
@@ -148,22 +178,22 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         const x = (e.clientX - rect.left) * (canvas.width / rect.width);
         const y = (e.clientY - rect.top) * (canvas.height / rect.height);
 
-        if (annotationMode === 'draw' && Array.isArray(currentStroke) && currentStroke.length > 1) {
+        if (annotationMode === 'draw' && currentDrawStroke.length > 1) {
             setAnnotations(prev => ({
                 ...prev,
-                [pageNumber]: [...(prev[pageNumber] || []), { type: 'draw', points: currentStroke }]
+                [pageNumber]: [...(prev[pageNumber] || []), { type: 'draw', points: currentDrawStroke }]
             }));
-        } else if (annotationMode === 'highlight' && !Array.isArray(currentStroke) && currentStroke.startX !== undefined) {
-            const width = x - currentStroke.startX;
-            const height = y - currentStroke.startY;
+        } else if (annotationMode === 'highlight' && currentHighlightRect) {
+            const width = x - currentHighlightRect.startX;
+            const height = y - currentHighlightRect.startY;
             
             if (Math.abs(width) > 5 && Math.abs(height) > 5) {
                 setAnnotations(prev => ({
                     ...prev,
                     [pageNumber]: [...(prev[pageNumber] || []), { 
                         type: 'highlight', 
-                        x: Math.min(currentStroke.startX, x), 
-                        y: Math.min(currentStroke.startY, y),
+                        x: Math.min(currentHighlightRect.startX, x), 
+                        y: Math.min(currentHighlightRect.startY, y),
                         width: Math.abs(width),
                         height: Math.abs(height)
                     }]
@@ -171,19 +201,21 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
             }
         }
         
-        setCurrentStroke([]);
+        setCurrentDrawStroke([]);
+        setCurrentHighlightRect(null);
     };
 
     const handleMouseLeave = () => {
         if (isDrawing) {
             setIsDrawing(false);
-            if (annotationMode === 'draw' && Array.isArray(currentStroke) && currentStroke.length > 1) {
+            if (annotationMode === 'draw' && currentDrawStroke.length > 1) {
                 setAnnotations(prev => ({
                     ...prev,
-                    [pageNumber]: [...(prev[pageNumber] || []), { type: 'draw', points: currentStroke }]
+                    [pageNumber]: [...(prev[pageNumber] || []), { type: 'draw', points: currentDrawStroke }]
                 }));
             }
-            setCurrentStroke([]);
+            setCurrentDrawStroke([]);
+            setCurrentHighlightRect(null);
         }
     };
 

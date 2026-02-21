@@ -1,5 +1,7 @@
-import { supabase } from './supabaseClient';
+import { supabase as defaultSupabase } from './supabaseClient';
 import { isoToday } from './dateUtils';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../lib/supabase/database.types';
 
 // Default AI preferences for per-feature configuration
 export const DEFAULT_AI_PREFERENCES = {
@@ -40,10 +42,11 @@ export const DEFAULT_SETTINGS = {
   busy_periods: [], // e.g., [{start: '12:00', end: '13:00', label: 'Lunch'}]
 };
 
-export async function getOrCreateSettings(studentId) {
+export async function getOrCreateSettings(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('student_settings')
     .select('*')
     .eq('student_id', studentId)
@@ -56,7 +59,7 @@ export async function getOrCreateSettings(studentId) {
 
   if (data) return data;
 
-  const { data: inserted, error: insertError } = await supabase
+  const { data: inserted, error: insertError } = await supabaseClient
     .from('student_settings')
     .insert({ student_id: studentId, ...DEFAULT_SETTINGS })
     .select('*')
@@ -66,9 +69,10 @@ export async function getOrCreateSettings(studentId) {
   return inserted;
 }
 
-export async function updateSettings(studentId, patch) {
+export async function updateSettings(studentId, patch, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('student_settings')
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
@@ -78,9 +82,10 @@ export async function updateSettings(studentId, patch) {
   return data;
 }
 
-export async function listSubjects(studentId) {
+export async function listSubjects(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('subjects')
     .select('*')
     .eq('student_id', studentId)
@@ -89,9 +94,10 @@ export async function listSubjects(studentId) {
   return data || [];
 }
 
-export async function getSubject(studentId, subjectId) {
+export async function getSubject(studentId, subjectId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('subjects')
     .select('*')
     .eq('student_id', studentId)
@@ -101,8 +107,9 @@ export async function getSubject(studentId, subjectId) {
   return data;
 }
 
-export async function createSubject(studentId, input) {
+export async function createSubject(studentId, input, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const payload = {
     student_id: studentId,
     name: (input?.name || '').trim(),
@@ -111,24 +118,26 @@ export async function createSubject(studentId, input) {
     weekly_minutes: Number.isFinite(input?.weekly_minutes) ? input.weekly_minutes : null,
     tier: input?.tier || null,
   };
-  const { data, error } = await supabase.from('subjects').insert(payload).select('*').single();
+  const { data, error } = await supabaseClient.from('subjects').insert(payload).select('*').single();
   if (error) throw error;
   return data;
 }
 
-export async function deleteSubject(studentId, subjectId) {
+export async function deleteSubject(studentId, subjectId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { error } = await supabase.from('subjects').delete().eq('student_id', studentId).eq('id', subjectId);
+  const supabaseClient = client || defaultSupabase;
+  const { error } = await supabaseClient.from('subjects').delete().eq('student_id', studentId).eq('id', subjectId);
   if (error) throw error;
 }
 
-export async function ensureSubjectForStudent(studentId, { name, exam_board }) {
+export async function ensureSubjectForStudent(studentId, { name, exam_board }, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
   const subjectName = (name || '').trim() || 'Unknown Subject';
   const board = (exam_board || '').trim() || null;
 
-  const { data: existing, error: selErr } = await supabase
+  const { data: existing, error: selErr } = await supabaseClient
     .from('subjects')
     .select('*')
     .eq('student_id', studentId)
@@ -138,7 +147,7 @@ export async function ensureSubjectForStudent(studentId, { name, exam_board }) {
   if (selErr && selErr.code !== 'PGRST116') throw selErr;
   if (existing) return existing;
 
-  const { data: inserted, error: insErr } = await supabase
+  const { data: inserted, error: insErr } = await supabaseClient
     .from('subjects')
     .insert({
       student_id: studentId,
@@ -154,7 +163,7 @@ export async function ensureSubjectForStudent(studentId, { name, exam_board }) {
   if (!insErr) return inserted;
 
   // If we raced a concurrent insert, try selecting again
-  const { data: again } = await supabase
+  const { data: again } = await supabaseClient
     .from('subjects')
     .select('*')
     .eq('student_id', studentId)
@@ -164,10 +173,11 @@ export async function ensureSubjectForStudent(studentId, { name, exam_board }) {
   return again || null;
 }
 
-export async function listQuestionAttempts(studentId, { subjectId = null, limit = 200, sinceISO = null } = {}) {
+export async function listQuestionAttempts(studentId, { subjectId = null, limit = 200, sinceISO = null } = {}, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
-  let q = supabase
+  let q = supabaseClient
     .from('question_attempts')
     .select('*')
     .eq('student_id', studentId)
@@ -185,14 +195,15 @@ export async function listQuestionAttempts(studentId, { subjectId = null, limit 
 /**
  * Safe attempt logger: never throws (so it won’t break marking UX).
  */
-export async function logQuestionAttemptSafe(row) {
+export async function logQuestionAttemptSafe(row, client?: SupabaseClient<Database>) {
   try {
     if (!row?.student_id) return;
+    const supabaseClient = client || defaultSupabase;
     const payload = {
       ...row,
       attempted_at: row.attempted_at || new Date().toISOString(),
     };
-    const { error } = await supabase.from('question_attempts').insert(payload);
+    const { error } = await supabaseClient.from('question_attempts').insert(payload);
     if (error) console.warn('logQuestionAttemptSafe error:', error);
   } catch (e) {
     console.warn('logQuestionAttemptSafe failed:', e);
@@ -216,12 +227,13 @@ export function pickTopWeaknesses(counts, limit = 5) {
     .map(([label, count]) => ({ label, count }));
 }
 
-export async function getOrCreateTodayDailySession(studentId, { subjectId = null, items = [] } = {}) {
+export async function getOrCreateTodayDailySession(studentId, { subjectId = null, items = [] } = {}, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
   const today = isoToday();
 
-  let q = supabase
+  let q = supabaseClient
     .from('study_sessions')
     .select('*')
     .eq('student_id', studentId)
@@ -237,7 +249,7 @@ export async function getOrCreateTodayDailySession(studentId, { subjectId = null
   if (error && error.code !== 'PGRST116') throw error;
   if (existing) return existing;
 
-  const { data: inserted, error: insErr } = await supabase
+  const { data: inserted, error: insErr } = await supabaseClient
     .from('study_sessions')
     .insert({
       student_id: studentId,
@@ -255,9 +267,10 @@ export async function getOrCreateTodayDailySession(studentId, { subjectId = null
   return inserted;
 }
 
-export async function completeSession(studentId, sessionId, reflection) {
+export async function completeSession(studentId, sessionId, reflection, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('study_sessions')
     .update({
       status: 'done',
@@ -273,10 +286,11 @@ export async function completeSession(studentId, sessionId, reflection) {
   return data;
 }
 
-export async function listSessions(studentId, { fromDateISO, toDateISO }) {
+export async function listSessions(studentId, { fromDateISO, toDateISO }, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
-  let q = supabase.from('study_sessions').select('*').eq('student_id', studentId).order('planned_for', { ascending: true });
+  let q = supabaseClient.from('study_sessions').select('*').eq('student_id', studentId).order('planned_for', { ascending: true });
 
   if (fromDateISO) q = q.gte('planned_for', fromDateISO);
   if (toDateISO) q = q.lte('planned_for', toDateISO);
@@ -286,21 +300,23 @@ export async function listSessions(studentId, { fromDateISO, toDateISO }) {
   return data || [];
 }
 
-export async function upsertMemoryItem(studentId, item) {
+export async function upsertMemoryItem(studentId, item, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const payload = {
     ...item,
     student_id: studentId,
     updated_at: new Date().toISOString(),
   };
-  const { data, error } = await supabase.from('memory_bank_items').upsert(payload).select('*').single();
+  const { data, error } = await supabaseClient.from('memory_bank_items').upsert(payload).select('*').single();
   if (error) throw error;
   return data;
 }
 
-export async function listMemoryItems(studentId) {
+export async function listMemoryItems(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('memory_bank_items')
     .select('*')
     .eq('student_id', studentId)
@@ -310,9 +326,10 @@ export async function listMemoryItems(studentId) {
   return data || [];
 }
 
-export async function archiveMemoryItem(studentId, id) {
+export async function archiveMemoryItem(studentId, id, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { error } = await supabaseClient
     .from('memory_bank_items')
     .update({ archived: true, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
@@ -320,9 +337,10 @@ export async function archiveMemoryItem(studentId, id) {
   if (error) throw error;
 }
 
-export async function listAssessments(studentId) {
+export async function listAssessments(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('assessments')
     .select('*')
     .eq('student_id', studentId)
@@ -331,8 +349,9 @@ export async function listAssessments(studentId) {
   return data || [];
 }
 
-export async function createAssessment(studentId, input) {
+export async function createAssessment(studentId, input, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const payload = {
     student_id: studentId,
     subject_id: input.subject_id || null,
@@ -343,20 +362,21 @@ export async function createAssessment(studentId, input) {
     notes: input.notes || null,
     attachments: Array.isArray(input.attachments) ? input.attachments : [],
   };
-  const { data, error } = await supabase.from('assessments').insert(payload).select('*').single();
+  const { data, error } = await supabaseClient.from('assessments').insert(payload).select('*').single();
   if (error) throw error;
   return data;
 }
 
-export async function uploadAssessmentFile(studentId, file) {
+export async function uploadAssessmentFile(studentId, file, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
   if (!file) throw new Error('file required');
+  const supabaseClient = client || defaultSupabase;
 
   const timestamp = Date.now();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `${studentId}/${timestamp}_${safeName}`;
 
-  const { error } = await supabase.storage
+  const { error } = await supabaseClient.storage
     .from('assessment-pdfs')
     .upload(path, file, {
       contentType: file.type || 'application/pdf',
@@ -367,21 +387,23 @@ export async function uploadAssessmentFile(studentId, file) {
   return { path };
 }
 
-export async function deleteAssessmentFiles(paths = []) {
+export async function deleteAssessmentFiles(paths = [], client?: SupabaseClient<Database>) {
   if (!paths.length) return;
-  const { error } = await supabase.storage.from('assessment-pdfs').remove(paths);
+  const supabaseClient = client || defaultSupabase;
+  const { error } = await supabaseClient.storage.from('assessment-pdfs').remove(paths);
   if (error) throw error;
 }
 
-export async function deleteAssessment(studentId, assessmentId, attachments = []) {
+export async function deleteAssessment(studentId, assessmentId, attachments = [], client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const attachmentPaths = (attachments || [])
     .map((item) => (typeof item === 'string' ? item : item?.path))
     .filter(Boolean);
   if (attachmentPaths.length) {
-    await deleteAssessmentFiles(attachmentPaths);
+    await deleteAssessmentFiles(attachmentPaths, client);
   }
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from('assessments')
     .delete()
     .eq('student_id', studentId)
@@ -393,10 +415,11 @@ export async function deleteAssessment(studentId, assessmentId, attachments = []
 // Upcoming Exams (future exam tracking)
 // =========================
 
-export async function listUpcomingExams(studentId) {
+export async function listUpcomingExams(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const today = isoToday();
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from('upcoming_exams')
     .select('*')
     .eq('student_id', studentId)
@@ -406,8 +429,9 @@ export async function listUpcomingExams(studentId) {
   return data || [];
 }
 
-export async function createUpcomingExam(studentId, input) {
+export async function createUpcomingExam(studentId, input, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const payload = {
     student_id: studentId,
     subject_id: input.subject_id || null,
@@ -421,14 +445,15 @@ export async function createUpcomingExam(studentId, input) {
     source: input.source || 'manual',
     type: input.type || 'real',
   };
-  const { data, error } = await supabase.from('upcoming_exams').insert(payload).select('*').single();
+  const { data, error } = await supabaseClient.from('upcoming_exams').insert(payload).select('*').single();
   if (error) throw error;
   return data;
 }
 
-export async function updateUpcomingExam(studentId, examId, patch) {
+export async function updateUpcomingExam(studentId, examId, patch, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('upcoming_exams')
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
@@ -439,9 +464,10 @@ export async function updateUpcomingExam(studentId, examId, patch) {
   return data;
 }
 
-export async function deleteUpcomingExam(studentId, examId) {
+export async function deleteUpcomingExam(studentId, examId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { error } = await supabaseClient
     .from('upcoming_exams')
     .delete()
     .eq('student_id', studentId)
@@ -449,9 +475,10 @@ export async function deleteUpcomingExam(studentId, examId) {
   if (error) throw error;
 }
 
-export async function bulkCreateUpcomingExams(studentId, exams) {
+export async function bulkCreateUpcomingExams(studentId, exams, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
   if (!exams?.length) return [];
+  const supabaseClient = client || defaultSupabase;
 
   const payloads = exams.map(exam => ({
     student_id: studentId,
@@ -463,13 +490,11 @@ export async function bulkCreateUpcomingExams(studentId, exams) {
     location: exam.location || null,
     notes: exam.notes || null,
     topics: Array.isArray(exam.topics) ? exam.topics : [],
-    notes: exam.notes || null,
-    topics: Array.isArray(exam.topics) ? exam.topics : [],
     source: 'ai_parsed',
     type: exam.type || 'real',
   }));
 
-  const { data, error } = await supabase.from('upcoming_exams').insert(payloads).select('*');
+  const { data, error } = await supabaseClient.from('upcoming_exams').insert(payloads).select('*');
   if (error) throw error;
   return data || [];
 }
@@ -477,11 +502,12 @@ export async function bulkCreateUpcomingExams(studentId, exams) {
 /**
  * Calculate consecutive days with completed study sessions (streak)
  */
-export async function getStudyStreak(studentId) {
+export async function getStudyStreak(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) return { current: 0, longest: 0 };
 
   try {
-    const { data: sessions, error } = await supabase
+    const supabaseClient = client || defaultSupabase;
+    const { data: sessions, error } = await supabaseClient
       .from('study_sessions')
       .select('planned_for, status')
       .eq('student_id', studentId)
@@ -541,10 +567,11 @@ export async function getStudyStreak(studentId) {
 /**
  * Get weekly attempt statistics for trend comparison
  */
-export async function getWeeklyAttemptStats(studentId) {
+export async function getWeeklyAttemptStats(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) return { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } };
 
   try {
+    const supabaseClient = client || defaultSupabase;
     const now = new Date();
     const startOfThisWeek = new Date(now);
     startOfThisWeek.setDate(now.getDate() - now.getDay());
@@ -553,7 +580,7 @@ export async function getWeeklyAttemptStats(studentId) {
     const startOfLastWeek = new Date(startOfThisWeek);
     startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
 
-    const { data: attempts, error } = await supabase
+    const { data: attempts, error } = await supabaseClient
       .from('question_attempts')
       .select('marks_awarded, marks_total, attempted_at')
       .eq('student_id', studentId)
@@ -584,16 +611,17 @@ export async function getWeeklyAttemptStats(studentId) {
 /**
  * Delete all student data (for reset functionality)
  */
-export async function deleteAllStudentData(studentId) {
+export async function deleteAllStudentData(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
-  await supabase.from('question_attempts').delete().eq('student_id', studentId);
-  await supabase.from('study_sessions').delete().eq('student_id', studentId);
-  await supabase.from('memory_bank_items').delete().eq('student_id', studentId);
-  await supabase.from('assessments').delete().eq('student_id', studentId);
-  await supabase.from('subjects').delete().eq('student_id', studentId);
+  await supabaseClient.from('question_attempts').delete().eq('student_id', studentId);
+  await supabaseClient.from('study_sessions').delete().eq('student_id', studentId);
+  await supabaseClient.from('memory_bank_items').delete().eq('student_id', studentId);
+  await supabaseClient.from('assessments').delete().eq('student_id', studentId);
+  await supabaseClient.from('subjects').delete().eq('student_id', studentId);
 
-  await supabase
+  await supabaseClient
     .from('student_settings')
     .update({ ...DEFAULT_SETTINGS, updated_at: new Date().toISOString() })
     .eq('student_id', studentId);
@@ -602,8 +630,9 @@ export async function deleteAllStudentData(studentId) {
 /**
  * Create a new study session
  */
-export async function createSession(studentId, sessionData) {
+export async function createSession(studentId, sessionData, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
   const payload = {
     student_id: studentId,
     subject_id: sessionData.subject_id || null,
@@ -616,7 +645,7 @@ export async function createSession(studentId, sessionData) {
     topic: sessionData.topic || null,
     start_time: sessionData.start_time || null,
   };
-  const { data, error } = await supabase.from('study_sessions').insert(payload).select('*').single();
+  const { data, error } = await supabaseClient.from('study_sessions').insert(payload).select('*').single();
   if (error) throw error;
   return data;
 }
@@ -624,9 +653,10 @@ export async function createSession(studentId, sessionData) {
 /**
  * Update an existing study session
  */
-export async function updateSession(studentId, sessionId, patch) {
+export async function updateSession(studentId, sessionId, patch, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { data, error } = await supabaseClient
     .from('study_sessions')
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
@@ -640,9 +670,10 @@ export async function updateSession(studentId, sessionId, patch) {
 /**
  * Delete a study session
  */
-export async function deleteSession(studentId, sessionId) {
+export async function deleteSession(studentId, sessionId, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
-  const { error } = await supabase
+  const supabaseClient = client || defaultSupabase;
+  const { error } = await supabaseClient
     .from('study_sessions')
     .delete()
     .eq('student_id', studentId)
@@ -654,11 +685,12 @@ export async function deleteSession(studentId, sessionId) {
  * Batch save sessions from AI-generated schedule
  * Clears existing planned sessions for the week and inserts new ones
  */
-export async function saveSchedule(studentId, sessions, weekStartISO, weekEndISO) {
+export async function saveSchedule(studentId, sessions, weekStartISO, weekEndISO, client?: SupabaseClient<Database>) {
   if (!studentId) throw new Error('studentId required');
+  const supabaseClient = client || defaultSupabase;
 
   // Delete existing planned sessions for this week (except completed ones)
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await supabaseClient
     .from('study_sessions')
     .delete()
     .eq('student_id', studentId)
@@ -684,7 +716,7 @@ export async function saveSchedule(studentId, sessions, weekStartISO, weekEndISO
 
   if (payloads.length === 0) return [];
 
-  const { data, error } = await supabase.from('study_sessions').insert(payloads).select('*');
+  const { data, error } = await supabaseClient.from('study_sessions').insert(payloads).select('*');
   if (error) throw error;
   return data || [];
 }
@@ -692,11 +724,12 @@ export async function saveSchedule(studentId, sessions, weekStartISO, weekEndISO
 /**
  * Get subject performance stats (average score per subject)
  */
-export async function getSubjectPerformance(studentId) {
+export async function getSubjectPerformance(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) return {};
 
   try {
-    const { data: attempts, error } = await supabase
+    const supabaseClient = client || defaultSupabase;
+    const { data: attempts, error } = await supabaseClient
       .from('question_attempts')
       .select('subject_id, marks_awarded, marks_total')
       .eq('student_id', studentId)
@@ -731,16 +764,17 @@ export async function getSubjectPerformance(studentId) {
 /**
  * Get upcoming assessments (within next 30 days)
  */
-export async function getUpcomingAssessments(studentId) {
+export async function getUpcomingAssessments(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) return [];
 
   try {
+    const supabaseClient = client || defaultSupabase;
     const today = isoToday();
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
     const endDate = thirtyDaysLater.toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('assessments')
       .select('*')
       .eq('student_id', studentId)
@@ -760,15 +794,16 @@ export async function getUpcomingAssessments(studentId) {
  * Get recent study history (last 14 days) to avoid repetition in AI scheduling
  * Returns topics that were recently studied so AI can schedule spaced repetition
  */
-export async function getRecentStudyHistory(studentId, days = 14) {
+export async function getRecentStudyHistory(studentId, days = 14, client?: SupabaseClient<Database>) {
   if (!studentId) return { recentTopics: [], completedSessions: [], skippedCount: 0 };
 
   try {
+    const supabaseClient = client || defaultSupabase;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const startISO = startDate.toISOString().split('T')[0];
 
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await supabaseClient
       .from('study_sessions')
       .select('id, subject_id, topic, status, planned_for, duration_minutes, session_type')
       .eq('student_id', studentId)
@@ -806,11 +841,12 @@ export async function getRecentStudyHistory(studentId, days = 14) {
  * Get topic-level performance (more granular than subject-level)
  * Groups attempts by topic/question_type to identify specific weak areas
  */
-export async function getTopicPerformance(studentId) {
+export async function getTopicPerformance(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) return { byTopic: {}, byQuestionType: {} };
 
   try {
-    const { data: attempts, error } = await supabase
+    const supabaseClient = client || defaultSupabase;
+    const { data: attempts, error } = await supabaseClient
       .from('question_attempts')
       .select('subject_id, marks_awarded, marks_total, primary_flaw, question_type')
       .eq('student_id', studentId)
@@ -859,15 +895,16 @@ export async function getTopicPerformance(studentId) {
  * Get session completion stats for AI feedback loop
  * Tracks patterns in when sessions are completed vs skipped
  */
-export async function getSessionCompletionStats(studentId) {
+export async function getSessionCompletionStats(studentId, client?: SupabaseClient<Database>) {
   if (!studentId) return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
 
   try {
+    const supabaseClient = client || defaultSupabase;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const startISO = thirtyDaysAgo.toISOString().split('T')[0];
 
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await supabaseClient
       .from('study_sessions')
       .select('id, status, planned_for, session_type, duration_minutes, start_time')
       .eq('student_id', studentId)
