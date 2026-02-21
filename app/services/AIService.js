@@ -180,6 +180,19 @@ Output ONLY the query string or "NO_SEARCH". No other text.`
 // --- API Enable Check ---
 const settingsCache = new Map();
 const CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 1000; // Prevent unbounded growth
+
+/**
+ * Clean up expired cache entries to prevent memory leaks
+ */
+function cleanupExpiredCache() {
+    const now = Date.now();
+    for (const [key, value] of settingsCache.entries()) {
+        if (now >= value.expiry) {
+            settingsCache.delete(key);
+        }
+    }
+}
 
 /**
  * Get the feature configuration + global settings
@@ -192,6 +205,17 @@ export async function getFullAISettings(studentId) {
     if (!studentId) return { ai_preferences: DEFAULT_AI_PREFERENCES, custom_api_config: {} };
 
     try {
+        // Periodic cleanup of expired entries (1% chance per call to avoid performance impact)
+        if (Math.random() < 0.01) {
+            cleanupExpiredCache();
+        }
+
+        // Enforce max cache size by removing oldest entries (FIFO)
+        if (settingsCache.size >= MAX_CACHE_SIZE) {
+            const firstKey = settingsCache.keys().next().value;
+            settingsCache.delete(firstKey);
+        }
+
         const cached = settingsCache.get(studentId);
         if (cached && Date.now() < cached.expiry) {
             return cached.settings;
