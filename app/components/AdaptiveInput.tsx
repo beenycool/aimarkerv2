@@ -126,14 +126,13 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        const isDark = resolvedTheme === 'dark';
-
-        // Colors based on theme
-        const bgColor = isDark ? '#1f2937' : '#ffffff'; // gray-800 or white
-        const gridColor = isDark ? '#374151' : '#e2e8f0'; // gray-700 or gray-200
-        const axisColor = isDark ? '#e5e7eb' : '#000000'; // gray-200 or black
-        const textColor = isDark ? '#e5e7eb' : '#000000'; // gray-200 or black
-        const labelTextColor = isDark ? '#f3f4f6' : '#111827'; // gray-100 or gray-900
+        // Colors based on theme from CSS variables
+        const rootStyle = getComputedStyle(document.documentElement);
+        const bgColor = `hsl(${rootStyle.getPropertyValue('--card').trim()})`;
+        const gridColor = `hsl(${rootStyle.getPropertyValue('--border').trim()})`;
+        const axisColor = `hsl(${rootStyle.getPropertyValue('--foreground').trim()})`;
+        const textColor = axisColor;
+        const labelTextColor = `hsl(${rootStyle.getPropertyValue('--foreground').trim()})`;
 
         // Background
         ctx.fillStyle = bgColor;

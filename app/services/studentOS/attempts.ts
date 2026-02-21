@@ -116,8 +116,9 @@ export async function getTopicPerformance(studentId: string) {
 
     if (error || !attempts?.length) return { byTopic: {}, byQuestionType: {} };
 
-    const byTopic: Record<string, any> = {};
-    const byQuestionType: Record<string, any> = {};
+    type PerformanceAccumulator = { earned: number; total: number; count: number };
+    const byTopic: Record<string, PerformanceAccumulator> = {};
+    const byQuestionType: Record<string, PerformanceAccumulator> = {};
 
     for (const a of attempts) {
       // Group by primary_flaw (topic/skill area)

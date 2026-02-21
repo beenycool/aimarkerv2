@@ -63,8 +63,7 @@ export async function deleteAssessment(studentId: string, assessmentId: string, 
     .map((item) => (typeof item === 'string' ? item : item?.path))
     .filter(Boolean);
   if (attachmentPaths.length) {
-    // @ts-ignore
-    await deleteAssessmentFiles(attachmentPaths);
+    await deleteAssessmentFiles(attachmentPaths as string[]);
   }
   const { error } = await supabase
     .from('assessments')

@@ -175,7 +175,8 @@ export async function getStudyStreak(studentId: string) {
       .eq('student_id', studentId)
       .eq('status', 'done')
       .order('planned_for', { ascending: false })
-      .limit(90);
+      .limit(90)
+      .returns<{ planned_for: string; status: string }[]>();
 
     if (error || !sessions?.length) return { current: 0, longest: 0 };
 
@@ -203,11 +204,9 @@ export async function getStudyStreak(studentId: string) {
     let prevDate: Date | null = null;
 
     for (const dateStr of sortedDates.reverse()) {
-      // @ts-ignore
       const date = new Date(dateStr + 'T00:00:00');
       if (prevDate) {
-        // @ts-ignore
-        const diff = (date - prevDate) / (1000 * 60 * 60 * 24);
+        const diff = (date.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
         if (diff === 1) {
           tempStreak++;
         } else {
@@ -291,7 +290,8 @@ export async function getSessionCompletionStats(studentId: string) {
       .select('id, status, planned_for, session_type, duration_minutes, start_time')
       .eq('student_id', studentId)
       .gte('planned_for', startISO)
-      .order('planned_for', { ascending: false });
+      .order('planned_for', { ascending: false })
+      .returns<{ id: string; status: string; planned_for: string; session_type: string; duration_minutes: number; start_time: string | null }[]>();
 
     if (error || !sessions?.length) {
       return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
@@ -312,7 +312,6 @@ export async function getSessionCompletionStats(studentId: string) {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     for (const s of pastSessions) {
-      // @ts-ignore
       const dayName = days[new Date(s.planned_for).getDay()];
       byDayOfWeek[dayName].total++;
       if (s.status === 'done') byDayOfWeek[dayName].done++;
@@ -320,8 +319,7 @@ export async function getSessionCompletionStats(studentId: string) {
 
     // Analyze by time of day (if start_time is tracked)
     const byTimeOfDay: Record<string, any> = { morning: { done: 0, total: 0 }, afternoon: { done: 0, total: 0 }, evening: { done: 0, total: 0 } };
-    for (const s of pastSessions.filter(x => x.start_time)) {
-      // @ts-ignore
+    for (const s of pastSessions.filter((x): x is typeof x & { start_time: string } => !!x.start_time)) {
       const hour = parseInt(s.start_time.split(':')[0], 10);
       const period = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
       byTimeOfDay[period].total++;
