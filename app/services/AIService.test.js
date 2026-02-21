@@ -61,12 +61,7 @@ describe('AIService.stringifyAnswer', () => {
       labels: ['A'],
       paths: []
     };
-    // The implementation uses JSON.stringify which might have different whitespace,
-    // but here it likely produces compact JSON.
-    // Code: `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} labels ${JSON.stringify(answer.labels || [])} paths ${JSON.stringify(answer.paths || [])} `
-    // Note the trailing space in the code.
-
-    const expected = `Graph submission: points [{"x":1,"y":1}] lines [{"slope":1}] labels ["A"] paths [] `;
+    const expected = `Graph submission: points [{"x":1,"y":1}] lines [{"slope":1}] labels ["A"] paths []`;
     expect(stringifyAnswer(input)).toBe(expected);
   });
 
@@ -74,7 +69,7 @@ describe('AIService.stringifyAnswer', () => {
     const input = {
       points: [{x:1, y:1}]
     };
-    const expected = `Graph submission: points [{"x":1,"y":1}] lines [] labels [] paths [] `;
+    const expected = `Graph submission: points [{"x":1,"y":1}] lines [] labels [] paths []`;
     expect(stringifyAnswer(input)).toBe(expected);
   });
 
