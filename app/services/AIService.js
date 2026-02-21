@@ -74,18 +74,19 @@ const extractImprovedAnswer = (markdown) => {
 
 export const checkRegex = (regexStr, value) => {
     try {
-        if (regexCache.has(regexStr)) {
-            return regexCache.get(regexStr).test(String(value).trim());
+        const safeRegex = regexStr.replace(/(^|[^\\'])(\/)/g, '$1\\/');
+
+        if (regexCache.has(safeRegex)) {
+            return regexCache.get(safeRegex).test(String(value).trim());
         }
 
-        const safeRegex = regexStr.replace(/(^|[^\\'])(\/)/g, '$1\\/');
         const re = new RegExp(safeRegex, 'i');
 
         if (regexCache.size >= MAX_CACHE_SIZE) {
             const firstKey = regexCache.keys().next().value;
             regexCache.delete(firstKey);
         }
-        regexCache.set(regexStr, re);
+        regexCache.set(safeRegex, re);
 
         return re.test(String(value).trim());
     } catch (e) {
