@@ -14,7 +14,7 @@ export const stringifyAnswer = (answer) => {
         return answer.join('\n');
     }
     if (typeof answer === 'object' && answer.points) {
-        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} labels ${JSON.stringify(answer.labels || [])} paths ${JSON.stringify(answer.paths || [])}`;
+        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines ?? [])} labels ${JSON.stringify(answer.labels ?? [])} paths ${JSON.stringify(answer.paths ?? [])}`;
     }
     return JSON.stringify(answer);
 };
