@@ -178,28 +178,29 @@ Output ONLY the query string or "NO_SEARCH". No other text.`
 };
 
 // --- API Enable Check ---
-let cachedSettings = null;
-let cacheExpiry = 0;
+const settingsCache = new Map();
 const CACHE_TTL = 60000; // 1 minute
 
 /**
  * Get the feature configuration + global settings
  */
 export function clearSettingsCache() {
-    cachedSettings = null;
-    cacheExpiry = 0;
+    settingsCache.clear();
 }
 
 export async function getFullAISettings(studentId) {
     if (!studentId) return { ai_preferences: DEFAULT_AI_PREFERENCES, custom_api_config: {} };
 
     try {
-        if (cachedSettings && Date.now() < cacheExpiry) {
-            return cachedSettings;
+        const cached = settingsCache.get(studentId);
+        if (cached && Date.now() < cached.expiry) {
+            return cached.settings;
         }
         const settings = await getOrCreateSettings(studentId);
-        cachedSettings = settings;
-        cacheExpiry = Date.now() + CACHE_TTL;
+        settingsCache.set(studentId, {
+            settings,
+            expiry: Date.now() + CACHE_TTL
+        });
         return settings;
     } catch (e) {
         console.warn('Failed to get AI settings:', e);
