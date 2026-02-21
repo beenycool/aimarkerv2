@@ -18,7 +18,9 @@ export function daysUntil(dateISO) {
 
 export function formatShort(dateISO) {
   try {
-    return new Date(dateISO + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    const date = new Date(dateISO + 'T00:00:00');
+    if (isNaN(date.getTime())) return dateISO;
+    return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   } catch {
     return dateISO;
   }
