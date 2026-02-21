@@ -3,13 +3,15 @@ import { formatShort } from './dateUtils.js';
 
 describe('formatShort', () => {
   test('formats valid ISO date string correctly', () => {
-    // Note: The specific output depends on the locale, but it should contain the month and day.
-    // Assuming standard environment or 'en-US' locale by default for formatShort.
-    // If locale is undefined, toLocaleDateString uses system locale.
+    // Use Intl.DateTimeFormat to compute expected value locale-agnostically
+    const expectedDate = new Date('2023-10-27');
+    const expected = new Intl.DateTimeFormat(undefined, {
+      day: 'numeric',
+      month: 'short'
+    }).format(expectedDate);
+    
     const result = formatShort('2023-10-27');
-    // Check for "Oct" and "27" regardless of order (e.g., "Oct 27" or "27 Oct")
-    expect(result).toMatch(/Oct/);
-    expect(result).toMatch(/27/);
+    expect(result).toBe(expected);
   });
 
   test('returns original string for invalid date string', () => {
