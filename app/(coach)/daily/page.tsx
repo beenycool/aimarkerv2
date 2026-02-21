@@ -24,15 +24,31 @@ export default function DailyPage() {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
 
+    // Question interface for type safety
+    interface Question {
+        id: string;
+        type: 'multiple_choice' | 'short_text' | 'long_text' | 'list' | 'table';
+        question: string;
+        options?: string[];
+        marks: number;
+        topic: string;
+        mark_scheme: {
+            totalMarks: number;
+            criteria?: string[];
+            acceptableAnswers?: string[];
+        };
+    }
+
     // Session State
-    const [questions, setQuestions] = useState<any[]>([]);
+    const [questions, setQuestions] = useState<Question[]>([]);
 
     // Quiz State
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [answers, setAnswers] = useState<any>({});
-    const [feedbacks, setFeedbacks] = useState<any>({});
+    const [answers, setAnswers] = useState<Record<number, any>>({});
+    const [feedbacks, setFeedbacks] = useState<Record<number, any>>({});
     const [marking, setMarking] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const [markingError, setMarkingError] = useState<string | null>(null);
 
     // Load Data
     useEffect(() => {
@@ -80,6 +96,7 @@ export default function DailyPage() {
     const submitAnswer = async () => {
         if (!currentAnswer && currentAnswer !== 0) return;
         setMarking(true);
+        setMarkingError(null);
         try {
             const result = await AIService.markQuestion(
                 currentQuestion,
@@ -96,6 +113,7 @@ export default function DailyPage() {
             // Play sound effect here if implemented
         } catch (e) {
             console.error(e);
+            setMarkingError("Failed to mark your answer. Please try again.");
         } finally {
             setMarking(false);
         }
@@ -109,15 +127,49 @@ export default function DailyPage() {
         }
     };
 
+    const resetQuiz = () => {
+        setCurrentIndex(0);
+        setAnswers({});
+        setFeedbacks({});
+        setCompleted(false);
+        setMarkingError(null);
+        // Re-fetch questions
+        const init = async () => {
+            if (!studentId) return;
+            setLoading(true);
+            try {
+                const attempts = await listQuestionAttempts(studentId, { limit: 200 });
+                const counts = weaknessCountsFromAttempts(attempts || []);
+                const topWeaknesses = pickTopWeaknesses(counts, 5);
+
+                setGenerating(true);
+                const generated = await generateDailyQuestions(topWeaknesses, studentId);
+
+                if (generated && Array.isArray(generated) && generated.length > 0) {
+                     setQuestions(generated);
+                } else {
+                     setQuestions([]);
+                }
+                setGenerating(false);
+            } catch (e) {
+                console.error("Failed to re-init daily session", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        init();
+    };
+
     const handleComplete = async () => {
         setCompleted(true);
         // Calculate score
         const totalScore = Object.values(feedbacks).reduce((acc: number, curr: any) => acc + (curr.score || 0), 0);
         const maxScore = questions.reduce((acc, curr) => acc + (curr.marks || 0), 0);
 
-        // Save completion
+        // Save completion with deterministic session ID
         try {
-             await completeSession(studentId, "daily-session-" + Date.now(), {
+             const sessionId = `daily-session-${studentId}-${new Date().toISOString().split('T')[0]}`;
+             await completeSession(studentId, sessionId, {
                 items_completed: questions.length,
                 total_items: questions.length,
                 score: totalScore,
@@ -187,7 +239,7 @@ export default function DailyPage() {
                     <CardContent className="p-0">
                         <div className="divide-y divide-border">
                              {questions.map((q, i) => (
-                                 <div key={i} className="flex justify-between items-center p-4 hover:bg-muted/20 transition-colors">
+                                 <div key={q.id} className="flex justify-between items-center p-4 hover:bg-muted/20 transition-colors">
                                      <div className="flex items-center gap-3">
                                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${feedbacks[i]?.score === q.marks ? 'bg-success/20 text-success' : feedbacks[i]?.score > 0 ? 'bg-warning/20 text-warning' : 'bg-destructive/20 text-destructive'}`}>
                                              {i + 1}
@@ -209,7 +261,7 @@ export default function DailyPage() {
                             Dashboard
                         </Button>
                     </Link>
-                    <Button size="lg" className="min-w-[150px]" onClick={() => window.location.reload()}>
+                    <Button size="lg" className="min-w-[150px]" onClick={resetQuiz}>
                         <RotateCcw className="h-4 w-4 mr-2" /> Start Another
                     </Button>
                 </div>
@@ -264,6 +316,12 @@ export default function DailyPage() {
                                 onChange={handleAnswerChange}
                             />
 
+                            {markingError && (
+                                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+                                    {markingError}
+                                </div>
+                            )}
+
                             <div className="pt-4">
                                 <Button
                                     onClick={submitAnswer}
@@ -282,8 +340,22 @@ export default function DailyPage() {
                                 feedback={currentFeedback}
                                 onNext={nextQuestion}
                                 onRetry={() => {
-                                    // Optional retry logic
+                                    // Clear feedback and answer for current question to allow retry
+                                    const newFeedbacks = { ...feedbacks };
+                                    delete newFeedbacks[currentIndex];
+                                    setFeedbacks(newFeedbacks);
+                                    
+                                    const newAnswers = { ...answers };
+                                    delete newAnswers[currentIndex];
+                                    setAnswers(newAnswers);
                                 }}
+                                onFollowUp={async (text) => {
+                                    // Handle follow-up question - this is a placeholder
+                                    // In a real implementation, you'd call AIService.followUp or similar
+                                    console.log('Follow-up question:', text);
+                                }}
+                                followUpChat={[]}
+                                sendingFollowUp={false}
                             />
                         </div>
                     )}
