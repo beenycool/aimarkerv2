@@ -194,11 +194,19 @@ function cleanupExpiredCache() {
     }
 }
 
+// --- Search Cache ---
+const SEARCH_CACHE = new Map();
+const SEARCH_CACHE_TTL = 3600 * 1000; // 1 hour
+
 /**
  * Get the feature configuration + global settings
  */
 export function clearSettingsCache() {
     settingsCache.clear();
+}
+
+export function clearSearchCache() {
+    SEARCH_CACHE.clear();
 }
 
 export async function getFullAISettings(studentId) {
@@ -484,6 +492,19 @@ async function fallbackTopicGeneration(subject, studentId, settings) {
 export async function searchWeb(query, options = {}) {
     const { strategy = 'fallback', hackclubSearchKey = null, count = 5 } = options;
 
+    // Create a cache key based on query and options affecting result
+    const cacheKey = JSON.stringify({ query, strategy, count });
+
+    // Check Cache
+    if (SEARCH_CACHE.has(cacheKey)) {
+        const { timestamp, data } = SEARCH_CACHE.get(cacheKey);
+        if (Date.now() - timestamp < SEARCH_CACHE_TTL) {
+            return data;
+        } else {
+            SEARCH_CACHE.delete(cacheKey);
+        }
+    }
+
     // Helper to search via Hack Club Search (search.hackclub.com)
     const searchHackClub = async () => {
         const headers = {};
@@ -536,12 +557,15 @@ export async function searchWeb(query, options = {}) {
     };
 
     try {
+        let result;
         switch (strategy) {
             case 'hackclub':
-                return await searchHackClub();
+                result = await searchHackClub();
+                break;
 
             case 'perplexity':
-                return await searchPerplexity();
+                result = await searchPerplexity();
+                break;
 
             case 'both': {
                 // Run both in parallel and combine results
@@ -566,28 +590,37 @@ export async function searchWeb(query, options = {}) {
                     throw new Error('Both search providers failed');
                 }
 
-                return {
+                result = {
                     results: combined,
                     source: sources.join('+')
                 };
+                break;
             }
 
             case 'fallback':
             default: {
                 // Try Hack Club Search first, fall back to Perplexity
                 try {
-                    return await searchHackClub();
+                    result = await searchHackClub();
                 } catch (hackclubError) {
                     console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
                     try {
-                        return await searchPerplexity();
+                        result = await searchPerplexity();
                     } catch (perplexityError) {
                         console.warn('Perplexity search also failed:', perplexityError.message);
                         throw new Error('All search providers failed');
                     }
                 }
+                break;
             }
         }
+
+        // Cache the successful result
+        if (result && result.results) {
+            SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+        }
+        return result;
+
     } catch (error) {
         console.error('Web search failed:', error);
         return { results: [], source: 'none', error: error.message };
