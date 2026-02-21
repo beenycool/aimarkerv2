@@ -5,6 +5,8 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Layers, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 
+const SESSION_TIMES = [30, 45, 60];
+
 interface InterleavingContentProps {
     subjects: { id: string; name: string }[];
     aiContent: string;
@@ -48,19 +50,22 @@ export function InterleavingContent({
                 <label className="text-sm font-medium">Select 2-3 subjects to interleave</label>
                 <div className="flex flex-wrap gap-2">
                     {subjects.length > 0 ? (
-                        subjects.map(subject => (
-                            <Badge
-                                key={subject.id}
-                                variant={selectedSubjects.includes(subject.name) ? 'default' : 'secondary'}
-                                className="cursor-pointer py-1.5 px-3"
-                                onClick={() => toggleSubject(subject.name)}
-                            >
-                                {selectedSubjects.includes(subject.name) && (
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                )}
-                                {subject.name}
-                            </Badge>
-                        ))
+                        subjects.map(subject => {
+                            const isSelected = selectedSubjects.includes(subject.name);
+                            return (
+                                <Badge
+                                    key={subject.id}
+                                    variant={isSelected ? 'default' : 'secondary'}
+                                    className="cursor-pointer py-1.5 px-3"
+                                    onClick={() => toggleSubject(subject.name)}
+                                >
+                                    {isSelected && (
+                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    )}
+                                    {subject.name}
+                                </Badge>
+                            );
+                        })
                     ) : (
                         <p className="text-sm text-muted-foreground">
                             Add subjects in Settings first!
@@ -73,7 +78,7 @@ export function InterleavingContent({
             <div className="space-y-2">
                 <label className="text-sm font-medium">Session length</label>
                 <div className="flex gap-2">
-                    {[30, 45, 60].map(time => (
+                    {SESSION_TIMES.map(time => (
                         <Button
                             key={time}
                             variant={sessionTime === time ? 'default' : 'outline'}
@@ -124,7 +129,7 @@ export function InterleavingContent({
                         {selectedSubjects.map((subject, i) => {
                             const switchTime = Math.floor(sessionTime / selectedSubjects.length);
                             const startMin = i * switchTime;
-                            const endMin = (i + 1) * switchTime;
+                            const endMin = i === selectedSubjects.length - 1 ? sessionTime : (i + 1) * switchTime;
                             return (
                                 <div key={subject} className="flex items-center gap-3 text-sm">
                                     <Badge variant="outline" className="w-24 justify-center">
