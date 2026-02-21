@@ -3,8 +3,57 @@
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { TableIcon, BarChart2, PenTool, Trash2, Calculator, Pencil, Type, ImageOff } from 'lucide-react';
 
+// Type definitions
+interface MathKeyboardProps {
+  onInsert: (symbol: string) => void;
+  isOpen: boolean;
+  toggleOpen: () => void;
+}
+
+interface GraphCanvasProps {
+  config?: {
+    xMin?: number;
+    xMax?: number;
+    yMin?: number;
+    yMax?: number;
+    xLabel?: string;
+    yLabel?: string;
+  };
+  value?: {
+    points?: Array<{ x: number; y: number }>;
+    lines?: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+    labels?: Array<{ x: number; y: number; text: string }>;
+    paths?: Array<Array<{ x: number; y: number }>>;
+  };
+  onChange: (value: any) => void;
+  backgroundImage?: string;
+  onClearBackground?: () => void;
+}
+
+interface AdaptiveInputProps {
+  type: "table" | "list" | "multiple_choice" | "long_text" | "short_text" | "graph_drawing";
+  options?: string[];
+  listCount?: number;
+  tableStructure?: {
+    headers?: string[];
+    rows?: number;
+    initialData?: (string | null)[][];
+  };
+  graphConfig?: {
+    xMin?: number;
+    xMax?: number;
+    yMin?: number;
+    yMax?: number;
+    xLabel?: string;
+    yLabel?: string;
+  };
+  value: any;
+  onChange: (val: any) => void;
+  graphFigure?: string;
+}
+
 // Math Keyboard Component
-const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
+const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }: MathKeyboardProps) => {
     const symbols = ['²', '³', '½', '¼', '√', '∞', '×', '÷', '±', '≈', '≠', '≡', '≤', '≥', '°', '℃', '℉', 'µ', 'π', 'Ω', 'λ', 'Δ', 'Σ', '→', '←', '↔', '↑', '↓'];
 
     if (!isOpen) {
@@ -33,12 +82,12 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
 });
 MathKeyboard.displayName = 'MathKeyboard';
 
-const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBackground }) => {
-    const canvasRef = useRef(null);
+const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBackground }: GraphCanvasProps) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
-    const [background, setBackground] = useState(null);
+    const [background, setBackground] = useState<HTMLImageElement | null>(null);
     const [tool, setTool] = useState('point'); // point, line, sketch, label
-    const [startPoint, setStartPoint] = useState(null);
+    const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
     const [labelText, setLabelText] = useState("");
 
     const points = value?.points || [];
@@ -68,13 +117,14 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
         // Use a known background color for the canvas content itself so it's readable
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, width, height);
         const graphWidth = width - 2 * padding;
         const graphHeight = height - 2 * padding;
-        const toCanvasX = (val) => padding + ((val - xMin) / (xMax - xMin)) * graphWidth;
-        const toCanvasY = (val) => height - padding - ((val - yMin) / (yMax - yMin)) * graphHeight;
+        const toCanvasX = (val: number) => padding + ((val - xMin) / (xMax - xMin)) * graphWidth;
+        const toCanvasY = (val: number) => height - padding - ((val - yMin) / (yMax - yMin)) * graphHeight;
 
         if (background) {
             const imageAspect = background.width / background.height;
@@ -149,14 +199,15 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
             });
         }
 
-    }, [points, lines, labels, paths, xMin, xMax, yMin, yMax, width, height, padding, xLabel, yLabel, background]);
+    }, [points, lines, labels, paths, xMin, xMax, yMin, yMax, xLabel, yLabel, background]);
 
     useEffect(() => {
         draw();
     }, [draw]);
 
-    const getGraphCoordinates = (e) => {
+    const getGraphCoordinates = (e: React.MouseEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
+        if (!canvas) return { x: 0, y: 0, valX: 0, valY: 0 };
         const rect = canvas.getBoundingClientRect();
         const scaleX = canvas.width / rect.width;
         const scaleY = canvas.height / rect.height;
@@ -169,7 +220,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         return { x, y, valX, valY }; // Return raw canvas coords (x,y) and graph values (valX, valY)
     };
 
-    const handleMouseDown = (e) => {
+    const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         const { x, y, valX, valY } = getGraphCoordinates(e);
         if (x < padding || x > width - padding || y < padding || y > height - padding) return;
 
@@ -187,7 +238,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         }
     };
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!isDrawing) return;
         const { x, y, valX, valY } = getGraphCoordinates(e);
 
@@ -205,21 +256,23 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
             const canvas = canvasRef.current;
             if (canvas) {
                 const ctx = canvas.getContext('2d');
-                draw(); // Redraw base state
-                // Draw temporary line from start point to current position
-                const startX = toCanvasX(startPoint.x);
-                const startY = toCanvasY(startPoint.y);
-                ctx.strokeStyle = '#2563eb';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.moveTo(startX, startY);
-                ctx.lineTo(x, y);
-                ctx.stroke();
+                if (ctx) {
+                    draw(); // Redraw base state
+                    // Draw temporary line from start point to current position
+                    const startX = padding + ((startPoint.x - xMin) / (xMax - xMin)) * (width - 2 * padding);
+                    const startY = height - padding - ((startPoint.y - yMin) / (yMax - yMin)) * (height - 2 * padding);
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                }
             }
         }
     };
 
-    const handleMouseUp = (e) => {
+    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!isDrawing) return;
         setIsDrawing(false);
         const { valX, valY } = getGraphCoordinates(e);
@@ -232,10 +285,6 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
 
     const handleMouseLeave = () => {
         if (isDrawing) setIsDrawing(false);
-    };
-
-    const handleSketchMove = (e) => {
-         // merged into handleMouseMove
     };
 
     return (
@@ -282,14 +331,14 @@ GraphCanvas.displayName = 'GraphCanvas';
  * AdaptiveInput - Renders the appropriate input type based on question type
  * IMPORTANT: Use key={question.id} when rendering this component to prevent state bleeding
  */
-const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }) => {
+const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }: AdaptiveInputProps) => {
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-    const [figureBackground, setFigureBackground] = useState(null);
+    const [figureBackground, setFigureBackground] = useState<string | null>(null);
 
     // Local state for debouncing
     const [localValue, setLocalValue] = useState(value);
     const lastPropValue = useRef(value);
-    const debounceTimer = useRef(null);
+    const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
     // Sync local state if external prop changes (and it's not our own update)
     useEffect(() => {
@@ -300,7 +349,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
     }, [value]);
 
     // Handle local change and debounce propagation
-    const handleLocalChange = useCallback((newValue) => {
+    const handleLocalChange = useCallback((newValue: any) => {
         setLocalValue(newValue);
 
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
@@ -327,7 +376,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
         };
     }, []);
 
-    const handleSymbolInsert = useCallback((symbol) => {
+    const handleSymbolInsert = useCallback((symbol: string) => {
         handleLocalChange((localValue || "") + symbol);
     }, [localValue, handleLocalChange]);
 
@@ -342,7 +391,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
     if (type === 'multiple_choice') {
         return (
             <div className="space-y-2">
-                {options.map((opt, idx) => (
+                {options?.map((opt, idx) => (
                     <label key={idx} className={`flex items-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-all ${localValue === opt ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border'}`}>
                         <input type="radio" name="mcq" className="w-4 h-4 text-primary focus:ring-primary" checked={localValue === opt} onChange={() => handleLocalChange(opt)} />
                         <span className="ml-3 text-foreground font-medium">{opt}</span>
@@ -354,10 +403,10 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
 
     if (type === 'list') {
         const listValues = Array.isArray(localValue) ? localValue : Array(listCount).fill('');
-        const handleListChange = (idx, text) => { const newList = [...listValues]; newList[idx] = text; handleLocalChange(newList); };
+        const handleListChange = (idx: number, text: string) => { const newList = [...listValues]; newList[idx] = text; handleLocalChange(newList); };
         return (
             <div className="space-y-3">
-                {Array.from({ length: listCount }).map((_, idx) => (
+                {Array.from({ length: listCount || 0 }).map((_, idx) => (
                     <div key={idx} className="flex items-center">
                         <span className="text-muted-foreground font-bold mr-3 w-6 text-right">{idx + 1})</span>
                         <input type="text" className="flex-1 p-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none" value={listValues[idx] || ''} onChange={(e) => handleListChange(idx, e.target.value)} onBlur={handleBlur} placeholder={`Point ${idx + 1}`} />
@@ -371,8 +420,8 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
         const headers = tableStructure?.headers || ['Column 1', 'Column 2'];
         const initialData = tableStructure?.initialData || [];
         const rowCount = initialData.length > 0 ? initialData.length : (tableStructure?.rows || 3);
-        const currentData = Array.isArray(localValue) ? localValue : (initialData.length > 0 ? initialData.map(row => row.map(cell => cell === null ? '' : cell)) : Array(rowCount).fill().map(() => Array(headers.length).fill('')));
-        const handleCellChange = (rowIndex, colIndex, val) => { const newData = currentData.map(r => [...r]); newData[rowIndex][colIndex] = val; handleLocalChange(newData); };
+        const currentData = Array.isArray(localValue) ? localValue : (initialData.length > 0 ? initialData.map(row => row.map(cell => cell === null ? '' : cell)) : Array(rowCount).fill(null).map(() => Array(headers.length).fill('')));
+        const handleCellChange = (rowIndex: number, colIndex: number, val: string) => { const newData = currentData.map(r => [...r]); newData[rowIndex][colIndex] = val; handleLocalChange(newData); };
         return (
             <div className="border border-border rounded-xl overflow-hidden shadow-sm">
                 <div className="bg-muted border-b border-border px-4 py-2 flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider"><TableIcon className="w-4 h-4" /> Table Input</div>
@@ -382,7 +431,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
                         <tbody>
                             {currentData.map((row, rIndex) => (
                                 <tr key={rIndex} className="bg-card border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                                    {row.map((cell, cIndex) => {
+                                    {row.map((cell: string, cIndex: number) => {
                                         const isPrefilled = initialData.length > 0 && initialData[rIndex] && initialData[rIndex][cIndex] !== null;
                                         return (
                                             <td key={cIndex} className="p-0 border-r border-border last:border-0 relative">
@@ -409,7 +458,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
                     config={graphConfig}
                     value={localValue}
                     onChange={handleLocalChange}
-                    backgroundImage={figureBackground}
+                    backgroundImage={figureBackground || undefined}
                     onClearBackground={() => setFigureBackground(null)}
                 />
             </div>

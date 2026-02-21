@@ -5,14 +5,55 @@ import DOMPurify from 'dompurify';
 import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw, X, Check } from 'lucide-react';
 import katex from 'katex';
 
+interface MarkdownTextProps {
+  text: string;
+  className?: string;
+}
+
+interface FileUploadZoneProps {
+  label: string;
+  onUpload: (file: File) => void;
+  file?: File | null;
+}
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+interface ChecklistItem {
+  point: string;
+  achieved: boolean;
+}
+
+interface Feedback {
+  score: number;
+  totalMarks: number;
+  text: string;
+  rewrite: string;
+  checklist?: ChecklistItem[];
+}
+
+interface FeedbackBlockProps {
+  feedback: Feedback | null;
+  onNext: () => void;
+  explanation?: string;
+  onExplain?: () => void;
+  explaining?: boolean;
+  questionId?: string;
+  onFollowUp: (text: string) => void;
+  followUpChat: ChatMessage[];
+  sendingFollowUp: boolean;
+  onRetry?: () => void;
+}
 
 /**
  * Safe Markdown Text Renderer using DOMPurify
  */
-export const MarkdownText = memo(({ text, className = "" }) => {
+export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
     if (!text) return null;
 
-    const escapeHtml = (value) => value
+    const escapeHtml = (value: string): string => value
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -35,10 +76,10 @@ export const MarkdownText = memo(({ text, className = "" }) => {
         h4: "text-sm font-semibold mt-3 mb-1"
     };
 
-    const renderInline = (value) => {
+    const renderInline = (value: string): string => {
         let escaped = escapeHtml(value);
-        const tokens = [];
-        const stash = (html) => {
+        const tokens: string[] = [];
+        const stash = (html: string): string => {
             const token = `@@INLINE_${tokens.length}@@`;
             tokens.push(html);
             return token;
@@ -72,18 +113,18 @@ export const MarkdownText = memo(({ text, className = "" }) => {
     };
 
 
-    const renderMarkdown = (rawText) => {
+    const renderMarkdown = (rawText: string): string => {
         const normalized = String(rawText).replace(/\\n/g, "\n").replace(/\r\n/g, "\n");
         const lines = normalized.split("\n");
-        const html = [];
+        const html: string[] = [];
         let i = 0;
 
-        const isHeading = (line) => /^#{1,4}\s+/.test(line);
-        const isUnordered = (line) => /^[-+*]\s+/.test(line);
-        const isOrdered = (line) => /^\d+\.\s+/.test(line);
-        const isBlockquote = (line) => /^>\s+/.test(line);
-        const isCodeFence = (line) => /^```/.test(line);
-        const isMathBlock = (line) => /^\$\$/.test(line);
+        const isHeading = (line: string) => /^#{1,4}\s+/.test(line);
+        const isUnordered = (line: string) => /^[-+*]\s+/.test(line);
+        const isOrdered = (line: string) => /^\d+\.\s+/.test(line);
+        const isBlockquote = (line: string) => /^>\s+/.test(line);
+        const isCodeFence = (line: string) => /^```/.test(line);
+        const isMathBlock = (line: string) => /^\$\$/.test(line);
 
         while (i < lines.length) {
             const line = lines[i];
@@ -116,7 +157,7 @@ export const MarkdownText = memo(({ text, className = "" }) => {
             if (isCodeFence(line)) {
                 const language = line.slice(3).trim();
                 i += 1;
-                const codeLines = [];
+                const codeLines: string[] = [];
                 while (i < lines.length && !isCodeFence(lines[i])) {
                     codeLines.push(lines[i]);
                     i += 1;
@@ -134,14 +175,14 @@ export const MarkdownText = memo(({ text, className = "" }) => {
             if (headingMatch) {
                 const level = headingMatch[1].length;
                 const content = renderInline(headingMatch[2]);
-                const headingClass = classNames[`h${level}`];
+                const headingClass = classNames[`h${level}` as keyof typeof classNames];
                 html.push(`<h${level} class="${headingClass}">${content}</h${level}>`);
                 i += 1;
                 continue;
             }
 
             if (isBlockquote(line)) {
-                const quoteLines = [];
+                const quoteLines: string[] = [];
                 while (i < lines.length && isBlockquote(lines[i])) {
                     quoteLines.push(lines[i].replace(/^>\s?/, ""));
                     i += 1;
@@ -152,7 +193,7 @@ export const MarkdownText = memo(({ text, className = "" }) => {
             }
 
             if (isUnordered(line)) {
-                const items = [];
+                const items: string[] = [];
                 while (i < lines.length && isUnordered(lines[i])) {
                     items.push(lines[i].replace(/^[-+*]\s+/, ""));
                     i += 1;
@@ -165,7 +206,7 @@ export const MarkdownText = memo(({ text, className = "" }) => {
             }
 
             if (isOrdered(line)) {
-                const items = [];
+                const items: string[] = [];
                 while (i < lines.length && isOrdered(lines[i])) {
                     items.push(lines[i].replace(/^\d+\.\s+/, ""));
                     i += 1;
@@ -202,7 +243,7 @@ export const MarkdownText = memo(({ text, className = "" }) => {
 
     const rendered = renderMarkdown(text);
     const sanitized = DOMPurify.sanitize(rendered, {
-        ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'maligngroup', 'malignmark', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
+        ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
         ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
         ALLOWED_TAGS: [
             'a',
@@ -233,7 +274,7 @@ MarkdownText.displayName = 'MarkdownText';
 /**
  * File Upload Zone Component
  */
-export const FileUploadZone = memo(({ label, onUpload, file }) => (
+export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZoneProps) => (
     <div className="flex flex-col items-center justify-center w-full mb-4">
         <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 border-muted-foreground/25 transition-colors group">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -250,7 +291,7 @@ export const FileUploadZone = memo(({ label, onUpload, file }) => (
                     </>
                 )}
             </div>
-            <input type="file" className="hidden" accept=".pdf" onChange={(e) => onUpload(e.target.files[0])} />
+            <input type="file" className="hidden" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
         </label>
     </div>
 ));
@@ -259,7 +300,7 @@ FileUploadZone.displayName = 'FileUploadZone';
 /**
  * Feedback Block Component - Shows marking results and follow-up chat
  */
-export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, explaining, questionId, onFollowUp, followUpChat, sendingFollowUp, onRetry }) => {
+export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, explaining, questionId, onFollowUp, followUpChat, sendingFollowUp, onRetry }: FeedbackBlockProps) => {
     const [followUpText, setFollowUpText] = useState("");
 
     if (!feedback) return null;
@@ -292,7 +333,7 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         {hasChecklist ? (
                             <div className="space-y-3 mb-4">
                                 <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Marking Points</h4>
-                                {feedback.checklist.map((item, idx) => (
+                                {feedback.checklist?.map((item, idx) => (
                                     <div key={idx} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${item.achieved ? 'bg-success/5 border-success/20' : 'bg-destructive/5 border-destructive/20'}`}>
                                         <div className="mt-0.5 flex-shrink-0">
                                             {item.achieved ? <Check className="w-5 h-5 text-success" /> : <X className="w-5 h-5 text-destructive" />}
