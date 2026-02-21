@@ -1,3 +1,5 @@
+"use client";
+import { toast } from "sonner";
 import React, { useEffect, useState, useMemo } from 'react';
 import { BookOpen, Trash2, Loader2, FileText, Check, Search, Book, RefreshCw } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
@@ -45,7 +47,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
             setPapers(prev => prev.filter(p => p.id !== paper.id));
         } catch (err) {
             console.error("Failed to delete paper:", err);
-            alert("Failed to delete paper");
+            toast.error("Failed to delete paper");
         } finally {
             setDeletingId(null);
         }

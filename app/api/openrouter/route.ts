@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit } from '@/app/lib/rateLimit';
 import { createClient } from '@/app/lib/supabase/server';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const DEFAULT_MODEL = "google/gemini-2.0-flash-001";
 
-function buildFileContent(files = []) {
+function buildFileContent(files: any[] = []) {
     return files.map(file => ({
         type: "image_url",
         image_url: {
@@ -13,7 +14,7 @@ function buildFileContent(files = []) {
     }));
 }
 
-function attachFilesToMessages(messages, files) {
+function attachFilesToMessages(messages: any[], files: any[]) {
     if (!files || files.length === 0) return messages;
 
     const messagesCopy = messages.map(message => ({ ...message }));
@@ -51,7 +52,7 @@ function attachFilesToMessages(messages, files) {
     return messagesCopy;
 }
 
-export async function POST(request) {
+export async function POST(request: Request) {
     try {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -63,8 +64,17 @@ export async function POST(request) {
             );
         }
 
+        const { success } = checkRateLimit(user.id, 10);
+        if (!success) {
+            return NextResponse.json({ error: "Rate limit exceeded. Please wait a minute." }, { status: 429 });
+        }
+
         const body = await request.json();
         const { prompt, files, messages, model, temperature = 0.2, maxTokens = 16384, apiKey: clientApiKey } = body;
+
+        // Server-side validation for maxTokens
+        const MAX_ALLOWED_TOKENS = 32768;
+        const validatedMaxTokens = Math.min(Math.max(1, maxTokens), MAX_ALLOWED_TOKENS);
 
         // Prefer a client-provided key when present, fall back to server key.
         const apiKey = clientApiKey || OPENROUTER_API_KEY;
@@ -123,7 +133,7 @@ export async function POST(request) {
                 model: effectiveModel,
                 messages: requestMessages,
                 temperature,
-                max_tokens: maxTokens
+                max_tokens: validatedMaxTokens
             })
         });
 

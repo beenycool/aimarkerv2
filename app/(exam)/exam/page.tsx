@@ -1,6 +1,6 @@
 // @ts-nocheck
 'use client';
-import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
+import { toast } from "sonner";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -83,8 +83,7 @@ export default function GCSEMarkerApp() {
 
     // Auto-restore session on mount
     useEffect(() => {
-        const loadSession = async () => {
-        const restored = await exam.restoreSession();
+        const restored = exam.restoreSession();
         if (restored) {
             setHasSavedSession(true);
             setPhase('exam');
@@ -122,8 +121,6 @@ export default function GCSEMarkerApp() {
                 fetchFiles();
             }
         }
-            };
-        loadSession();
     }, [exam.restoreSession]);
 
     // Persist session on changes
@@ -304,10 +301,10 @@ export default function GCSEMarkerApp() {
                 name: files.paper.name.replace('.pdf', ''),
                 year: new Date().getFullYear()
             }, effectiveStudentId);
-            alert("Paper saved to library!");
+            toast.success("Paper saved to library!");
         } catch (e) {
             console.error(e);
-            alert("Failed to save paper: " + e.message);
+            toast.error("Failed to save paper: " + e.message);
         } finally {
             setIsSaving(false);
         }
@@ -347,7 +344,7 @@ export default function GCSEMarkerApp() {
             });
         } catch (e) {
             console.error(e);
-            alert("Failed to load paper.");
+            toast.error("Failed to load paper.");
         } finally {
             setParsingStatus("");
         }
@@ -361,7 +358,7 @@ export default function GCSEMarkerApp() {
             
             if (!restored) {
                 console.error("No saved session found for paper:", paper.id);
-                alert("Unable to resume this paper. The saved session may have been cleared or corrupted. Please start the paper fresh by clicking 'Restart'.");
+                toast.error("Unable to resume this paper. The saved session may have been cleared or corrupted. Please start the paper fresh by clicking 'Restart'.");
                 setParsingStatus("");
                 return;
             }
@@ -390,7 +387,7 @@ export default function GCSEMarkerApp() {
             setPhase('exam');
         } catch (e) {
             console.error(e);
-            alert("Failed to resume paper.");
+            toast.error("Failed to resume paper.");
         } finally {
             setParsingStatus("");
         }
@@ -958,11 +955,9 @@ export default function GCSEMarkerApp() {
                     <Progress value={progressPercent} className="h-1.5" />
                 </div>
 
-
                 <main className="flex-1 flex overflow-hidden h-[calc(100vh-96px)]">
-                    <PanelGroup orientation="horizontal" className="h-full w-full">
-                        <Panel defaultSize={50} minSize={20}>
-                            <PDFViewer
+                    {/* PDF Viewer */}
+                    <PDFViewer
                         file={activePdfTab === 'paper' ? files.paper : files.insert}
                         pageNumber={pdfPage}
                         scale={pdfScale}
@@ -972,13 +967,6 @@ export default function GCSEMarkerApp() {
                         onTabChange={setActivePdfTab}
                         hasInsert={!!files.insert}
                     />
-                        </Panel>
-                        <PanelResizeHandle className="w-1 bg-border hover:bg-primary/50 transition-colors cursor-col-resize flex flex-col justify-center items-center">
-                            <div className="h-4 w-1 bg-primary/20 rounded-full" />
-                        </PanelResizeHandle>
-                        <Panel defaultSize={50} minSize={20}>
-                            {/* PDF Viewer */}
-
 
                     {/* Right Panel: Exam Interface */}
                     <div className="flex-1 flex flex-col overflow-y-auto bg-card relative">
@@ -1153,8 +1141,6 @@ export default function GCSEMarkerApp() {
                             </div>
                         </div>
                     </div>
-                        </Panel>
-                    </PanelGroup>
                 </main>
             </div>
         );
