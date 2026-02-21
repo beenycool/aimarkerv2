@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { BookOpen, Calendar, Trash2, Download, ExternalLink, Loader2, FileText, Check, Search, Filter, Book, FileCheck2, RefreshCw } from 'lucide-react';
+import { BookOpen, Trash2, Loader2, FileText, Check, Search, Book, RefreshCw } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
 
 import { Card, CardContent } from './ui/card';
