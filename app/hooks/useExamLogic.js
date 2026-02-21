@@ -1,7 +1,6 @@
-'use client';
-
-import { useState, useCallback, useRef } from 'react';
-import { set, get, del } from 'idb-keyval';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { get, set, del } from 'idb-keyval';
+import { createClient } from '@/app/lib/supabase/client';
 
 const useExamLogic = () => {
     const [activeQuestions, setActiveQuestions] = useState([]);
@@ -16,6 +15,10 @@ const useExamLogic = () => {
     const [paperFilePaths, setPaperFilePaths] = useState(null);
     const [paperId, setPaperId] = useState(null);
     const restoredSessionRef = useRef(false);
+
+    // Cloud Sync
+    const supabase = useMemo(() => createClient(), []);
+    const saveTimeoutRef = useRef(null);
 
     // Persist to IndexedDB
     const saveSession = useCallback(async (phase) => {
@@ -54,6 +57,53 @@ const useExamLogic = () => {
         restoredSessionRef.current = true;
     }, []);
 
+    // Sync to Supabase (Cloud)
+    useEffect(() => {
+        if (typeof window === 'undefined' || !paperId || !activeQuestions.length) return;
+
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+        saveTimeoutRef.current = setTimeout(async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                const state = {
+                    activeQuestions,
+                    userAnswers,
+                    feedbacks,
+                    insertContent,
+                    currentQIndex,
+                    skippedQuestions: Array.from(skippedQuestions),
+                    followUpChats,
+                    paperFilePaths,
+                    paperId,
+                    timestamp: Date.now()
+                };
+
+                // Upsert to active_exam_sessions
+                const { error } = await supabase.from('active_exam_sessions').upsert({
+                    student_id: user.id,
+                    paper_id: paperId,
+                    state: state,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'student_id, paper_id' });
+
+                if (error) console.error('Cloud sync error:', error);
+
+                // Also update local IDB just in case
+                saveSession('exam');
+            } catch (err) {
+                console.error('Cloud sync failed:', err);
+            }
+        }, 3000); // 3s debounce
+
+        return () => {
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        };
+    }, [activeQuestions, userAnswers, feedbacks, insertContent, currentQIndex, skippedQuestions, followUpChats, paperFilePaths, paperId, supabase, saveSession]);
+
+
     // Restore session from IndexedDB
     const restoreSession = useCallback(async () => {
         if (typeof window === 'undefined' || restoredSessionRef.current) return null;
@@ -86,30 +136,70 @@ const useExamLogic = () => {
         
         try {
             const parsed = await get('gcse_marker_state');
-            if (!parsed) return false;
-            return parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0;
+            if (parsed && parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0) {
+                return true;
+            }
+
+            // Check cloud
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data } = await supabase
+                    .from('active_exam_sessions')
+                    .select('id')
+                    .eq('student_id', user.id)
+                    .eq('paper_id', paperIdentifier)
+                    .single();
+                if (data) return true;
+            }
+            return false;
         } catch (err) {
             return false;
         }
-    }, []);
+    }, [supabase]);
 
     // Restore session for a specific paper
     const restoreSessionForPaper = useCallback(async (paperIdentifier) => {
         if (typeof window === 'undefined') return null;
 
         try {
-            const parsed = await get('gcse_marker_state');
-            if (!parsed) return null;
-
-            if (parsed.paperId === paperIdentifier && parsed.activeQuestions && parsed.activeQuestions.length > 0) {
-                applySessionData(parsed);
-                return parsed;
+            // 1. Try Cloud First (as it might be from another device)
+            const { data: { user } } = await supabase.auth.getUser();
+            let cloudState = null;
+            if (user) {
+                const { data } = await supabase
+                    .from('active_exam_sessions')
+                    .select('state')
+                    .eq('student_id', user.id)
+                    .eq('paper_id', paperIdentifier)
+                    .single();
+                if (data?.state) cloudState = data.state;
             }
+
+            // 2. Try Local
+            const localState = await get('gcse_marker_state');
+
+            // 3. Compare timestamps (prefer newer)
+            let finalState = null;
+            if (cloudState && localState && localState.paperId === paperIdentifier) {
+                const cloudTime = cloudState.timestamp || 0;
+                const localTime = localState.timestamp || 0;
+                finalState = cloudTime > localTime ? cloudState : localState;
+            } else if (cloudState) {
+                finalState = cloudState;
+            } else if (localState && localState.paperId === paperIdentifier) {
+                finalState = localState;
+            }
+
+            if (finalState && finalState.activeQuestions && finalState.activeQuestions.length > 0) {
+                applySessionData(finalState);
+                return finalState;
+            }
+
         } catch (err) {
             console.error('Failed to restore session for paper', err);
         }
         return null;
-    }, [applySessionData]);
+    }, [applySessionData, supabase]);
 
     // Memoized answer change handler - prevents re-creation on every render
     const handleAnswerChange = useCallback((questionId, value) => {
