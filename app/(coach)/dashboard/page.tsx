@@ -482,8 +482,10 @@ export default function DashboardPage() {
                     ) : (
                         <div className="grid sm:grid-cols-2 gap-3">
                             {topWeaknesses.map((item, index) => (
-                                <div
+                                <Link
                                     key={index}
+                                    href="/daily"
+                                    aria-label={`Practice questions for ${item.label}`}
                                     className="flex items-start gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
                                 >
                                     <div className="w-2 h-2 mt-2 rounded-full flex-shrink-0 bg-destructive" />
@@ -496,7 +498,7 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     )}
