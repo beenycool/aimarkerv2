@@ -25,9 +25,14 @@ export function PomodoroContent({
     onReset
 }: PomodoroContentProps) {
     const timeString = `${timerState.minutes.toString().padStart(2, '0')}:${timerState.seconds.toString().padStart(2, '0')}`;
-    const totalSeconds = timerState.isBreak ? 5 * 60 : 25 * 60;
+    const isLongBreak = timerState.isBreak && timerState.sessionsCompleted > 0 && timerState.sessionsCompleted % 4 === 0;
+    const totalSeconds = timerState.isBreak ? (isLongBreak ? 15 * 60 : 5 * 60) : 25 * 60;
     const remainingSeconds = timerState.minutes * 60 + timerState.seconds;
     const progress = ((totalSeconds - remainingSeconds) / totalSeconds) * 100;
+
+    // Session counter logic
+    const sessionsInCycle = timerState.sessionsCompleted % 4;
+    const completedDots = (timerState.sessionsCompleted > 0 && sessionsInCycle === 0) ? 4 : sessionsInCycle;
 
     return (
         <div className="space-y-6">
@@ -81,10 +86,7 @@ export function PomodoroContent({
                 {[1, 2, 3, 4].map((i) => (
                     <div
                         key={i}
-                        className={`w-3 h-3 rounded-full ${i <= timerState.sessionsCompleted % 4 || (timerState.sessionsCompleted > 0 && timerState.sessionsCompleted % 4 === 0 && i <= 4)
-                            ? 'bg-primary'
-                            : 'bg-secondary'
-                            }`}
+                        className={`w-3 h-3 rounded-full ${i <= completedDots ? 'bg-primary' : 'bg-secondary'}`}
                     />
                 ))}
             </div>
