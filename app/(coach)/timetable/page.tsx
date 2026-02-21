@@ -14,9 +14,7 @@ import {
     Plus,
     BookOpen,
     Sparkles,
-    Target,
     Zap,
-    Edit3,
 } from 'lucide-react';
 import { useStudentId } from '../../components/AuthProvider';
 import {
