@@ -9,6 +9,7 @@
 
 import { getOrCreateSettings, DEFAULT_AI_PREFERENCES } from './studentOS';
 import { getMemoryContextForAI } from './memoryService';
+import { normalizeText, normalizeQuestionId, stringifyAnswer } from './stringUtils.js';
 
 // Feature descriptions for UI
 export const AI_FEATURE_DESCRIPTIONS = {
@@ -45,24 +46,8 @@ export const AI_FEATURE_DESCRIPTIONS = {
     }
 };
 
-// --- LOCAL HELPERS ---
-const regexCache = new Map();
-const MAX_CACHE_SIZE = 100;
-const normalizeText = (text) => (text || '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
-const normalizeQuestionId = (value) => (value || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-
-export const stringifyAnswer = (answer) => {
-    if (answer === undefined || answer === null) return '';
-    if (typeof answer === 'string' || typeof answer === 'number') return String(answer);
-    if (Array.isArray(answer)) {
-        if (answer.length && Array.isArray(answer[0])) return answer.map(row => row.join(' | ')).join('\n');
-        return answer.join('\n');
-    }
-    if (typeof answer === 'object' && answer.points) {
-        return `Graph submission: points ${JSON.stringify(answer.points)} lines ${JSON.stringify(answer.lines || [])} labels ${JSON.stringify(answer.labels || [])} paths ${JSON.stringify(answer.paths || [])}`;
-    }
-    return JSON.stringify(answer);
-};
+// Helpers moved to stringUtils.js
+export { normalizeText, normalizeQuestionId, stringifyAnswer };
 
 const extractImprovedAnswer = (markdown) => {
     if (!markdown) return null;
