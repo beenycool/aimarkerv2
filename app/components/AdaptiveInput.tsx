@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
 import { TableIcon, BarChart2, PenTool, Trash2, Calculator, Pencil, Type, ImageOff } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 // Type definitions
 interface MathKeyboardProps {
@@ -89,6 +90,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
     const [tool, setTool] = useState('point'); // point, line, sketch, label
     const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
     const [labelText, setLabelText] = useState("");
+    const { resolvedTheme } = useTheme();
 
     const graphState = value || { points: [], lines: [], labels: [], paths: [] };
     const points = graphState.points || [];
@@ -123,9 +125,20 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-        // Use a known background color for the canvas content itself so it's readable
-        ctx.fillStyle = '#ffffff';
+
+        const isDark = resolvedTheme === 'dark';
+
+        // Colors based on theme
+        const bgColor = isDark ? '#1f2937' : '#ffffff'; // gray-800 or white
+        const gridColor = isDark ? '#374151' : '#e2e8f0'; // gray-700 or gray-200
+        const axisColor = isDark ? '#e5e7eb' : '#000000'; // gray-200 or black
+        const textColor = isDark ? '#e5e7eb' : '#000000'; // gray-200 or black
+        const labelTextColor = isDark ? '#f3f4f6' : '#111827'; // gray-100 or gray-900
+
+        // Background
+        ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, width, height);
+
         if (background) {
             const imageAspect = background.width / background.height;
             let drawWidth = graphWidth;
@@ -143,7 +156,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         }
 
         // Grid
-        ctx.strokeStyle = '#e2e8f0';
+        ctx.strokeStyle = gridColor;
         ctx.lineWidth = 1;
         ctx.beginPath();
         for (let i = xMin; i <= xMax; i += (xMax - xMin) / 10) { const x = toCanvasX(i); ctx.moveTo(x, padding); ctx.lineTo(x, height - padding); }
@@ -151,7 +164,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         ctx.stroke();
 
         // Axes
-        ctx.strokeStyle = '#000';
+        ctx.strokeStyle = axisColor;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(padding, padding); ctx.lineTo(padding, height - padding);
@@ -159,7 +172,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         ctx.stroke();
 
         // Labels
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = textColor;
         ctx.font = '12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(xLabel, width / 2, height - 10);
@@ -190,7 +203,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         });
 
         if (labels.length > 0) {
-            ctx.fillStyle = '#111827';
+            ctx.fillStyle = labelTextColor;
             ctx.font = '12px sans-serif';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
@@ -199,7 +212,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
             });
         }
 
-    }, [points, lines, labels, paths, graphWidth, graphHeight, xLabel, yLabel, background, toCanvasX, toCanvasY]);
+    }, [points, lines, labels, paths, graphWidth, graphHeight, xLabel, yLabel, background, toCanvasX, toCanvasY, resolvedTheme]);
 
     useEffect(() => {
         draw();
