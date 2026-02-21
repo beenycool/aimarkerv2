@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { checkRateLimit } from '@/app/lib/rateLimit';
 import { createClient } from '@/app/lib/supabase/server';
 
 const HACKCLUB_API_KEY = process.env.HACKCLUB_API_KEY || "";
 const HACKCLUB_API_URL = process.env.HACKCLUB_API_URL || "https://ai.hackclub.com/proxy/v1/chat/completions";
 
-export async function POST(request) {
+export async function POST(request: Request) {
     try {
         // Enforce authentication
         const supabase = await createClient();
@@ -15,6 +16,11 @@ export async function POST(request) {
                 { error: "Authentication required. Please sign in to use this feature." },
                 { status: 401 }
             );
+        }
+
+        const { success } = checkRateLimit(user.id, 10);
+        if (!success) {
+            return NextResponse.json({ error: "Rate limit exceeded. Please wait a minute." }, { status: 429 });
         }
 
         const body = await request.json();
