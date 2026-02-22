@@ -51,6 +51,8 @@ const regexCache = new Map();
 const MAX_REGEX_CACHE_SIZE = 100;
 const SEARCH_CACHE = new Map();
 const SEARCH_CACHE_TTL = 60 * 60 * 1000;
+const MAX_SEARCH_CACHE_SIZE = 50;
+
 // Helpers moved to stringUtils.js
 export { normalizeText, normalizeQuestionId, stringifyAnswer };
 
@@ -179,6 +181,14 @@ const CACHE_TTL = 60000; // 1 minute
  */
 export function clearSettingsCache() {
     settingsCache.clear();
+}
+
+export function clearSearchCache() {
+    SEARCH_CACHE.clear();
+}
+
+export function getSearchCacheSize() {
+    return SEARCH_CACHE.size;
 }
 
 export async function getFullAISettings(studentId) {
@@ -455,9 +465,23 @@ export async function searchWeb(query, options = {}) {
     const cacheKey = JSON.stringify({ query, strategy, count, hasKey: !!hackclubSearchKey });
 
     const cached = SEARCH_CACHE.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
-        return cached.data;
+    if (cached) {
+        if (Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+            // Refresh LRU position
+            SEARCH_CACHE.delete(cacheKey);
+            SEARCH_CACHE.set(cacheKey, cached);
+            return cached.data;
+        }
+        SEARCH_CACHE.delete(cacheKey); // Expired
     }
+
+    const setCache = (key, value) => {
+        if (SEARCH_CACHE.size >= MAX_SEARCH_CACHE_SIZE) {
+            const firstKey = SEARCH_CACHE.keys().next().value;
+            SEARCH_CACHE.delete(firstKey);
+        }
+        SEARCH_CACHE.set(key, { timestamp: Date.now(), data: value });
+    };
 
     // Helper to search via Hack Club Search (search.hackclub.com)
     const searchHackClub = async () => {
@@ -515,14 +539,14 @@ export async function searchWeb(query, options = {}) {
             case 'hackclub':
                 {
                     const result = await searchHackClub();
-                    SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+                    setCache(cacheKey, result);
                     return result;
                 }
 
             case 'perplexity':
                 {
                     const result = await searchPerplexity();
-                    SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+                    setCache(cacheKey, result);
                     return result;
                 }
 
@@ -553,7 +577,7 @@ export async function searchWeb(query, options = {}) {
                     results: combined,
                     source: sources.join('+')
                 };
-                SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+                setCache(cacheKey, result);
                 return result;
             }
 
@@ -562,13 +586,13 @@ export async function searchWeb(query, options = {}) {
                 // Try Hack Club Search first, fall back to Perplexity
                 try {
                     const result = await searchHackClub();
-                    SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+                    setCache(cacheKey, result);
                     return result;
                 } catch (hackclubError) {
                     console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
                     try {
                         const result = await searchPerplexity();
-                        SEARCH_CACHE.set(cacheKey, { timestamp: Date.now(), data: result });
+                        setCache(cacheKey, result);
                         return result;
                     } catch (perplexityError) {
                         console.warn('Perplexity search also failed:', perplexityError.message);
