@@ -2,7 +2,7 @@
 "use client";
 import { toast } from "sonner";
 import React, { useEffect, useState, useMemo } from 'react';
-import { BookOpen, Trash2, Loader2, FileText, Check, Search, Book, RefreshCw } from 'lucide-react';
+import { BookOpen, Trash2, Loader2, FileText, Check, Search, Book, RefreshCw, X } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
 
 import { Card, CardContent } from './ui/card';
@@ -134,8 +134,17 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                         placeholder="Search papers..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 h-9 bg-muted/30 border-muted-foreground/20 focus:border-primary/50 transition-all"
+                        className={`pl-9 h-9 bg-muted/30 border-muted-foreground/20 focus:border-primary/50 transition-all ${searchQuery ? "pr-8" : ""}`}
                     />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            aria-label="Clear search"
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -187,9 +196,10 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
                                             onClick={(e) => handleDelete(e, paper)}
                                             disabled={deletingId === paper.id}
+                                            aria-label={`Delete ${paper.name}`}
                                         >
                                             {deletingId === paper.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                                         </Button>
