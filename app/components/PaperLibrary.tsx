@@ -9,6 +9,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPaper }) => {
     const [papers, setPapers] = useState([]);
@@ -114,9 +115,10 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
     }
 
     return (
-        <div className="w-full space-y-6 animate-in fade-in duration-500">
-            {/* Header & Controls */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <TooltipProvider>
+            <div className="w-full space-y-6 animate-in fade-in duration-500">
+                {/* Header & Controls */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                         <BookOpen className="w-5 h-5 text-primary" />
@@ -184,15 +186,23 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                                                 ? `${paper.subject}`
                                                 : paper.name}
                                         </h4>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
-                                            onClick={(e) => handleDelete(e, paper)}
-                                            disabled={deletingId === paper.id}
-                                        >
-                                            {deletingId === paper.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                                        </Button>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label="Delete paper"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                                                    onClick={(e) => handleDelete(e, paper)}
+                                                    disabled={deletingId === paper.id}
+                                                >
+                                                    {deletingId === paper.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Delete paper</p>
+                                            </TooltipContent>
+                                        </Tooltip>
                                     </div>
 
                                     <p className="text-sm text-muted-foreground mb-3 truncate">
@@ -248,7 +258,8 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                         </Card>
                     )})}
                 </div>
-            )}
-        </div>
+                )}
+            </div>
+        </TooltipProvider>
     );
 };
