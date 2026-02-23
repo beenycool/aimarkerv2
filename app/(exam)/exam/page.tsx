@@ -69,6 +69,7 @@ export default function GCSEMarkerApp() {
 
     // Use custom exam logic hook
     const exam = useExamLogic();
+    const { setPaperId, setPaperFilePaths, restoreSessionForPaper } = exam;
     const currentQuestion = exam.currentQuestion;
     const handleAnswerChange = exam.handleAnswerChange;
 
@@ -315,7 +316,7 @@ export default function GCSEMarkerApp() {
         }
     };
 
-    const handleSelectPaper = async (paperData) => {
+    const handleSelectPaper = useCallback(async (paperData) => {
         setParsingStatus("Loading paper from library...");
         try {
             const loadFile = async (data) => {
@@ -338,11 +339,11 @@ export default function GCSEMarkerApp() {
 
             // Set paper ID for session tracking
             if (paperData.paperId) {
-                exam.setPaperId(paperData.paperId);
+                setPaperId(paperData.paperId);
             }
 
             // Save paths for session restoration
-            exam.setPaperFilePaths({
+            setPaperFilePaths({
                 paper: paperData.paper.url,
                 scheme: paperData.scheme?.url,
                 insert: paperData.insert?.url
@@ -353,13 +354,13 @@ export default function GCSEMarkerApp() {
         } finally {
             setParsingStatus("");
         }
-    };
+    }, [setPaperId, setPaperFilePaths]);
 
-    const handleResumePaper = async (paper) => {
+    const handleResumePaper = useCallback(async (paper) => {
         setParsingStatus("Resuming paper...");
         try {
             // First, restore the session for this paper
-            const restored = exam.restoreSessionForPaper(paper.id);
+            const restored = restoreSessionForPaper(paper.id);
             
             if (!restored) {
                 console.error("No saved session found for paper:", paper.id);
@@ -396,7 +397,7 @@ export default function GCSEMarkerApp() {
         } finally {
             setParsingStatus("");
         }
-    };
+    }, [restoreSessionForPaper]);
 
 
     const handleStartParsing = async () => {
