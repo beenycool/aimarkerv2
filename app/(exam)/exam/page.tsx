@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, Zap, AlertTriangle, HelpCircle, Copy
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, AlertTriangle, HelpCircle, Copy
 } from 'lucide-react';
 
 // Import Shadcn UI components
