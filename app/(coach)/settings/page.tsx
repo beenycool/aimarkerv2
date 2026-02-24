@@ -20,7 +20,6 @@ import {
     Bell,
     Moon,
     Sun,
-    Calendar,
     Clock,
     Target,
     Save,
