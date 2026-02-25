@@ -23,8 +23,7 @@ CREATE POLICY "Users can view own settings" ON student_settings
 
 CREATE POLICY "Users can insert own settings" ON student_settings
   FOR INSERT WITH CHECK (
-    student_id = auth.uid() OR 
-    auth.uid() IS NULL  -- Allow anonymous inserts
+    student_id = auth.uid()
   );
 
 CREATE POLICY "Users can update own settings" ON student_settings
@@ -41,8 +40,7 @@ CREATE POLICY "Users can view own subjects" ON subjects
 
 CREATE POLICY "Users can insert own subjects" ON subjects
   FOR INSERT WITH CHECK (
-    student_id = auth.uid() OR 
-    auth.uid() IS NULL
+    student_id = auth.uid()
   );
 
 CREATE POLICY "Users can update own subjects" ON subjects
@@ -62,8 +60,7 @@ CREATE POLICY "Users can view own assessments" ON assessments
 
 CREATE POLICY "Users can insert own assessments" ON assessments
   FOR INSERT WITH CHECK (
-    student_id = auth.uid() OR 
-    auth.uid() IS NULL
+    student_id = auth.uid()
   );
 
 CREATE POLICY "Users can update own assessments" ON assessments
@@ -83,8 +80,7 @@ CREATE POLICY "Users can view own attempts" ON question_attempts
 
 CREATE POLICY "Users can insert own attempts" ON question_attempts
   FOR INSERT WITH CHECK (
-    student_id = auth.uid() OR 
-    auth.uid() IS NULL
+    student_id = auth.uid()
   );
 
 -- ============================================
@@ -98,8 +94,7 @@ CREATE POLICY "Users can view own sessions" ON study_sessions
 
 CREATE POLICY "Users can insert own sessions" ON study_sessions
   FOR INSERT WITH CHECK (
-    student_id = auth.uid() OR 
-    auth.uid() IS NULL
+    student_id = auth.uid()
   );
 
 CREATE POLICY "Users can update own sessions" ON study_sessions
@@ -119,8 +114,7 @@ CREATE POLICY "Users can view own memory items" ON memory_bank_items
 
 CREATE POLICY "Users can insert own memory items" ON memory_bank_items
   FOR INSERT WITH CHECK (
-    student_id = auth.uid() OR 
-    auth.uid() IS NULL
+    student_id = auth.uid()
   );
 
 CREATE POLICY "Users can update own memory items" ON memory_bank_items
@@ -133,7 +127,7 @@ CREATE POLICY "Users can delete own memory items" ON memory_bank_items
 -- Notes:
 -- ============================================
 -- 1. These policies allow authenticated users to access only their own data
--- 2. Anonymous inserts are allowed (auth.uid() IS NULL) for guest users
+-- 2. Anonymous inserts are disallowed to prevent data injection
 -- 3. SELECT policies also check the JWT sub claim for localStorage UUID fallback
 -- 4. For production, consider tightening the anonymous policies
 -- 5. Run this AFTER enabling Email Auth in Supabase dashboard
