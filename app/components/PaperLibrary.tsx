@@ -135,6 +135,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-9 h-9 bg-muted/30 border-muted-foreground/20 focus:border-primary/50 transition-all"
+                        aria-label="Search saved papers"
                     />
                 </div>
             </div>
@@ -187,9 +188,10 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
                                             onClick={(e) => handleDelete(e, paper)}
                                             disabled={deletingId === paper.id}
+                                            aria-label="Delete paper"
                                         >
                                             {deletingId === paper.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                                         </Button>
