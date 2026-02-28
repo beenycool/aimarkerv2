@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 import React, { memo } from 'react';
 import { Book, Trash2, Loader2, Check, RefreshCw } from 'lucide-react';
@@ -6,7 +5,32 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 
-const PaperCard = memo(({
+export interface Paper {
+    id: string;
+    name: string;
+    subject?: string;
+    board?: string;
+    year?: string | number;
+    season?: string;
+    section?: string;
+    pdf_path?: string;
+    scheme_path?: string;
+    insert_path?: string;
+    parsed_questions?: any;
+    parsed_mark_scheme?: any;
+    [key: string]: any; // Allow other properties
+}
+
+export interface PaperCardProps {
+    paper: Paper;
+    isDeleting: boolean;
+    onSelect: (paper: Paper) => void;
+    onDelete: (e: React.MouseEvent, paper: Paper) => void;
+    onResume?: (paper: Paper) => void;
+    checkSessionForPaper?: (id: string) => boolean | Promise<boolean>;
+}
+
+const PaperCard: React.FC<PaperCardProps> = memo(({
     paper,
     isDeleting,
     onSelect,
@@ -16,11 +40,21 @@ const PaperCard = memo(({
 }) => {
     // Preserve existing logic for session checking
     // Replicates behavior where hasSession might be truthy (Promise) if checkSessionForPaper is async
-    const hasSession = checkSessionForPaper && checkSessionForPaper(paper.id);
+    const hasSession = checkSessionForPaper && typeof checkSessionForPaper === 'function'
+        ? checkSessionForPaper(paper.id)
+        : false;
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (!hasSession && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onSelect(paper);
+        }
+    };
 
     return (
         <Card
             onClick={() => !hasSession && onSelect(paper)}
+            onKeyDown={handleKeyDown}
             className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
             role={hasSession ? "article" : "button"}
             tabIndex={hasSession ? undefined : 0}
@@ -46,6 +80,7 @@ const PaperCard = memo(({
                             className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
                             onClick={(e) => onDelete(e, paper)}
                             disabled={isDeleting}
+                            aria-label={`Delete ${paper.name}`}
                         >
                             {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                         </Button>

@@ -15,6 +15,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
+    const [paperToDelete, setPaperToDelete] = useState(null);
 
     // Refs for stable callbacks to prevent re-renders when parent re-renders
     const onSelectPaperRef = useRef(onSelectPaper);
@@ -43,24 +44,34 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         fetchPapers();
     }, []);
 
-    const handleDelete = useCallback(async (e, paper) => {
-        e.stopPropagation();
-        if (!confirm('Are you sure you want to delete this paper?')) return;
+    const confirmDelete = useCallback(async () => {
+        if (!paperToDelete) return;
 
-        setDeletingId(paper.id);
+        setDeletingId(paperToDelete.id);
         try {
-            await PaperStorage.deletePaper(paper.id, {
-                pdf_path: paper.pdf_path,
-                scheme_path: paper.scheme_path,
-                insert_path: paper.insert_path
+            await PaperStorage.deletePaper(paperToDelete.id, {
+                pdf_path: paperToDelete.pdf_path,
+                scheme_path: paperToDelete.scheme_path,
+                insert_path: paperToDelete.insert_path
             });
-            setPapers(prev => prev.filter(p => p.id !== paper.id));
+            setPapers(prev => prev.filter(p => p.id !== paperToDelete.id));
+            toast.success("Paper deleted successfully");
         } catch (err) {
             console.error("Failed to delete paper:", err);
             toast.error("Failed to delete paper");
         } finally {
             setDeletingId(null);
+            setPaperToDelete(null);
         }
+    }, [paperToDelete]);
+
+    const handleDeleteRequest = useCallback((e, paper) => {
+        e.stopPropagation();
+        setPaperToDelete(paper);
+    }, []);
+
+    const cancelDelete = useCallback(() => {
+        setPaperToDelete(null);
     }, []);
 
     const handleSelect = useCallback(async (paper) => {
@@ -128,6 +139,26 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
 
     return (
         <div className="w-full space-y-6 animate-in fade-in duration-500">
+            {/* Custom Confirm Dialog (inline to avoid new component dependencies) */}
+            {paperToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                    <div className="bg-card border border-border rounded-lg shadow-lg p-6 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
+                        <h2 className="text-lg font-semibold mb-2 text-foreground">Delete Paper?</h2>
+                        <p className="text-sm text-muted-foreground mb-6">
+                            Are you sure you want to delete <span className="font-semibold text-foreground">{paperToDelete.name}</span>? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-3">
+                            <Button variant="outline" onClick={cancelDelete} disabled={deletingId === paperToDelete.id}>
+                                Cancel
+                            </Button>
+                            <Button variant="destructive" onClick={confirmDelete} disabled={deletingId === paperToDelete.id}>
+                                {deletingId === paperToDelete.id ? "Deleting..." : "Delete"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
@@ -178,7 +209,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                             paper={paper}
                             isDeleting={deletingId === paper.id}
                             onSelect={handleSelect}
-                            onDelete={handleDelete}
+                            onDelete={handleDeleteRequest}
                             onResume={handleResume}
                             checkSessionForPaper={checkSessionForPaper}
                         />
