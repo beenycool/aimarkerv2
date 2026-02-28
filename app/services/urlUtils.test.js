@@ -49,4 +49,10 @@ test('normalizeOpenAIEndpoint', async (t) => {
     await t.test('should throw on empty input', () => {
         assert.throws(() => normalizeOpenAIEndpoint(''), /Endpoint is required/);
     });
+
+    await t.test('should throw on non-http/https protocols', () => {
+        assert.throws(() => normalizeOpenAIEndpoint('ftp://server/resource'), /Invalid protocol. Only http and https are supported./);
+        assert.throws(() => normalizeOpenAIEndpoint('file:///etc/passwd'), /Invalid protocol. Only http and https are supported./);
+        assert.throws(() => normalizeOpenAIEndpoint('data:text/plain,Hello'), /Invalid protocol. Only http and https are supported./);
+    });
 });

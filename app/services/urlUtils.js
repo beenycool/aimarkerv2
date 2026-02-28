@@ -1,12 +1,13 @@
 /**
  * Normalizes an OpenAI-compatible endpoint URL.
- * Ensures the URL is valid and the path ends with /chat/completions.
+ * Ensures the URL is valid, uses http/https protocols, and the path ends with /chat/completions.
  * This prevents SSRF attacks where a user might provide a URL like
- * 'http://internal/admin?foo=/chat/completions' which would bypass simple string checks.
+ * 'http://internal/admin?foo=/chat/completions' which would bypass simple string checks,
+ * or use alternative schemes like 'file://' or 'ftp://'.
  *
  * @param {string} endpoint - The endpoint URL to normalize.
  * @returns {string} The normalized URL string.
- * @throws {Error} If the endpoint is not a valid URL.
+ * @throws {Error} If the endpoint is not a valid URL or uses an unsupported protocol.
  */
 export function normalizeOpenAIEndpoint(endpoint) {
     if (!endpoint) {
@@ -18,6 +19,11 @@ export function normalizeOpenAIEndpoint(endpoint) {
         urlObj = new URL(endpoint);
     } catch (e) {
         throw new Error("Invalid URL format");
+    }
+
+    // Ensure the protocol is HTTP or HTTPS to prevent SSRF via other schemes
+    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        throw new Error("Invalid protocol. Only http and https are supported.");
     }
 
     // Normalize pathname: ensure it ends with /chat/completions
