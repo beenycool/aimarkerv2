@@ -55,15 +55,36 @@ describe('clamp', () => {
     expect(clamp(10, 0, 10)).toBe(10);
   });
 
-  test('handles negative ranges', () => {
+  test('returns negative value when within negative range', () => {
     expect(clamp(-5, -10, -1)).toBe(-5);
+  });
+
+  test('clamps to negative min when value is less than negative min', () => {
     expect(clamp(-15, -10, -1)).toBe(-10);
+  });
+
+  test('clamps to negative max when value is greater than negative max', () => {
     expect(clamp(0, -10, -1)).toBe(-1);
   });
 
-  test('handles floating point numbers', () => {
+  test('handles floating point numbers within range', () => {
     expect(clamp(5.5, 0, 10)).toBe(5.5);
+  });
+
+  test('clamps floating point numbers below min', () => {
     expect(clamp(-0.1, 0, 10)).toBe(0);
+  });
+
+  test('clamps floating point numbers above max', () => {
     expect(clamp(10.1, 0, 10)).toBe(10);
+  });
+
+  test('handles reversed bounds (min > max)', () => {
+    // When min > max, Math.max(min, Math.min(max, n)) effectively returns min
+    // because Math.min(max, n) is always <= max, and since max < min,
+    // Math.max(min, something_less_than_or_equal_to_max) will always be min.
+    expect(clamp(5, 10, 0)).toBe(10);
+    expect(clamp(-5, 10, 0)).toBe(10);
+    expect(clamp(15, 10, 0)).toBe(10);
   });
 });
