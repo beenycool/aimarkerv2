@@ -268,6 +268,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
             <div className="bg-card border-b border-border p-2 flex gap-2 items-center">
                 <span className="text-xs text-muted-foreground mr-2">Annotations:</span>
                 <button 
+                    aria-label="Draw"
                     onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
                     className={`p-2 rounded transition-colors ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
                     title="Draw"
@@ -275,6 +276,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                     <Pencil className="w-4 h-4" />
                 </button>
                 <button 
+                    aria-label="Highlight"
                     onClick={() => setAnnotationMode(annotationMode === 'highlight' ? null : 'highlight')}
                     className={`p-2 rounded transition-colors ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
                     title="Highlight"
@@ -282,6 +284,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                     <Highlighter className="w-4 h-4" />
                 </button>
                 <button 
+                    aria-label="Clear annotations on this page"
                     onClick={clearAnnotationsOnPage}
                     className="p-2 rounded hover:bg-muted"
                     title="Clear annotations on this page"
@@ -289,6 +292,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                     <Eraser className="w-4 h-4" />
                 </button>
                 <button 
+                    aria-label="Pan mode"
                     onClick={() => setAnnotationMode(null)}
                     className={`p-2 rounded transition-colors ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
                     title="Pan mode"
@@ -330,13 +334,13 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
             </div>
             <div className="bg-card p-3 flex justify-between items-center border-t border-border">
                 <div className="flex gap-2">
-                    <button onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30"><ChevronLeft className="w-5 h-5" /></button>
-                    <button onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30"><ChevronRight className="w-5 h-5" /></button>
+                    <button aria-label="Previous page" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30"><ChevronLeft className="w-5 h-5" /></button>
+                    <button aria-label="Next page" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30"><ChevronRight className="w-5 h-5" /></button>
                 </div>
                 <span className="text-foreground font-mono font-bold text-sm">Page {pageNumber} {numPages ? `/ ${numPages}` : ''}</span>
                 <div className="flex gap-2">
-                    <button onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className="p-2 text-foreground hover:bg-muted rounded"><ZoomOut className="w-5 h-5" /></button>
-                    <button onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className="p-2 text-foreground hover:bg-muted rounded"><ZoomIn className="w-5 h-5" /></button>
+                    <button aria-label="Zoom out" onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className="p-2 text-foreground hover:bg-muted rounded"><ZoomOut className="w-5 h-5" /></button>
+                    <button aria-label="Zoom in" onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className="p-2 text-foreground hover:bg-muted rounded"><ZoomIn className="w-5 h-5" /></button>
                 </div>
             </div>
             
