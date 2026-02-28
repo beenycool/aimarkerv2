@@ -11,6 +11,7 @@ ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE question_attempts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE study_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE memory_bank_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE upcoming_exams ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- student_settings Policies
@@ -121,6 +122,27 @@ CREATE POLICY "Users can update own memory items" ON memory_bank_items
   FOR UPDATE USING (student_id = auth.uid());
 
 CREATE POLICY "Users can delete own memory items" ON memory_bank_items
+  FOR DELETE USING (student_id = auth.uid());
+
+
+-- ============================================
+-- upcoming_exams Policies
+-- ============================================
+CREATE POLICY "Users can view own exams" ON upcoming_exams
+  FOR SELECT USING (
+    student_id = auth.uid() OR
+    student_id::text = (current_setting('request.jwt.claims', true)::json->>'sub')
+  );
+
+CREATE POLICY "Users can insert own exams" ON upcoming_exams
+  FOR INSERT WITH CHECK (
+    student_id = auth.uid()
+  );
+
+CREATE POLICY "Users can update own exams" ON upcoming_exams
+  FOR UPDATE USING (student_id = auth.uid());
+
+CREATE POLICY "Users can delete own exams" ON upcoming_exams
   FOR DELETE USING (student_id = auth.uid());
 
 -- ============================================

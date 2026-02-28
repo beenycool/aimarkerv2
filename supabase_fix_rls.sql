@@ -31,6 +31,11 @@ DROP POLICY IF EXISTS "Users can view own memory items" ON memory_bank_items;
 DROP POLICY IF EXISTS "Users can update own memory items" ON memory_bank_items;
 DROP POLICY IF EXISTS "Users can delete own memory items" ON memory_bank_items;
 
+DROP POLICY IF EXISTS "Users can insert own exams" ON upcoming_exams;
+DROP POLICY IF EXISTS "Users can view own exams" ON upcoming_exams;
+DROP POLICY IF EXISTS "Users can update own exams" ON upcoming_exams;
+DROP POLICY IF EXISTS "Users can delete own exams" ON upcoming_exams;
+
 -- ============================================
 -- student_settings - SIMPLE policies
 -- ============================================
@@ -111,4 +116,19 @@ CREATE POLICY "update_own_memory" ON memory_bank_items
   FOR UPDATE USING (student_id = auth.uid());
 
 CREATE POLICY "delete_own_memory" ON memory_bank_items
+  FOR DELETE USING (student_id = auth.uid());
+
+-- ============================================
+-- upcoming_exams
+-- ============================================
+CREATE POLICY "select_own_exams" ON upcoming_exams
+  FOR SELECT USING (student_id = auth.uid());
+
+CREATE POLICY "insert_own_exams" ON upcoming_exams
+  FOR INSERT WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "update_own_exams" ON upcoming_exams
+  FOR UPDATE USING (student_id = auth.uid());
+
+CREATE POLICY "delete_own_exams" ON upcoming_exams
   FOR DELETE USING (student_id = auth.uid());
