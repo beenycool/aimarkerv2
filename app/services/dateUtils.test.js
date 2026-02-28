@@ -40,16 +40,16 @@ describe('isoToday', () => {
   });
 
   test('returns formatted date string for double-digit month/day', () => {
-    // Mock date to 2023-10-25
-    setSystemTime(new Date('2023-10-25T12:00:00Z'));
+    // Mock date to 2023-10-25 using local time constructor (month is 0-indexed)
+    setSystemTime(new Date(2023, 9, 25, 12, 0, 0));
 
     const result = isoToday();
     expect(result).toBe('2023-10-25');
   });
 
   test('pads single-digit month and day with zero', () => {
-    // Mock date to 2023-01-05
-    setSystemTime(new Date('2023-01-05T12:00:00Z'));
+    // Mock date to 2023-01-05 using local time constructor
+    setSystemTime(new Date(2023, 0, 5, 12, 0, 0));
 
     const result = isoToday();
     expect(result).toBe('2023-01-05');
