@@ -113,14 +113,18 @@ describe('AIService.checkRegex', () => {
 
   it('should handle slashes in regex string', () => {
     // The implementation escapes slashes: regexStr.replace(/(^|[^\\'])(\\/)/g, '$1\\/')
-    // So 'a/b' becomes 'a\/b'
+    // So 'a/b' becomes 'a\\/b'
     expect(checkRegex('a/b', 'a/b')).toBe(true);
   });
 
   it('should handle invalid regex strings gracefully', () => {
     const result = checkRegex('(', 'test');
     expect(result).toBe(false);
-    expect(consoleWarnSpy).toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "Invalid Regex provided by AI:",
+      "(",
+      expect.any(Error)
+    );
   });
 
   it('should handle non-string values by converting to string', () => {
@@ -130,5 +134,8 @@ describe('AIService.checkRegex', () => {
 
   it('should trim whitespace from value', () => {
     expect(checkRegex('^hello$', '  hello  ')).toBe(true);
+    expect(checkRegex('^hello$', '\nhello\n')).toBe(true);
+    expect(checkRegex('^hello$', '\thello\t')).toBe(true);
+    expect(checkRegex('^hello$', '\rhello\r')).toBe(true);
   });
 });
