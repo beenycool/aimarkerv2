@@ -87,4 +87,11 @@ describe('bandFromPercent', () => {
     expect(bandFromPercent(89.9)).toBe('8');
     expect(bandFromPercent(90.0)).toBe('9');
   });
+
+  test('handles non-numeric values by returning 1', () => {
+    expect(bandFromPercent(NaN)).toBe('1');
+    expect(bandFromPercent(null)).toBe('1');
+    expect(bandFromPercent(undefined)).toBe('1');
+    expect(bandFromPercent('abc')).toBe('1');
+  });
 });
