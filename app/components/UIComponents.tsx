@@ -291,7 +291,10 @@ export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZonePro
                     </>
                 )}
             </div>
-            <input type="file" className="sr-only" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
+            <input type="file" className="sr-only" accept=".pdf" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUpload(file);
+            }} />
         </label>
     </div>
 ));
@@ -370,7 +373,7 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         ) : (
                     <>
                         {!explanation && (
-                            <button onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
+                            <button type="button" onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
                                 {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                 {explaining ? "Preparing explanation..." : "Explain Why"}
                             </button>
@@ -403,19 +406,19 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                     )}
                     <div className="flex gap-2">
                         <input type="text" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-                        <button onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50" aria-label="Send follow-up question">
+                        <button type="button" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50" aria-label="Send follow-up question">
                             {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
                 </div>
 
                 {onRetry && (
-                    <button onClick={onRetry} className="w-full mt-2 py-3 border border-border rounded-lg font-semibold flex items-center justify-center gap-2 text-sm text-foreground hover:bg-muted/30 transition-colors">
+                    <button type="button" onClick={onRetry} className="w-full mt-2 py-3 border border-border rounded-lg font-semibold flex items-center justify-center gap-2 text-sm text-foreground hover:bg-muted/30 transition-colors">
                         <RotateCcw className="w-4 h-4" />
                         Retry question
                     </button>
                 )}
-                <button onClick={onNext} className="w-full mt-2 py-3 bg-primary hover:bg-orange-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors">
+                <button type="button" onClick={onNext} className="w-full mt-2 py-3 bg-primary hover:bg-orange-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors">
                     Next Question <ChevronRight className="w-4 h-4" />
                 </button>
             </div>
