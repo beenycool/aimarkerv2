@@ -276,7 +276,7 @@ MarkdownText.displayName = 'MarkdownText';
  */
 export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZoneProps) => (
     <div className="flex flex-col items-center justify-center w-full mb-4">
-        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 border-muted-foreground/25 transition-colors group">
+        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 border-muted-foreground/25 transition-colors group focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 {file ? (
                     <>
@@ -291,7 +291,7 @@ export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZonePro
                     </>
                 )}
             </div>
-            <input type="file" className="hidden" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
+            <input type="file" className="sr-only" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
         </label>
     </div>
 ));
@@ -402,8 +402,8 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         </div>
                     )}
                     <div className="flex gap-2">
-                        <input type="text" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-                        <button onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
+                        <input type="text" aria-label="Follow-up question" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
+                        <button aria-label="Send follow-up question" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
                             {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
