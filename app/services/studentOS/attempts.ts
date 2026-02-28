@@ -1,6 +1,7 @@
-// @ts-nocheck
+
 import { supabase } from '../supabaseClient';
 import { QuestionAttempt } from './types';
+import { pickTopWeaknesses as pickTopWeaknessesUtil } from '../mathUtils';
 
 export async function listQuestionAttempts(
   studentId: string,
@@ -51,10 +52,7 @@ export function weaknessCountsFromAttempts(attempts: QuestionAttempt[]): Record<
 }
 
 export function pickTopWeaknesses(counts: Record<string, number>, limit = 5): { label: string; count: number }[] {
-  return Object.entries(counts || {})
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([label, count]) => ({ label, count }));
+  return pickTopWeaknessesUtil(counts, limit);
 }
 
 /**
