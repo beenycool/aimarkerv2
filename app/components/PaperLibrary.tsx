@@ -186,6 +186,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                                                 : paper.name}
                                         </h4>
                                         <Button
+                                            type="button"
                                             variant="ghost"
                                             size="icon"
                                             className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
