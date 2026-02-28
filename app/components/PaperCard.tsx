@@ -6,6 +6,30 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 
+export interface PaperType {
+    id: string;
+    name: string;
+    subject?: string;
+    board?: string;
+    year?: string | number;
+    season?: string;
+    section?: string;
+    pdf_path?: string;
+    scheme_path?: string;
+    insert_path?: string;
+    parsed_questions?: any;
+    parsed_mark_scheme?: any;
+}
+
+export interface PaperCardProps {
+    paper: PaperType;
+    hasSession: boolean;
+    isDeleting: boolean;
+    onSelect?: (paper: PaperType) => void;
+    onDelete: (e: React.MouseEvent<HTMLButtonElement>, paper: PaperType) => void;
+    onResume?: (paper: PaperType) => void;
+}
+
 export const PaperCard = memo(({
     paper,
     hasSession,
@@ -13,10 +37,24 @@ export const PaperCard = memo(({
     onSelect,
     onDelete,
     onResume
-}) => {
+}: PaperCardProps) => {
+    const handleSelect = () => {
+        if (!hasSession && onSelect) {
+            onSelect(paper);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelect();
+        }
+    };
+
     return (
         <Card
-            onClick={() => !hasSession && onSelect(paper)}
+            onClick={handleSelect}
+            onKeyDown={handleKeyDown}
             className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
             role={hasSession ? "article" : "button"}
             tabIndex={hasSession ? undefined : 0}
@@ -88,7 +126,7 @@ export const PaperCard = memo(({
                                 size="sm"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onSelect(paper);
+                                    if (onSelect) onSelect(paper);
                                 }}
                             >
                                 Restart
