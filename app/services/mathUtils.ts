@@ -7,8 +7,11 @@
  * @returns Sorted array of top weaknesses.
  */
 export function pickTopWeaknesses(counts: Record<string, number>, limit: number = 5): { label: string; count: number }[] {
+  // Ensure limit is a positive integer, default to 0 if invalid
+  const safeLimit = Math.max(0, isNaN(limit) ? 0 : Math.floor(limit));
+
   return Object.entries(counts || {})
     .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
+    .slice(0, safeLimit)
     .map(([label, count]) => ({ label, count }));
 }

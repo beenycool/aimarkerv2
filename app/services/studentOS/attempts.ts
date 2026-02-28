@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { supabase } from '../supabaseClient';
 import { QuestionAttempt } from './types';
 import { pickTopWeaknesses as pickTopWeaknessesUtil } from '../mathUtils';

@@ -33,15 +33,29 @@ describe('pickTopWeaknesses', () => {
     expect(hasA).toBe(false);
   });
 
-  it('should handle empty input', () => {
-    expect(pickTopWeaknesses({})).toEqual([]);
-    // @ts-ignore
-    expect(pickTopWeaknesses(null)).toEqual([]);
-    // @ts-ignore
-    expect(pickTopWeaknesses(undefined)).toEqual([]);
+  it('should handle negative, NaN, or 0 limits gracefully', () => {
+    const counts = { a: 1, b: 2, c: 3 };
+
+    // Negative limit
+    expect(pickTopWeaknesses(counts, -5)).toEqual([]);
+
+    // Zero limit
+    expect(pickTopWeaknesses(counts, 0)).toEqual([]);
+
+    // NaN limit
+    expect(pickTopWeaknesses(counts, NaN)).toEqual([]);
+
+    // Decimal limit (floored)
+    expect(pickTopWeaknesses(counts, 2.7).length).toBe(2);
   });
 
-  it('should handle ties (stable sort not guaranteed but order matter of counts)', () => {
+  it('should handle empty, null, or undefined input', () => {
+    expect(pickTopWeaknesses({})).toEqual([]);
+    expect(pickTopWeaknesses(null as unknown as Record<string, number>)).toEqual([]);
+    expect(pickTopWeaknesses(undefined as unknown as Record<string, number>)).toEqual([]);
+  });
+
+  it('should handle ties (stable sort not guaranteed but order of counts matter)', () => {
     const counts = { 'A': 5, 'B': 5 };
     const result = pickTopWeaknesses(counts);
     expect(result.length).toBe(2);
