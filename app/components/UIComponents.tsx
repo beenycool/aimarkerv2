@@ -293,7 +293,10 @@ export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZonePro
                     </>
                 )}
             </div>
-            <input type="file" className="sr-only" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
+            <input type="file" className="sr-only" accept=".pdf" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) onUpload(file);
+            }} />
         </label>
     </div>
 ));
@@ -372,7 +375,7 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         ) : (
                     <>
                         {!explanation && (
-                            <button onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
+                            <button type="button" onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
                                 {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                 {explaining ? "Preparing explanation..." : "Explain Why"}
                             </button>
