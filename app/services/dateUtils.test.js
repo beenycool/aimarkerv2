@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
-import { formatShort, clamp, bandFromPercent } from './dateUtils.js';
+import { describe, expect, test, setSystemTime, afterEach } from 'bun:test';
+import { formatShort, isoToday, clamp, bandFromPercent } from './dateUtils.js';
 
 describe('formatShort', () => {
   test('formats valid ISO date string correctly', () => {
@@ -9,7 +9,7 @@ describe('formatShort', () => {
       day: 'numeric',
       month: 'short'
     }).format(expectedDate);
-    
+
     const result = formatShort('2023-10-27');
     expect(result).toBe(expected);
   });
@@ -31,6 +31,20 @@ describe('formatShort', () => {
     // If null is passed, dateISO + 'T00:00:00' -> 'nullT00:00:00' -> Invalid Date
     expect(formatShort(undefined)).toBe(undefined);
     expect(formatShort(null)).toBe(null);
+  });
+});
+
+describe('isoToday', () => {
+  afterEach(() => {
+    setSystemTime(); // Reset to real system time
+  });
+
+  test.each([
+    { date: new Date(2023, 9, 25, 12, 0, 0), expected: '2023-10-25', case: 'double-digit month/day' },
+    { date: new Date(2023, 0, 5, 12, 0, 0), expected: '2023-01-05', case: 'single-digit month and day' },
+  ])('returns formatted date string for $case', ({ date, expected }) => {
+    setSystemTime(date);
+    expect(isoToday()).toBe(expected);
   });
 });
 
