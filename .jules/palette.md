@@ -5,5 +5,6 @@
 **Action:** Use `focus-within:ring-2` on the container when the inner input is hidden or screen-reader only.
 
 ## 2024-05-22 - Accessibility in Chat Interfaces
+
 **Learning:** Chat interfaces often use icon-only buttons for "Send" actions, which are inaccessible without explicit labels.
 **Action:** Always verify `aria-label` on icon-only buttons in conversational UI components like `FeedbackBlock`.
