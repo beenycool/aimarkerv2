@@ -39,19 +39,11 @@ describe('isoToday', () => {
     setSystemTime(); // Reset to real system time
   });
 
-  test('returns formatted date string for double-digit month/day', () => {
-    // Mock date to 2023-10-25 using local time constructor (month is 0-indexed)
-    setSystemTime(new Date(2023, 9, 25, 12, 0, 0));
-
-    const result = isoToday();
-    expect(result).toBe('2023-10-25');
-  });
-
-  test('pads single-digit month and day with zero', () => {
-    // Mock date to 2023-01-05 using local time constructor
-    setSystemTime(new Date(2023, 0, 5, 12, 0, 0));
-
-    const result = isoToday();
-    expect(result).toBe('2023-01-05');
+  test.each([
+    { date: new Date(2023, 9, 25, 12, 0, 0), expected: '2023-10-25', case: 'double-digit month/day' },
+    { date: new Date(2023, 0, 5, 12, 0, 0), expected: '2023-01-05', case: 'single-digit month and day' },
+  ])('returns formatted date string for $case', ({ date, expected }) => {
+    setSystemTime(date);
+    expect(isoToday()).toBe(expected);
   });
 });
