@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 import React from 'react';
 import { Book, Trash2, Loader2, RefreshCw, Check } from 'lucide-react';
@@ -6,10 +5,45 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 
-const PaperCard = React.memo(({ paper, onSelect, onResume, onDelete, isDeleting, hasSession }) => {
+interface PaperCardProps {
+    paper: {
+        id: string;
+        name: string;
+        subject?: string;
+        year?: string;
+        season?: string;
+        board?: string;
+        section?: string;
+        pdf_path?: string;
+        scheme_path?: string;
+        insert_path?: string;
+        parsed_questions?: unknown;
+        parsed_mark_scheme?: unknown;
+    };
+    onSelect: (paper: PaperCardProps['paper']) => void;
+    onResume?: (paper: PaperCardProps['paper']) => void;
+    onDelete: (paper: PaperCardProps['paper']) => void;
+    isDeleting: boolean;
+    hasSession: boolean;
+}
+
+const PaperCard = React.memo(({ paper, onSelect, onResume, onDelete, isDeleting, hasSession }: PaperCardProps) => {
+    const handleDeleteClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete(paper);
+    };
+
+    const handleCardKeyDown = (e: React.KeyboardEvent) => {
+        if (!hasSession && (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar')) {
+            e.preventDefault();
+            onSelect(paper);
+        }
+    };
+
     return (
         <Card
             onClick={() => !hasSession && onSelect(paper)}
+            onKeyDown={handleCardKeyDown}
             className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
             role={hasSession ? "article" : "button"}
             tabIndex={hasSession ? undefined : 0}
@@ -33,7 +67,7 @@ const PaperCard = React.memo(({ paper, onSelect, onResume, onDelete, isDeleting,
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
-                            onClick={(e) => onDelete(e, paper)}
+                            onClick={handleDeleteClick}
                             disabled={isDeleting}
                         >
                             {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}

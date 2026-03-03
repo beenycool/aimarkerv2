@@ -43,8 +43,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         fetchPapers();
     }, []);
 
-    const handleDelete = useCallback(async (e, paper) => {
-        e.stopPropagation();
+    const handleDelete = useCallback(async (paper) => {
         if (!confirm('Are you sure you want to delete this paper?')) return;
 
         setDeletingId(paper.id);
@@ -71,6 +70,12 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
             const pdfUrl = PaperStorage.getPublicUrl(paper.pdf_path);
             const schemeUrl = PaperStorage.getPublicUrl(paper.scheme_path);
             const insertUrl = PaperStorage.getPublicUrl(paper.insert_path);
+
+            if (!pdfUrl) {
+                console.error("No PDF URL available for paper:", paper.id);
+                toast.error("Unable to open paper: PDF not available");
+                return;
+            }
 
             onSelect({
                 paperId: paper.id,
