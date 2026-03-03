@@ -32,6 +32,12 @@ async function callHackClubAPI(messages, apiKey = null, model = "qwen/qwen3-32b"
     return data.content;
 }
 
+// ⚡ Bolt: In-memory cache for dashboard insights to prevent redundant expensive API calls
+// Map size is limited to prevent memory leaks
+const INSIGHTS_CACHE = new Map();
+const INSIGHTS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 100; // Limit cache to avoid memory leaks
+
 /**
  * Generate comprehensive dashboard insights using AI
  * @param {Object} studentData - Student's performance data
@@ -54,6 +60,43 @@ export async function generateDashboardInsights(studentData, hackClubKey = null)
         streakDays = 0,
         subjects = []
     } = studentData;
+
+    // Get current time for greeting and caching
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+
+    // Calculate actual trend
+    const thisWeekPct = weekStats.thisWeek.total > 0
+        ? Math.round((weekStats.thisWeek.earned / weekStats.thisWeek.total) * 100)
+        : null;
+    const lastWeekPct = weekStats.lastWeek.total > 0
+        ? Math.round((weekStats.lastWeek.earned / weekStats.lastWeek.total) * 100)
+        : null;
+
+    const trendChange = (thisWeekPct !== null && lastWeekPct !== null)
+        ? thisWeekPct - lastWeekPct
+        : 0;
+
+    // ⚡ Bolt: Check cache before making expensive API calls, using all variables that affect the output
+    const cacheKey = JSON.stringify({
+        studentId,
+        name, // Crucial for correct greeting
+        overallPercent,
+        trendChange, // Crucial for accurate trend insight
+        topWeaknesses: topWeaknesses.slice(0, 3).map((w: any) => w.topic || w.label),
+        streakDays,
+        timeOfDay,
+        subjects: subjects.length
+    });
+
+    const cached = INSIGHTS_CACHE.get(cacheKey);
+    if (cached) {
+        if (Date.now() - cached.timestamp < INSIGHTS_CACHE_TTL) {
+            return cached.data;
+        } else {
+            INSIGHTS_CACHE.delete(cacheKey); // Prune expired entry
+        }
+    }
 
     // Get memory context for personalization
     const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
@@ -120,7 +163,7 @@ OUTPUT STRICT JSON (no markdown, no explanation):
         const cleaned = cleanGeminiJSON(response);
         const parsed = JSON.parse(cleaned);
 
-        return {
+        const insights = {
             greeting: parsed.greeting || `Good ${timeOfDay}, ${name}!`,
             trend: {
                 change: trendChange,
@@ -138,6 +181,15 @@ OUTPUT STRICT JSON (no markdown, no explanation):
             },
             dailyTip: parsed.dailyTip || 'Review your marked papers and note common mistakes.'
         };
+
+        // ⚡ Bolt: Cache successful responses and manage cache size
+        if (INSIGHTS_CACHE.size >= MAX_CACHE_SIZE) {
+            // Remove oldest entry (first item in iterator)
+            const firstKey = INSIGHTS_CACHE.keys().next().value;
+            INSIGHTS_CACHE.delete(firstKey);
+        }
+        INSIGHTS_CACHE.set(cacheKey, { data: insights, timestamp: Date.now() });
+        return insights;
     } catch (error) {
         console.error('AI Coach error:', error);
         // Fallback to computed values

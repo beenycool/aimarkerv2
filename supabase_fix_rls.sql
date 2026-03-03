@@ -1,4 +1,4 @@
--- SIMPLE FIX: Allow authenticated users to insert their own data
+-- SIMPLE FIX: Enforce authenticated users can only insert their own data
 -- This simpler approach should work around type matching issues
 
 -- ============================================
@@ -31,15 +31,20 @@ DROP POLICY IF EXISTS "Users can view own memory items" ON memory_bank_items;
 DROP POLICY IF EXISTS "Users can update own memory items" ON memory_bank_items;
 DROP POLICY IF EXISTS "Users can delete own memory items" ON memory_bank_items;
 
+DROP POLICY IF EXISTS "Users can insert own exams" ON upcoming_exams;
+DROP POLICY IF EXISTS "Users can view own exams" ON upcoming_exams;
+DROP POLICY IF EXISTS "Users can update own exams" ON upcoming_exams;
+DROP POLICY IF EXISTS "Users can delete own exams" ON upcoming_exams;
+
 -- ============================================
 -- student_settings - SIMPLE policies
 -- ============================================
 CREATE POLICY "select_own_settings" ON student_settings
   FOR SELECT USING (student_id = auth.uid());
 
--- Allow insert if authenticated (we'll check ownership on select/update)
+-- Enforce ownership on insert
 CREATE POLICY "insert_own_settings" ON student_settings
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (student_id = auth.uid());
 
 CREATE POLICY "update_own_settings" ON student_settings
   FOR UPDATE USING (student_id = auth.uid());
@@ -51,7 +56,7 @@ CREATE POLICY "select_own_sessions" ON study_sessions
   FOR SELECT USING (student_id = auth.uid());
 
 CREATE POLICY "insert_own_sessions" ON study_sessions
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (student_id = auth.uid());
 
 CREATE POLICY "update_own_sessions" ON study_sessions
   FOR UPDATE USING (student_id = auth.uid());
@@ -66,7 +71,7 @@ CREATE POLICY "select_own_subjects" ON subjects
   FOR SELECT USING (student_id = auth.uid());
 
 CREATE POLICY "insert_own_subjects" ON subjects
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (student_id = auth.uid());
 
 CREATE POLICY "update_own_subjects" ON subjects
   FOR UPDATE USING (student_id = auth.uid());
@@ -81,7 +86,7 @@ CREATE POLICY "select_own_attempts" ON question_attempts
   FOR SELECT USING (student_id = auth.uid());
 
 CREATE POLICY "insert_own_attempts" ON question_attempts
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (student_id = auth.uid());
 
 -- ============================================
 -- assessments
@@ -90,7 +95,7 @@ CREATE POLICY "select_own_assessments" ON assessments
   FOR SELECT USING (student_id = auth.uid());
 
 CREATE POLICY "insert_own_assessments" ON assessments
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (student_id = auth.uid());
 
 CREATE POLICY "update_own_assessments" ON assessments
   FOR UPDATE USING (student_id = auth.uid());
@@ -105,10 +110,25 @@ CREATE POLICY "select_own_memory" ON memory_bank_items
   FOR SELECT USING (student_id = auth.uid());
 
 CREATE POLICY "insert_own_memory" ON memory_bank_items
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (student_id = auth.uid());
 
 CREATE POLICY "update_own_memory" ON memory_bank_items
   FOR UPDATE USING (student_id = auth.uid());
 
 CREATE POLICY "delete_own_memory" ON memory_bank_items
+  FOR DELETE USING (student_id = auth.uid());
+
+-- ============================================
+-- upcoming_exams
+-- ============================================
+CREATE POLICY "select_own_exams" ON upcoming_exams
+  FOR SELECT USING (student_id = auth.uid());
+
+CREATE POLICY "insert_own_exams" ON upcoming_exams
+  FOR INSERT WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "update_own_exams" ON upcoming_exams
+  FOR UPDATE USING (student_id = auth.uid());
+
+CREATE POLICY "delete_own_exams" ON upcoming_exams
   FOR DELETE USING (student_id = auth.uid());
