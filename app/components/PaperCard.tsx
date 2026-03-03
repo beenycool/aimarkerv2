@@ -38,8 +38,6 @@ const PaperCard: React.FC<PaperCardProps> = memo(({
     onResume,
     checkSessionForPaper
 }) => {
-    // Preserve existing logic for session checking
-    // Replicates behavior where hasSession might be truthy (Promise) if checkSessionForPaper is async
     const hasSession = checkSessionForPaper && typeof checkSessionForPaper === 'function'
         ? checkSessionForPaper(paper.id)
         : false;
@@ -61,12 +59,10 @@ const PaperCard: React.FC<PaperCardProps> = memo(({
             aria-label={hasSession ? `${paper.subject || paper.name} - In progress` : `Start ${paper.subject || paper.name}`}
         >
             <CardContent className="p-4 flex items-start gap-4">
-                {/* Icon Box */}
                 <div className="shrink-0 bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
                     <Book className="w-6 h-6" />
                 </div>
 
-                {/* Details */}
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                         <h4 className="font-semibold text-foreground truncate pr-2 group-hover:text-primary transition-colors">
@@ -108,7 +104,6 @@ const PaperCard: React.FC<PaperCardProps> = memo(({
                         )}
                     </div>
 
-                    {/* Resume Button */}
                     {hasSession && onResume && (
                         <div className="mt-3 flex gap-2">
                             <Button

@@ -17,7 +17,6 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
     const [searchQuery, setSearchQuery] = useState("");
     const [paperToDelete, setPaperToDelete] = useState(null);
 
-    // Refs for stable callbacks to prevent re-renders when parent re-renders
     const onSelectPaperRef = useRef(onSelectPaper);
     const onResumePaperRef = useRef(onResumePaper);
 
@@ -30,7 +29,6 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         try {
             setLoading(true);
             const data = await PaperStorage.listPapers();
-            // detailed sort: newest first
             const sorted = data.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
             setPapers(sorted);
         } catch (err) {
@@ -139,7 +137,6 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
 
     return (
         <div className="w-full space-y-6 animate-in fade-in duration-500">
-            {/* Custom Confirm Dialog (inline to avoid new component dependencies) */}
             {paperToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
                     <div className="bg-card border border-border rounded-lg shadow-lg p-6 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
@@ -159,7 +156,6 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                 </div>
             )}
 
-            {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                     <h3 className="text-xl font-bold flex items-center gap-2">
@@ -179,11 +175,11 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-9 h-9 bg-muted/30 border-muted-foreground/20 focus:border-primary/50 transition-all"
+                        aria-label="Search saved papers"
                     />
                 </div>
             </div>
 
-            {/* Content */}
             {papers.length === 0 ? (
                 <div className="text-center py-16 px-4 border-2 border-dashed border-border/50 rounded-2xl bg-muted/20">
                     <div className="bg-muted/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">

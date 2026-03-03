@@ -8,6 +8,7 @@ DROP POLICY IF EXISTS "insert_own_subjects" ON subjects;
 DROP POLICY IF EXISTS "insert_own_attempts" ON question_attempts;
 DROP POLICY IF EXISTS "insert_own_assessments" ON assessments;
 DROP POLICY IF EXISTS "insert_own_memory" ON memory_bank_items;
+DROP POLICY IF EXISTS "insert_own_exams" ON upcoming_exams;
 
 -- Create secure policies enforcing student_id ownership
 CREATE POLICY "insert_own_settings" ON student_settings
@@ -26,6 +27,9 @@ CREATE POLICY "insert_own_assessments" ON assessments
   FOR INSERT WITH CHECK (student_id = auth.uid());
 
 CREATE POLICY "insert_own_memory" ON memory_bank_items
+  FOR INSERT WITH CHECK (student_id = auth.uid());
+
+CREATE POLICY "insert_own_exams" ON upcoming_exams
   FOR INSERT WITH CHECK (student_id = auth.uid());
 
 -- New Feature: Sync Exam Sessions
