@@ -230,11 +230,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 )}
                 <div className="h-6 w-px bg-border mx-2"></div>
                 {backgroundImage && onClearBackground && (
-                    <button aria-label="Remove background image" onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground" title="Remove figure background">
+                    <button type="button" aria-label="Remove background image" onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground" title="Remove figure background">
                         <ImageOff className="w-4 h-4" />
                     </button>
                 )}
-                <button aria-label="Clear all canvas contents" title="Clear Canvas" onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
+                <button type="button" aria-label="Clear all canvas contents" title="Clear Canvas" onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
             </div>
             <div className="border border-border rounded-lg overflow-hidden shadow-inner bg-white self-start">
                 <canvas ref={canvasRef} width={width} height={height} onMouseDown={handleMouseDown} onMouseMove={(e) => { handleMouseMove(e); handleSketchMove(e); }} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave} className="cursor-crosshair block" />
