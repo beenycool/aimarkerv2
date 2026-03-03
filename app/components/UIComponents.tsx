@@ -295,7 +295,13 @@ export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZonePro
             </div>
             <input type="file" className="sr-only" accept=".pdf" onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) onUpload(file);
+                if (file) {
+                    if (file.type === 'application/pdf') {
+                        onUpload(file);
+                    } else {
+                        e.target.value = '';
+                    }
+                }
             }} />
         </label>
     </div>
