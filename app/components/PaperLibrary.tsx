@@ -1,20 +1,26 @@
-// @ts-nocheck
 "use client";
 import { toast } from "sonner";
-import React, { useEffect, useState, useMemo } from 'react';
-import { BookOpen, Trash2, Loader2, FileText, Check, Search, Book, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { BookOpen, FileText, Search } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
 
-import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { PaperCard } from './PaperCard';
 
-export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPaper }) => {
-    const [papers, setPapers] = useState([]);
+import { PaperType } from './PaperCard';
+
+interface PaperLibraryProps {
+    onSelectPaper?: (paperDetails: any) => void;
+    onResumePaper?: (paper: PaperType) => void;
+    checkSessionForPaper?: (paperId: string) => boolean;
+}
+
+export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPaper }: PaperLibraryProps) => {
+    const [papers, setPapers] = useState<PaperType[]>([]);
     const [loading, setLoading] = useState(true);
-    const [deletingId, setDeletingId] = useState(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
     const fetchPapers = async () => {
@@ -22,7 +28,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
             setLoading(true);
             const data = await PaperStorage.listPapers();
             // detailed sort: newest first
-            const sorted = data.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+            const sorted = data.sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
             setPapers(sorted);
         } catch (err) {
             console.error("Failed to load papers:", err);
@@ -35,7 +41,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         fetchPapers();
     }, []);
 
-    const handleDelete = async (e, paper) => {
+    const handleDelete = useCallback(async (e: React.MouseEvent<HTMLButtonElement>, paper: PaperType) => {
         e.stopPropagation();
         if (!confirm('Are you sure you want to delete this paper?')) return;
 
@@ -53,9 +59,9 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         } finally {
             setDeletingId(null);
         }
-    };
+    }, []);
 
-    const handleSelect = async (paper) => {
+    const handleSelect = useCallback(async (paper: PaperType) => {
         if (!onSelectPaper) return;
 
         try {
@@ -85,7 +91,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         } catch (err) {
             console.error("Error selecting paper:", err);
         }
-    };
+    }, [onSelectPaper]);
 
     const filteredPapers = useMemo(() => {
         if (!searchQuery) return papers;
@@ -168,7 +174,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                                 key={paper.id}
                                 paper={paper}
                                 hasSession={hasSession}
-                                deletingId={deletingId}
+                                isDeleting={deletingId === paper.id}
                                 onSelect={handleSelect}
                                 onDelete={handleDelete}
                                 onResume={onResumePaper}
