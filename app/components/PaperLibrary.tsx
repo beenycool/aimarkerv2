@@ -14,6 +14,12 @@ const PaperCard = React.memo(({ paper, hasSession, isDeleting, onSelect, onDelet
     return (
         <Card
             onClick={() => !hasSession && onSelect(paper)}
+            onKeyDown={(e) => {
+                if (!hasSession && (e.key === 'Enter' || e.key === ' ')) {
+                    e.key === ' ' && e.preventDefault();
+                    onSelect(paper);
+                }
+            }}
             className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
             role={hasSession ? "article" : "button"}
             tabIndex={hasSession ? undefined : 0}
@@ -38,7 +44,6 @@ const PaperCard = React.memo(({ paper, hasSession, isDeleting, onSelect, onDelet
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
                             onClick={(e) => {
-                                e.stopPropagation();
                                 onDelete(e, paper);
                             }}
                             disabled={isDeleting}

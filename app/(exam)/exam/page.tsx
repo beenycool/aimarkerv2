@@ -360,7 +360,7 @@ export default function GCSEMarkerApp() {
         setParsingStatus("Resuming paper...");
         try {
             // First, restore the session for this paper
-            const restored = restoreSessionForPaper(paper.id);
+            const restored = await restoreSessionForPaper(paper.id);
             
             if (!restored) {
                 console.error("No saved session found for paper:", paper.id);
@@ -528,7 +528,7 @@ export default function GCSEMarkerApp() {
                     // Save file paths (public URLs) for session persistence
                     if (savedRecord) {
                         const getUrl = (path) => path ? PaperStorage.getPublicUrl(path) : null;
-                        exam.setPaperFilePaths({
+                        setPaperFilePaths({
                             paper: getUrl(savedRecord.pdf_path),
                             scheme: getUrl(savedRecord.scheme_path),
                             insert: getUrl(savedRecord.insert_path)
