@@ -3,11 +3,10 @@ import { toast } from "sonner";
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { BookOpen, FileText, Search } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
-
+import PaperCard from './PaperCard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import PaperCard from './PaperCard';
 
 import { PaperType } from './PaperCard';
 
@@ -105,7 +104,6 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
         scheme: schemeUrl ? { url: schemeUrl, name: "Mark Scheme" } : null,
         insert: insertUrl ? { url: insertUrl, name: "Insert" } : null
       });
-
     } catch (err) {
       console.error("Error selecting paper:", err);
     }

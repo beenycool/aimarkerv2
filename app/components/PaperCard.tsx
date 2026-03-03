@@ -4,6 +4,7 @@ import { Book, Trash2, Loader2, Check, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 export interface PaperType {
   id: string;
@@ -52,6 +53,7 @@ export const PaperCard = memo(({
   };
 
   return (
+    <TooltipProvider>
     <Card
       onClick={handleSelect}
       onKeyDown={handleKeyDown}
@@ -72,16 +74,23 @@ export const PaperCard = memo(({
                 ? `${paper.subject}`
                 : paper.name}
             </h4>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 transition-all"
-              onClick={(e) => onDelete(e, paper)}
-              disabled={isDeleting}
-              aria-label={`Delete ${paper.name}`}
-            >
-              {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Delete paper"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                  onClick={(e) => onDelete(e, paper)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Delete paper</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <p className="text-sm text-muted-foreground mb-3 truncate">
@@ -134,6 +143,7 @@ export const PaperCard = memo(({
         </div>
       </CardContent>
     </Card>
+    </TooltipProvider>
   );
 });
 
