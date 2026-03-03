@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
+import { normalizeOpenAIEndpoint } from '@/app/services/urlUtils';
 
 export async function POST(request) {
     try {
@@ -32,11 +33,15 @@ export async function POST(request) {
             );
         }
 
-        // Ensure endpoint ends with /chat/completions if not already (common oversight)
-        // However, some might provide the full path. Let's assume user provides base URL usually, e.g. http://localhost:11434/v1
-        let url = endpoint;
-        if (!url.endsWith('/chat/completions')) {
-            url = `${url.replace(/\/+$/, '')}/chat/completions`;
+        let url;
+        try {
+            // Validate and normalize the endpoint to prevent SSRF
+            url = normalizeOpenAIEndpoint(endpoint);
+        } catch (error) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
         }
 
         const response = await fetch(url, {
