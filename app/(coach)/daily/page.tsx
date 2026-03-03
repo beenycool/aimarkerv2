@@ -2,7 +2,7 @@
 'use client';
 import { toast } from "sonner";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -10,7 +10,6 @@ import { Badge } from '@/app/components/ui/badge';
 import { Progress } from '@/app/components/ui/progress';
 import {
     Star,
-    Play,
     CheckCircle2,
     Circle,
     ArrowRight,
@@ -20,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useStudentId } from '../../components/AuthProvider';
 import {
-    listSubjects,
     pickTopWeaknesses,
     weaknessCountsFromAttempts,
     listQuestionAttempts,
