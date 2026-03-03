@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw, X, Check } from 'lucide-react';
 import katex from 'katex';
@@ -241,33 +241,35 @@ export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) =
     };
 
 
-    const rendered = renderMarkdown(text);
-    const sanitized = DOMPurify.sanitize(rendered, {
-        ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
-        ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
-        ALLOWED_TAGS: [
-            'a',
-            'blockquote',
-            'br',
-            'code',
-            'em',
-            'h1',
-            'h2',
-            'h3',
-            'h4',
-            'li',
-            'ol',
-            'p',
-            'pre',
-            'span',
-            'strong',
-            'ul'
-        ],
-        ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
-    });
+    const sanitizedHTML = useMemo(() => {
+        const rendered = renderMarkdown(text);
+        return DOMPurify.sanitize(rendered, {
+            ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
+            ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
+            ALLOWED_TAGS: [
+                'a',
+                'blockquote',
+                'br',
+                'code',
+                'em',
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'li',
+                'ol',
+                'p',
+                'pre',
+                'span',
+                'strong',
+                'ul'
+            ],
+            ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
+        });
+    }, [text]);
 
 
-    return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitized }} />;
+    return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
 });
 MarkdownText.displayName = 'MarkdownText';
 
@@ -276,7 +278,7 @@ MarkdownText.displayName = 'MarkdownText';
  */
 export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZoneProps) => (
     <div className="flex flex-col items-center justify-center w-full mb-4">
-        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 border-muted-foreground/25 transition-colors group">
+        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted/50 border-muted-foreground/25 transition-colors group focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
                 {file ? (
                     <>
@@ -291,7 +293,7 @@ export const FileUploadZone = memo(({ label, onUpload, file }: FileUploadZonePro
                     </>
                 )}
             </div>
-            <input type="file" className="hidden" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
+            <input type="file" className="sr-only" accept=".pdf" onChange={(e) => onUpload(e.target.files?.[0] as File)} />
         </label>
     </div>
 ));
@@ -402,8 +404,8 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         </div>
                     )}
                     <div className="flex gap-2">
-                        <input type="text" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-                        <button onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
+                        <input type="text" aria-label="Follow-up question" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
+                        <button aria-label="Send follow-up question" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
                             {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
