@@ -138,6 +138,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                     />
                     {searchQuery && (
                         <button
+                            type="button"
                             onClick={() => setSearchQuery("")}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
                             aria-label="Clear search"
@@ -196,7 +197,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mr-2 -mt-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all"
                                             onClick={(e) => handleDelete(e, paper)}
                                             disabled={deletingId === paper.id}
                                             aria-label={`Delete ${paper.name}`}
