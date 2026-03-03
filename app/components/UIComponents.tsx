@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw, X, Check } from 'lucide-react';
 import katex from 'katex';
@@ -241,33 +241,35 @@ export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) =
     };
 
 
-    const rendered = renderMarkdown(text);
-    const sanitized = DOMPurify.sanitize(rendered, {
-        ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
-        ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
-        ALLOWED_TAGS: [
-            'a',
-            'blockquote',
-            'br',
-            'code',
-            'em',
-            'h1',
-            'h2',
-            'h3',
-            'h4',
-            'li',
-            'ol',
-            'p',
-            'pre',
-            'span',
-            'strong',
-            'ul'
-        ],
-        ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
-    });
+    const sanitizedHTML = useMemo(() => {
+        const rendered = renderMarkdown(text);
+        return DOMPurify.sanitize(rendered, {
+            ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
+            ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
+            ALLOWED_TAGS: [
+                'a',
+                'blockquote',
+                'br',
+                'code',
+                'em',
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'li',
+                'ol',
+                'p',
+                'pre',
+                'span',
+                'strong',
+                'ul'
+            ],
+            ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
+        });
+    }, [text]);
 
 
-    return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitized }} />;
+    return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
 });
 MarkdownText.displayName = 'MarkdownText';
 
