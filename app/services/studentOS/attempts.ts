@@ -168,7 +168,8 @@ export async function getSubjectPerformance(studentId: string) {
 
     if (error || !attempts?.length) return {};
 
-    const bySubject: Record<string, { earned: number; total: number; count: number }> = {};
+    type SubjectStats = { earned: number; total: number; count: number };
+    const bySubject: Record<string, SubjectStats> = {};
     for (const a of attempts) {
       const sid = a.subject_id || 'unknown';
       if (!bySubject[sid]) bySubject[sid] = { earned: 0, total: 0, count: 0 };
