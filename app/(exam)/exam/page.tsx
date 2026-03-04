@@ -439,7 +439,6 @@ export default function GCSEMarkerApp() {
 
             // 2. Check for cached questions (from library OR duplicate check)
             if (files.paper.fromLibrary && files.paper.parsedQuestions) {
-                console.log("Using cached questions");
                 setParsingStatus('Restoring previous analysis...');
                 questions = files.paper.parsedQuestions;
                 metadata = files.paper.parsedMetadata || {};
