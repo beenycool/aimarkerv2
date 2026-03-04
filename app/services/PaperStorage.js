@@ -73,7 +73,6 @@ export const PaperStorage = {
                 .maybeSingle();
 
             if (existingPaper) {
-                console.log("Duplicate paper detected. Using existing record:", existingPaper);
                 return existingPaper;
             }
         } catch (err) {
