@@ -437,7 +437,7 @@ export default function AIConfigTable({
                                             {onDeleteProfile && (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile.name); }} className="absolute top-2 right-2 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                                                        <button aria-label="Delete profile" onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile.name); }} className="absolute top-2 right-2 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
                                                     </TooltipTrigger>

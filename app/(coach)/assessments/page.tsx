@@ -1518,6 +1518,7 @@ export default function AssessmentsPage() {
                                             <button
                                                 onClick={() => removeTopic(topic)}
                                                 className="ml-1 p-0.5 rounded-full hover:bg-foreground/10"
+                                                aria-label={`Remove ${topic}`}
                                             >
                                                 <X className="h-3 w-3" />
                                             </button>
