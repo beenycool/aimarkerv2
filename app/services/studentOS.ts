@@ -368,7 +368,7 @@ export async function createAssessment(studentId, input, client?: SupabaseClient
   return data;
 }
 
-export async function uploadAssessmentFile(studentId, file, client?: SupabaseClient<Database>): Promise<{ path: string }> {
+export async function uploadAssessmentFile(studentId: string, file: File, client?: SupabaseClient<Database>): Promise<{ path: string }> {
   if (!studentId) throw new Error('studentId required');
   if (!file) throw new Error('file required');
   const supabaseClient = client || defaultSupabase;
