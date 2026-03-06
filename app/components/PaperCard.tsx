@@ -43,7 +43,12 @@ const PaperCard = React.memo(({ paper, onSelect, onResume, onDelete, isDeleting,
     return (
         <Card
             onClick={() => !hasSession && onSelect(paper)}
-            onKeyDown={handleCardKeyDown}
+            onKeyDown={(e) => {
+                if (!hasSession && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onSelect(paper);
+                }
+            }}
             className={`group ${!hasSession ? 'cursor-pointer' : 'cursor-default'} hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 border-border/60 bg-card/50 backdrop-blur-sm`}
             role={hasSession ? "article" : "button"}
             tabIndex={hasSession ? undefined : 0}
