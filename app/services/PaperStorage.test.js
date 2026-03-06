@@ -66,6 +66,6 @@ describe('PaperStorage.uploadPaper', () => {
 
     await expect(
       PaperStorage.uploadPaper(fakeFile, null, null, fakeMetadata)
-    ).rejects.toThrow('Upload failed');
+    ).rejects.toBe(uploadError);
   });
 });
