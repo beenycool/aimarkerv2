@@ -130,18 +130,26 @@ const renderMarkdown = (rawText: string): string => {
         }
 
         if (isMathBlock(line)) {
-            let content = line.slice(2);
-            i += 1;
-            while (i < lines.length && !isMathBlock(lines[i])) {
-                content += "\n" + lines[i];
+            const singleLineMath = line.match(/^\$\$(.*?)\$\$\s*$/);
+            let content = "";
+
+            if (singleLineMath) {
+                content = singleLineMath[1];
                 i += 1;
-            }
-            if (i < lines.length) {
-                content += "\n" + lines[i].replace(/\$\$.*/, "");
+            } else {
+                content = line.slice(2);
                 i += 1;
+                while (i < lines.length && !isMathBlock(lines[i])) {
+                    content += "\n" + lines[i];
+                    i += 1;
+                }
+                if (i < lines.length) {
+                    content += "\n" + lines[i].replace(/^\$\$\s?/, "").replace(/\$\$\s*$/, "");
+                    i += 1;
+                }
             }
             try {
-                const rendered = katex.renderToString(content.replace(/\$\$$/, ""), { displayMode: true, throwOnError: false });
+                const rendered = katex.renderToString(content, { displayMode: true, throwOnError: false });
                 html.push(`<div class="math-block my-4">${rendered}</div>`);
             } catch (err) {
                 console.error("KaTeX block error:", err);
