@@ -72,16 +72,18 @@ export async function normalizeOpenAIEndpoint(endpoint) {
     }
 
     // Prevent SSRF: Resolve hostname and ensure it's not a private IP
+    let lookupResult;
     try {
-        const lookupResult = await dns.lookup(urlObj.hostname);
-        if (isPrivateIP(lookupResult.address)) {
-            throw new Error("Resolved IP address is private or reserved.");
-        }
+        // First, try to resolve the hostname.
+        lookupResult = await dns.lookup(urlObj.hostname);
     } catch (e) {
-        if (e.message.includes('Resolved IP address is private or reserved.')) {
-            throw e;
-        }
+        // Any error here is a DNS resolution failure.
         throw new Error("Could not resolve hostname or invalid hostname.");
+    }
+
+    // After successful resolution, check if the IP is private.
+    if (isPrivateIP(lookupResult.address)) {
+        throw new Error("Resolved IP address is private or reserved.");
     }
 
     // Normalize pathname: ensure it ends with /chat/completions
