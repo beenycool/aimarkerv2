@@ -53,17 +53,14 @@ const SEARCH_CACHE = new Map();
 const SEARCH_CACHE_TTL = 60 * 60 * 1000;
 const MAX_SEARCH_CACHE_SIZE = 50;
 
-<<<<<<< HEAD
-=======
 function setSearchResultCache(key, result) {
-    if (SEARCH_CACHE.size >= MAX_SEARCH_CACHE_SIZE) {
-        // Map preserves insertion order, so the first key is the oldest
-        const oldestKey = SEARCH_CACHE.keys().next().value;
-        SEARCH_CACHE.delete(oldestKey);
-    }
-    SEARCH_CACHE.set(key, { timestamp: Date.now(), data: result });
+  if (SEARCH_CACHE.size >= MAX_SEARCH_CACHE_SIZE) {
+    const oldestKey = SEARCH_CACHE.keys().next().value;
+    SEARCH_CACHE.delete(oldestKey);
+  }
+  SEARCH_CACHE.set(key, { timestamp: Date.now(), data: result });
 }
->>>>>>> origin/main
+
 // Helpers moved to stringUtils.js
 export { normalizeText, normalizeQuestionId, stringifyAnswer };
 
@@ -579,27 +576,19 @@ export async function searchWeb(query, options = {}) {
 
     try {
         switch (strategy) {
-            case 'hackclub':
-                {
-                    const result = await searchHackClub();
-<<<<<<< HEAD
-                    setCache(cacheKey, result);
-=======
-                    setSearchResultCache(cacheKey, result);
->>>>>>> origin/main
-                    return result;
-                }
+    case 'hackclub':
+    {
+      const result = await searchHackClub();
+      setSearchResultCache(cacheKey, result);
+      return result;
+    }
 
-            case 'perplexity':
-                {
-                    const result = await searchPerplexity();
-<<<<<<< HEAD
-                    setCache(cacheKey, result);
-=======
-                    setSearchResultCache(cacheKey, result);
->>>>>>> origin/main
-                    return result;
-                }
+    case 'perplexity':
+    {
+      const result = await searchPerplexity();
+      setSearchResultCache(cacheKey, result);
+      return result;
+    }
 
             case 'both': {
                 // Run both in parallel and combine results
@@ -624,44 +613,32 @@ export async function searchWeb(query, options = {}) {
                     throw new Error('Both search providers failed');
                 }
 
-                const result = {
-                    results: combined,
-                    source: sources.join('+')
-                };
-<<<<<<< HEAD
-                setCache(cacheKey, result);
-=======
-                setSearchResultCache(cacheKey, result);
->>>>>>> origin/main
-                return result;
+    const result = {
+      results: combined,
+      source: sources.join('+')
+    };
+    setSearchResultCache(cacheKey, result);
+    return result;
             }
 
             case 'fallback':
             default: {
                 // Try Hack Club Search first, fall back to Perplexity
-                try {
-                    const result = await searchHackClub();
-<<<<<<< HEAD
-                    setCache(cacheKey, result);
-=======
-                    setSearchResultCache(cacheKey, result);
->>>>>>> origin/main
-                    return result;
-                } catch (hackclubError) {
-                    console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
-                    try {
-                        const result = await searchPerplexity();
-<<<<<<< HEAD
-                        setCache(cacheKey, result);
-=======
-                        setSearchResultCache(cacheKey, result);
->>>>>>> origin/main
-                        return result;
-                    } catch (perplexityError) {
-                        console.warn('Perplexity search also failed:', perplexityError.message);
-                        throw new Error('All search providers failed');
-                    }
-                }
+      try {
+        const result = await searchHackClub();
+        setSearchResultCache(cacheKey, result);
+        return result;
+      } catch (hackclubError) {
+        console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
+        try {
+          const result = await searchPerplexity();
+          setSearchResultCache(cacheKey, result);
+          return result;
+        } catch (perplexityError) {
+          console.warn('Perplexity search also failed:', perplexityError.message);
+          throw new Error('All search providers failed');
+        }
+      }
             }
         }
     } catch (error) {

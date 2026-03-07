@@ -1,5 +1,5 @@
 export const runtime = 'nodejs';
 
-export default function App({ Component, pageProps }) {
-  return <Component {...pageProps} />;
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }

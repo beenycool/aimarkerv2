@@ -98,26 +98,10 @@ export async function generateDashboardInsights(studentData, hackClubKey = null)
         }
     }
 
-    // Get memory context for personalization
-    const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
+  // Get memory context for personalization
+  const memoryContext = studentId ? await getMemoryContextForAI(studentId) : '';
 
-    // Calculate actual trend
-    const thisWeekPct = weekStats.thisWeek.total > 0
-        ? Math.round((weekStats.thisWeek.earned / weekStats.thisWeek.total) * 100)
-        : null;
-    const lastWeekPct = weekStats.lastWeek.total > 0
-        ? Math.round((weekStats.lastWeek.earned / weekStats.lastWeek.total) * 100)
-        : null;
-
-    const trendChange = (thisWeekPct !== null && lastWeekPct !== null)
-        ? thisWeekPct - lastWeekPct
-        : 0;
-
-    // Get current time for greeting
-    const hour = new Date().getHours();
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-
-    // Build AI prompt
+  // Build AI prompt
     const weaknessStr = topWeaknesses.length > 0
         ? topWeaknesses.map(w => `"${w.label}" (${w.count}x)`).join(', ')
         : 'No specific weaknesses identified yet';

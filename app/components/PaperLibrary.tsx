@@ -215,7 +215,7 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
           {filteredPapers.map(paper => {
-            const hasSession = checkSessionForPaper && checkSessionForPaper(paper.id);
+            const hasSession = checkSessionForPaper ? checkSessionForPaper(paper.id) : false;
             return (
               <PaperCard
                 key={paper.id}

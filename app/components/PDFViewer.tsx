@@ -271,17 +271,17 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                     type="button"
                     aria-label="Draw"
                     onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
-                    className={`p-2 rounded transition-colors ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                    title="Draw" aria-label="Draw"
-                >
+className={`p-2 rounded transition-colors ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          title="Draw"
+        >
                     <Pencil className="w-4 h-4" />
                 </button>
                 <button 
                     type="button"
                     aria-label="Highlight"
                     onClick={() => setAnnotationMode(annotationMode === 'highlight' ? null : 'highlight')}
-                    className={`p-2 rounded transition-colors ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                    title="Highlight" aria-label="Highlight"
+className={`p-2 rounded transition-colors ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          title="Highlight"
                 >
                     <Highlighter className="w-4 h-4" />
                 </button>
@@ -289,18 +289,18 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                     type="button"
                     aria-label="Clear annotations on this page"
                     onClick={clearAnnotationsOnPage}
-                    className="p-2 rounded hover:bg-muted"
-                    title="Clear annotations on this page" aria-label="Clear annotations on this page"
-                >
+className="p-2 rounded hover:bg-muted"
+          title="Clear annotations on this page"
+        >
                     <Eraser className="w-4 h-4" />
                 </button>
                 <button 
                     type="button"
                     aria-label="Pan mode"
                     onClick={() => setAnnotationMode(null)}
-                    className={`p-2 rounded transition-colors ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-                    title="Pan mode" aria-label="Pan mode"
-                >
+className={`p-2 rounded transition-colors ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+          title="Pan mode"
+        >
                     <Move className="w-4 h-4" />
                 </button>
             </div>
