@@ -50,195 +50,202 @@ interface FeedbackBlockProps {
 /**
  * Safe Markdown Text Renderer using DOMPurify
  */
-export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
-    if (!text) return null;
+const escapeHtml = (value: string): string => value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
-    const escapeHtml = (value: string): string => value
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
+const classNames = {
+    paragraph: "mb-2 last:mb-0",
+    unorderedList: "list-disc pl-5 my-2 space-y-1",
+    orderedList: "list-decimal pl-5 my-2 space-y-1",
+    listItem: "leading-relaxed",
+    blockquote: "border-l-4 border-border pl-3 italic my-2",
+    inlineCode: "font-mono text-xs bg-muted/50 text-current px-1 py-0.5 rounded",
+    inlineMath: "font-mono bg-muted/50 text-primary px-1 rounded text-xs",
+    codeBlock: "font-mono text-xs text-current",
+    pre: "bg-muted/50 p-3 rounded overflow-x-auto my-2",
+    h1: "text-lg font-semibold mt-4 mb-2",
+    h2: "text-base font-semibold mt-4 mb-2",
+    h3: "text-sm font-semibold mt-3 mb-1",
+    h4: "text-sm font-semibold mt-3 mb-1"
+};
 
-    const classNames = {
-        paragraph: "mb-2 last:mb-0",
-        unorderedList: "list-disc pl-5 my-2 space-y-1",
-        orderedList: "list-decimal pl-5 my-2 space-y-1",
-        listItem: "leading-relaxed",
-        blockquote: "border-l-4 border-border pl-3 italic my-2",
-        inlineCode: "font-mono text-xs bg-muted/50 text-current px-1 py-0.5 rounded",
-        inlineMath: "font-mono bg-muted/50 text-primary px-1 rounded text-xs",
-        codeBlock: "font-mono text-xs text-current",
-        pre: "bg-muted/50 p-3 rounded overflow-x-auto my-2",
-        h1: "text-lg font-semibold mt-4 mb-2",
-        h2: "text-base font-semibold mt-4 mb-2",
-        h3: "text-sm font-semibold mt-3 mb-1",
-        h4: "text-sm font-semibold mt-3 mb-1"
+const isHeading = (line: string) => /^#{1,4}\s+/.test(line);
+const isUnordered = (line: string) => /^[-+*]\s+/.test(line);
+const isOrdered = (line: string) => /^\d+\.\s+/.test(line);
+const isBlockquote = (line: string) => /^>\s+/.test(line);
+const isCodeFence = (line: string) => /^```/.test(line);
+const isMathBlock = (line: string) => /^\$\$/.test(line);
+
+const renderInline = (value: string): string => {
+    let escaped = escapeHtml(value);
+    const tokens: string[] = [];
+    const stash = (html: string): string => {
+        const token = `@@INLINE_${tokens.length}@@`;
+        tokens.push(html);
+        return token;
     };
 
-    const renderInline = (value: string): string => {
-        let escaped = escapeHtml(value);
-        const tokens: string[] = [];
-        const stash = (html: string): string => {
-            const token = `@@INLINE_${tokens.length}@@`;
-            tokens.push(html);
-            return token;
-        };
+    // Handle inline code first
+    escaped = escaped.replace(/`([^`]+)`/g, (_match, code) =>
+        stash(`<code class="${classNames.inlineCode}">${code}</code>`)
+    );
 
-        // Handle inline code first
-        escaped = escaped.replace(/`([^`]+)`/g, (_match, code) =>
-            stash(`<code class="${classNames.inlineCode}">${code}</code>`)
-        );
+    // Handle inline math $...$
+    escaped = escaped.replace(/\$((?!\$)(?:\\\$|[^\$])+)\$/g, (_match, content) => {
+        try {
+            const rendered = katex.renderToString(content, { displayMode: false, throwOnError: false });
+            return stash(`<span class="inline-math">${rendered}</span>`);
+        } catch (err) {
+            console.error("KaTeX error:", err);
+            return stash(`<span class="${classNames.inlineMath}">${content}</span>`);
+        }
+    });
 
-        // Handle inline math $...$
-        escaped = escaped.replace(/\$((?!\$)(?:\\\$|[^\$])+)\$/g, (_match, content) => {
-            try {
-                const rendered = katex.renderToString(content, { displayMode: false, throwOnError: false });
-                return stash(`<span class="inline-math">${rendered}</span>`);
-            } catch (err) {
-                console.error("KaTeX error:", err);
-                return stash(`<span class="${classNames.inlineMath}">${content}</span>`);
-            }
-        });
+    escaped = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    escaped = escaped.replace(/__(.+?)__/g, "<strong>$1</strong>");
+    escaped = escaped.replace(/\*(.+?)\*/g, "<em>$1</em>");
+    escaped = escaped.replace(/_(.+?)_/g, "<em>$1</em>");
 
-        escaped = escaped.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-        escaped = escaped.replace(/__(.+?)__/g, "<strong>$1</strong>");
-        escaped = escaped.replace(/\*(.+?)\*/g, "<em>$1</em>");
-        escaped = escaped.replace(/_(.+?)_/g, "<em>$1</em>");
+    tokens.forEach((html, index) => {
+        escaped = escaped.replace(`@@INLINE_${index}@@`, html);
+    });
+    return escaped;
+};
 
-        tokens.forEach((html, index) => {
-            escaped = escaped.replace(`@@INLINE_${index}@@`, html);
-        });
-        return escaped;
-    };
+const renderMarkdown = (rawText: string): string => {
+    const normalized = String(rawText).replace(/\\n/g, "\n").replace(/\r\n/g, "\n");
+    const lines = normalized.split("\n");
+    const html: string[] = [];
+    let i = 0;
 
+    while (i < lines.length) {
+        const line = lines[i];
+        if (!line || !line.trim()) {
+            i += 1;
+            continue;
+        }
 
-    const renderMarkdown = (rawText: string): string => {
-        const normalized = String(rawText).replace(/\\n/g, "\n").replace(/\r\n/g, "\n");
-        const lines = normalized.split("\n");
-        const html: string[] = [];
-        let i = 0;
+        if (isMathBlock(line)) {
+            const singleLineMath = line.match(/^\$\$(.*?)\$\$\s*$/);
+            let content = "";
 
-        const isHeading = (line: string) => /^#{1,4}\s+/.test(line);
-        const isUnordered = (line: string) => /^[-+*]\s+/.test(line);
-        const isOrdered = (line: string) => /^\d+\.\s+/.test(line);
-        const isBlockquote = (line: string) => /^>\s+/.test(line);
-        const isCodeFence = (line: string) => /^```/.test(line);
-        const isMathBlock = (line: string) => /^\$\$/.test(line);
-
-        while (i < lines.length) {
-            const line = lines[i];
-            if (!line || !line.trim()) {
+            if (singleLineMath) {
+                content = singleLineMath[1];
                 i += 1;
-                continue;
-            }
-
-            if (isMathBlock(line)) {
-                let content = line.slice(2);
+            } else {
+                content = line.slice(2);
                 i += 1;
                 while (i < lines.length && !isMathBlock(lines[i])) {
                     content += "\n" + lines[i];
                     i += 1;
                 }
                 if (i < lines.length) {
-                    content += "\n" + lines[i].replace(/\$\$.*/, "");
+                    content += "\n" + lines[i].replace(/^\$\$\s?/, "").replace(/\$\$\s*$/, "");
                     i += 1;
                 }
-                try {
-                    const rendered = katex.renderToString(content.replace(/\$\$$/, ""), { displayMode: true, throwOnError: false });
-                    html.push(`<div class="math-block my-4">${rendered}</div>`);
-                } catch (err) {
-                    console.error("KaTeX block error:", err);
-                    html.push(`<div class="bg-muted p-2 rounded font-mono text-xs my-2">$$${content}$$</div>`);
-                }
-                continue;
             }
-
-            if (isCodeFence(line)) {
-                const language = line.slice(3).trim();
-                i += 1;
-                const codeLines: string[] = [];
-                while (i < lines.length && !isCodeFence(lines[i])) {
-                    codeLines.push(lines[i]);
-                    i += 1;
-                }
-                if (i < lines.length) i += 1;
-                const codeContent = escapeHtml(codeLines.join("\n"));
-                const langClass = language ? ` language-${escapeHtml(language)}` : "";
-                html.push(
-                    `<pre class="${classNames.pre}"><code class="${classNames.codeBlock}${langClass}">${codeContent}</code></pre>`
-                );
-                continue;
+            try {
+                const rendered = katex.renderToString(content, { displayMode: true, throwOnError: false });
+                html.push(`<div class="math-block my-4">${rendered}</div>`);
+            } catch (err) {
+                console.error("KaTeX block error:", err);
+                html.push(`<div class="bg-muted p-2 rounded font-mono text-xs my-2">$$${content}$$</div>`);
             }
-
-            const headingMatch = line.match(/^(#{1,4})\s+(.*)$/);
-            if (headingMatch) {
-                const level = headingMatch[1].length;
-                const content = renderInline(headingMatch[2]);
-                const headingClass = classNames[`h${level}` as keyof typeof classNames];
-                html.push(`<h${level} class="${headingClass}">${content}</h${level}>`);
-                i += 1;
-                continue;
-            }
-
-            if (isBlockquote(line)) {
-                const quoteLines: string[] = [];
-                while (i < lines.length && isBlockquote(lines[i])) {
-                    quoteLines.push(lines[i].replace(/^>\s?/, ""));
-                    i += 1;
-                }
-                const quoteContent = renderInline(quoteLines.join(" "));
-                html.push(`<blockquote class="${classNames.blockquote}">${quoteContent}</blockquote>`);
-                continue;
-            }
-
-            if (isUnordered(line)) {
-                const items: string[] = [];
-                while (i < lines.length && isUnordered(lines[i])) {
-                    items.push(lines[i].replace(/^[-+*]\s+/, ""));
-                    i += 1;
-                }
-                const listItems = items
-                    .map((item) => `<li class="${classNames.listItem}">${renderInline(item)}</li>`)
-                    .join("");
-                html.push(`<ul class="${classNames.unorderedList}">${listItems}</ul>`);
-                continue;
-            }
-
-            if (isOrdered(line)) {
-                const items: string[] = [];
-                while (i < lines.length && isOrdered(lines[i])) {
-                    items.push(lines[i].replace(/^\d+\.\s+/, ""));
-                    i += 1;
-                }
-                const listItems = items
-                    .map((item) => `<li class="${classNames.listItem}">${renderInline(item)}</li>`)
-                    .join("");
-                html.push(`<ol class="${classNames.orderedList}">${listItems}</ol>`);
-                continue;
-            }
-
-            const paragraphLines = [line];
-            i += 1;
-            while (
-                i < lines.length &&
-                lines[i].trim() !== "" &&
-                !isHeading(lines[i]) &&
-                !isUnordered(lines[i]) &&
-                !isOrdered(lines[i]) &&
-                !isBlockquote(lines[i]) &&
-                !isCodeFence(lines[i]) &&
-                !isMathBlock(lines[i])
-            ) {
-                paragraphLines.push(lines[i]);
-                i += 1;
-            }
-            const paragraphText = paragraphLines.join(" ");
-            html.push(`<p class="${classNames.paragraph}">${renderInline(paragraphText)}</p>`);
+            continue;
         }
 
-        return html.join("");
-    };
+        if (isCodeFence(line)) {
+            const language = line.slice(3).trim();
+            i += 1;
+            const codeLines: string[] = [];
+            while (i < lines.length && !isCodeFence(lines[i])) {
+                codeLines.push(lines[i]);
+                i += 1;
+            }
+            if (i < lines.length) i += 1;
+            const codeContent = escapeHtml(codeLines.join("\n"));
+            const langClass = language ? ` language-${escapeHtml(language)}` : "";
+            html.push(
+                `<pre class="${classNames.pre}"><code class="${classNames.codeBlock}${langClass}">${codeContent}</code></pre>`
+            );
+            continue;
+        }
+
+        const headingMatch = line.match(/^(#{1,4})\s+(.*)$/);
+        if (headingMatch) {
+            const level = headingMatch[1].length;
+            const content = renderInline(headingMatch[2]);
+            const headingClass = classNames[`h${level}` as keyof typeof classNames];
+            html.push(`<h${level} class="${headingClass}">${content}</h${level}>`);
+            i += 1;
+            continue;
+        }
+
+        if (isBlockquote(line)) {
+            const quoteLines: string[] = [];
+            while (i < lines.length && isBlockquote(lines[i])) {
+                quoteLines.push(lines[i].replace(/^>\s?/, ""));
+                i += 1;
+            }
+            const quoteContent = renderInline(quoteLines.join(" "));
+            html.push(`<blockquote class="${classNames.blockquote}">${quoteContent}</blockquote>`);
+            continue;
+        }
+
+        if (isUnordered(line)) {
+            const items: string[] = [];
+            while (i < lines.length && isUnordered(lines[i])) {
+                items.push(lines[i].replace(/^[-+*]\s+/, ""));
+                i += 1;
+            }
+            const listItems = items
+                .map((item) => `<li class="${classNames.listItem}">${renderInline(item)}</li>`)
+                .join("");
+            html.push(`<ul class="${classNames.unorderedList}">${listItems}</ul>`);
+            continue;
+        }
+
+        if (isOrdered(line)) {
+            const items: string[] = [];
+            while (i < lines.length && isOrdered(lines[i])) {
+                items.push(lines[i].replace(/^\d+\.\s+/, ""));
+                i += 1;
+            }
+            const listItems = items
+                .map((item) => `<li class="${classNames.listItem}">${renderInline(item)}</li>`)
+                .join("");
+            html.push(`<ol class="${classNames.orderedList}">${listItems}</ol>`);
+            continue;
+        }
+
+        const paragraphLines = [line];
+        i += 1;
+        while (
+            i < lines.length &&
+            lines[i].trim() !== "" &&
+            !isHeading(lines[i]) &&
+            !isUnordered(lines[i]) &&
+            !isOrdered(lines[i]) &&
+            !isBlockquote(lines[i]) &&
+            !isCodeFence(lines[i]) &&
+            !isMathBlock(lines[i])
+        ) {
+            paragraphLines.push(lines[i]);
+            i += 1;
+        }
+        const paragraphText = paragraphLines.join(" ");
+        html.push(`<p class="${classNames.paragraph}">${renderInline(paragraphText)}</p>`);
+    }
+
+    return html.join("");
+};
+
+export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
+    if (!text) return null;
 
 
     const sanitizedHTML = useMemo(() => {
