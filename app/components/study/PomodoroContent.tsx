@@ -42,8 +42,9 @@ export function PomodoroContent({
                     <svg
                         className="absolute inset-0 w-full h-full -rotate-90"
                         role="progressbar"
-                        aria-label="Pomodoro Timer"
-                        aria-valuenow={Math.round(progress)}
+                        aria-label={`Pomodoro Timer: ${timerState.isBreak ? 'Break Time' : 'Focus Time'}`}
+                        aria-valuetext={timeString}
+                        aria-valuenow={Math.min(100, Math.max(0, Math.round(progress)))}
                         aria-valuemin={0}
                         aria-valuemax={100}
                     >
