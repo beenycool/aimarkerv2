@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck - Supabase schema types need alignment; remove when fixed per reviewer
 import { supabase } from '../supabaseClient';
 import { isoToday } from '../dateUtils';
 import { Assessment, AssessmentAttachment } from './types';
