@@ -53,6 +53,8 @@ const SEARCH_CACHE = new Map();
 const SEARCH_CACHE_TTL = 60 * 60 * 1000;
 const MAX_SEARCH_CACHE_SIZE = 50;
 
+<<<<<<< HEAD
+=======
 function setSearchResultCache(key, result) {
     if (SEARCH_CACHE.size >= MAX_SEARCH_CACHE_SIZE) {
         // Map preserves insertion order, so the first key is the oldest
@@ -61,6 +63,7 @@ function setSearchResultCache(key, result) {
     }
     SEARCH_CACHE.set(key, { timestamp: Date.now(), data: result });
 }
+>>>>>>> origin/main
 // Helpers moved to stringUtils.js
 export { normalizeText, normalizeQuestionId, stringifyAnswer };
 
@@ -189,6 +192,14 @@ const CACHE_TTL = 60000; // 1 minute
  */
 export function clearSettingsCache() {
     settingsCache.clear();
+}
+
+export function clearSearchCache() {
+    SEARCH_CACHE.clear();
+}
+
+export function getSearchCacheSize() {
+    return SEARCH_CACHE.size;
 }
 
 export async function getFullAISettings(studentId) {
@@ -494,14 +505,26 @@ export async function searchWeb(query, options = {}) {
     const cacheKey = JSON.stringify({ query, strategy, count, hasKey: !!hackclubSearchKey });
 
     const cached = SEARCH_CACHE.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
-        // Move to most recently used
-        SEARCH_CACHE.delete(cacheKey);
-        SEARCH_CACHE.set(cacheKey, cached);
-        return cached.data;
-    } else if (cached) {
-        SEARCH_CACHE.delete(cacheKey);
+    if (cached) {
+        if (Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+            // Refresh LRU position (skip if caching disabled)
+            if (MAX_SEARCH_CACHE_SIZE > 0) {
+                SEARCH_CACHE.delete(cacheKey);
+                SEARCH_CACHE.set(cacheKey, cached);
+            }
+            return cached.data;
+        }
+        SEARCH_CACHE.delete(cacheKey); // Expired
     }
+
+    const setCache = (key, value) => {
+        if (MAX_SEARCH_CACHE_SIZE <= 0) return;
+        if (SEARCH_CACHE.size >= MAX_SEARCH_CACHE_SIZE) {
+            const firstKey = SEARCH_CACHE.keys().next().value;
+            SEARCH_CACHE.delete(firstKey);
+        }
+        SEARCH_CACHE.set(key, { timestamp: Date.now(), data: value });
+    };
 
     // Helper to search via Hack Club Search (search.hackclub.com)
     const searchHackClub = async () => {
@@ -559,14 +582,22 @@ export async function searchWeb(query, options = {}) {
             case 'hackclub':
                 {
                     const result = await searchHackClub();
+<<<<<<< HEAD
+                    setCache(cacheKey, result);
+=======
                     setSearchResultCache(cacheKey, result);
+>>>>>>> origin/main
                     return result;
                 }
 
             case 'perplexity':
                 {
                     const result = await searchPerplexity();
+<<<<<<< HEAD
+                    setCache(cacheKey, result);
+=======
                     setSearchResultCache(cacheKey, result);
+>>>>>>> origin/main
                     return result;
                 }
 
@@ -597,7 +628,11 @@ export async function searchWeb(query, options = {}) {
                     results: combined,
                     source: sources.join('+')
                 };
+<<<<<<< HEAD
+                setCache(cacheKey, result);
+=======
                 setSearchResultCache(cacheKey, result);
+>>>>>>> origin/main
                 return result;
             }
 
@@ -606,13 +641,21 @@ export async function searchWeb(query, options = {}) {
                 // Try Hack Club Search first, fall back to Perplexity
                 try {
                     const result = await searchHackClub();
+<<<<<<< HEAD
+                    setCache(cacheKey, result);
+=======
                     setSearchResultCache(cacheKey, result);
+>>>>>>> origin/main
                     return result;
                 } catch (hackclubError) {
                     console.warn('Hack Club search failed, trying Perplexity:', hackclubError.message);
                     try {
                         const result = await searchPerplexity();
+<<<<<<< HEAD
+                        setCache(cacheKey, result);
+=======
                         setSearchResultCache(cacheKey, result);
+>>>>>>> origin/main
                         return result;
                     } catch (perplexityError) {
                         console.warn('Perplexity search also failed:', perplexityError.message);
