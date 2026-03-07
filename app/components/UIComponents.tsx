@@ -73,6 +73,13 @@ const classNames = {
     h4: "text-sm font-semibold mt-3 mb-1"
 };
 
+const isHeading = (line: string) => /^#{1,4}\s+/.test(line);
+const isUnordered = (line: string) => /^[-+*]\s+/.test(line);
+const isOrdered = (line: string) => /^\d+\.\s+/.test(line);
+const isBlockquote = (line: string) => /^>\s+/.test(line);
+const isCodeFence = (line: string) => /^```/.test(line);
+const isMathBlock = (line: string) => /^\$\$/.test(line);
+
 const renderInline = (value: string): string => {
     let escaped = escapeHtml(value);
     const tokens: string[] = [];
@@ -114,13 +121,6 @@ const renderMarkdown = (rawText: string): string => {
     const lines = normalized.split("\n");
     const html: string[] = [];
     let i = 0;
-
-    const isHeading = (line: string) => /^#{1,4}\s+/.test(line);
-    const isUnordered = (line: string) => /^[-+*]\s+/.test(line);
-    const isOrdered = (line: string) => /^\d+\.\s+/.test(line);
-    const isBlockquote = (line: string) => /^>\s+/.test(line);
-    const isCodeFence = (line: string) => /^```/.test(line);
-    const isMathBlock = (line: string) => /^\$\$/.test(line);
 
     while (i < lines.length) {
         const line = lines[i];
