@@ -1,7 +1,7 @@
 "use client";
 import { toast } from "sonner";
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { BookOpen, FileText, Search } from 'lucide-react';
+import { BookOpen, FileText, Search, X } from 'lucide-react';
 import { PaperStorage } from '../services/PaperStorage';
 import PaperCard from './PaperCard';
 import { Button } from './ui/button';
@@ -179,9 +179,19 @@ export const PaperLibrary = ({ onSelectPaper, onResumePaper, checkSessionForPape
             placeholder="Search papers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 bg-muted/30 border-muted-foreground/20 focus:border-primary/50 transition-all"
+            className={`pl-9 h-9 bg-muted/30 border-muted-foreground/20 focus:border-primary/50 transition-all ${searchQuery ? "pr-8" : ""}`}
             aria-label="Search saved papers"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+              aria-label="Clear search"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
 
