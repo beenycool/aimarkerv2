@@ -10,7 +10,6 @@ import {
 } from '@/app/components/ui/dialog';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
-import { Progress } from '@/app/components/ui/progress';
 import {
     Timer,
     RefreshCcw,
