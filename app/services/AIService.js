@@ -943,8 +943,12 @@ You must return your assessment in the exact JSON format below. Do not output an
 
         const assessmentSummary = upcomingAssessments.length > 0 ? upcomingAssessments.map(a => { const daysUntil = Math.ceil((new Date(a.date) - new Date()) / (1000 * 60 * 60 * 24)); const subjectName = subjects.find(s => s.id === a.subject_id)?.name || 'Unknown'; return `- ${subjectName} ${a.kind || 'assessment'} in ${daysUntil} days (${a.date})`; }).join('\n') : 'No upcoming assessments scheduled.';
         const topWeaknesses = Object.entries(weaknesses).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `"${k}" (${v}x)`).join(', ') || 'No weakness data yet.';
-        const unavailableDays = settings.unavailable_days || [];
-        const availableDates = weekDates.filter(d => !unavailableDays.includes(d.day));
+
+        // Performance optimization: Construct Set once outside loop for O(1) membership checks
+        // Reduces algorithmic complexity of available dates lookup from O(N*M) to O(N+M)
+        const unavailableDaysSet = new Set(settings.unavailable_days || []);
+        const availableDates = weekDates.filter(d => !unavailableDaysSet.has(d.day));
+
         const datesStr = availableDates.map(d => `${d.day} ${d.isoDate || `${d.date} ${d.month}`}`).join(', ');
         const sessionLength = settings.session_length || 25;
         const maxSessions = settings.max_sessions_per_day || 2;
