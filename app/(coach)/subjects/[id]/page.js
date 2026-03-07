@@ -54,7 +54,16 @@ function ProgressRing({ value, size = 120, strokeWidth = 8 }) {
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90" width={size} height={size}>
+      <svg
+        className="transform -rotate-90"
+        width={size}
+        height={size}
+        role="progressbar"
+        aria-label="Readiness progress"
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
         <circle
           className="text-secondary"
           strokeWidth={strokeWidth}
