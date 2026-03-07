@@ -36,7 +36,7 @@ export async function POST(request) {
         let url;
         try {
             // Validate and normalize the endpoint to prevent SSRF
-            url = normalizeOpenAIEndpoint(endpoint);
+            url = await normalizeOpenAIEndpoint(endpoint);
         } catch (error) {
             return NextResponse.json(
                 { error: error.message },
