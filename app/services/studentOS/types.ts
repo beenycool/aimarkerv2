@@ -1,3 +1,9 @@
+export interface PerformanceStatsBase {
+  earned: number;
+  total: number;
+  count: number;
+}
+
 export interface AIPreferences {
   parsing: { enabled: boolean; provider: string; model: string };
   grading: { enabled: boolean; provider: string; model: string };
