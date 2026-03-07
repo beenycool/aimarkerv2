@@ -9,12 +9,13 @@ mock.module('../supabaseClient', () => {
 import { getTopicPerformance } from './attempts';
 
 describe('getTopicPerformance', () => {
-  test('returns default object when studentId is missing', async () => {
+  test.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['an empty string', ''],
+  ])('returns default object when studentId is %s', async (_, studentId) => {
     const expected = { byTopic: {}, byQuestionType: {} };
     // @ts-ignore
-    expect(await getTopicPerformance(undefined)).toEqual(expected);
-    // @ts-ignore
-    expect(await getTopicPerformance(null)).toEqual(expected);
-    expect(await getTopicPerformance('')).toEqual(expected);
+    expect(await getTopicPerformance(studentId)).toEqual(expected);
   });
 });
