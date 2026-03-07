@@ -105,4 +105,28 @@ describe('AIService Search Cache', () => {
         await searchWeb('query0', { strategy: 'hackclub' });
         expect(global.fetch).toHaveBeenCalledTimes(0);
     });
+
+    it('should evict expired items on access', async () => {
+        jest.useFakeTimers();
+        global.fetch.mockResolvedValue({
+            ok: true,
+            json: async () => ({ results: [] })
+        });
+
+        // First call to cache the item
+        await searchWeb('query-ttl', { strategy: 'hackclub' });
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(getSearchCacheSize()).toBe(1);
+
+        // Advance time past the TTL (1 hour)
+        const SEARCH_CACHE_TTL = 60 * 60 * 1000;
+        jest.advanceTimersByTime(SEARCH_CACHE_TTL + 1);
+
+        // Second call should miss the cache due to expiration and re-fetch
+        await searchWeb('query-ttl', { strategy: 'hackclub' });
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(getSearchCacheSize()).toBe(1);
+
+        jest.useRealTimers();
+    });
 });

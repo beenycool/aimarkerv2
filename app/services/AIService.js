@@ -467,15 +467,18 @@ export async function searchWeb(query, options = {}) {
     const cached = SEARCH_CACHE.get(cacheKey);
     if (cached) {
         if (Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
-            // Refresh LRU position
-            SEARCH_CACHE.delete(cacheKey);
-            SEARCH_CACHE.set(cacheKey, cached);
+            // Refresh LRU position (skip if caching disabled)
+            if (MAX_SEARCH_CACHE_SIZE > 0) {
+                SEARCH_CACHE.delete(cacheKey);
+                SEARCH_CACHE.set(cacheKey, cached);
+            }
             return cached.data;
         }
         SEARCH_CACHE.delete(cacheKey); // Expired
     }
 
     const setCache = (key, value) => {
+        if (MAX_SEARCH_CACHE_SIZE <= 0) return;
         if (SEARCH_CACHE.size >= MAX_SEARCH_CACHE_SIZE) {
             const firstKey = SEARCH_CACHE.keys().next().value;
             SEARCH_CACHE.delete(firstKey);
