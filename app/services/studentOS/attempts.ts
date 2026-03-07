@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { supabase } from '../supabaseClient';
-import { QuestionAttempt } from './types';
+import { QuestionAttempt, PerformanceStatsBase } from './types';
+import { pickTopWeaknesses as pickTopWeaknessesUtil } from '../mathUtils';
 
 export async function listQuestionAttempts(
   studentId: string,
@@ -51,10 +51,7 @@ export function weaknessCountsFromAttempts(attempts: QuestionAttempt[]): Record<
 }
 
 export function pickTopWeaknesses(counts: Record<string, number>, limit = 5): { label: string; count: number }[] {
-  return Object.entries(counts || {})
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([label, count]) => ({ label, count }));
+  return pickTopWeaknessesUtil(counts, limit);
 }
 
 /**
@@ -117,9 +114,9 @@ export async function getTopicPerformance(studentId: string) {
 
     if (error || !attempts?.length) return { byTopic: {}, byQuestionType: {} };
 
-    type PerformanceAccumulator = { earned: number; total: number; count: number };
-    const byTopic: Record<string, PerformanceAccumulator> = {};
-    const byQuestionType: Record<string, PerformanceAccumulator> = {};
+    type TopicStats = PerformanceStatsBase & { percentage?: number | null };
+    const byTopic: Record<string, TopicStats> = {};
+    const byQuestionType: Record<string, TopicStats> = {};
 
     for (const a of attempts) {
       // Group by primary_flaw (topic/skill area)
@@ -170,7 +167,7 @@ export async function getSubjectPerformance(studentId: string) {
 
     if (error || !attempts?.length) return {};
 
-    const bySubject: Record<string, any> = {};
+    const bySubject: Record<string, PerformanceStatsBase> = {};
     for (const a of attempts) {
       const sid = a.subject_id || 'unknown';
       if (!bySubject[sid]) bySubject[sid] = { earned: 0, total: 0, count: 0 };
@@ -179,7 +176,7 @@ export async function getSubjectPerformance(studentId: string) {
       bySubject[sid].count += 1;
     }
 
-    const result: Record<string, any> = {};
+    const result: Record<string, { percentage: number | null; questionCount: number }> = {};
     for (const [sid, stats] of Object.entries(bySubject)) {
       result[sid] = {
         percentage: stats.total > 0 ? Math.round((stats.earned / stats.total) * 100) : null,

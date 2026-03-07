@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck - Supabase schema types need alignment; remove when fixed per reviewer
 import { supabase } from '../supabaseClient';
 import { isoToday } from '../dateUtils';
 import { Assessment, AssessmentAttachment } from './types';
@@ -31,7 +31,7 @@ export async function createAssessment(studentId: string, input: Partial<Assessm
   return data;
 }
 
-export async function uploadAssessmentFile(studentId: string, file: any): Promise<{ path: string }> {
+export async function uploadAssessmentFile(studentId: string, file: File): Promise<{ path: string }> {
   if (!studentId) throw new Error('studentId required');
   if (!file) throw new Error('file required');
 
