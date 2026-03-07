@@ -39,7 +39,15 @@ export function PomodoroContent({
             {/* Timer Display */}
             <div className="relative flex flex-col items-center">
                 <div className="w-48 h-48 rounded-full bg-secondary/50 flex items-center justify-center relative">
-                    <svg className="absolute inset-0 w-full h-full -rotate-90">
+                    <svg
+                        className="absolute inset-0 w-full h-full -rotate-90"
+                        role="progressbar"
+                        aria-label={`Pomodoro Timer: ${timerState.isBreak ? 'Break Time' : 'Focus Time'}`}
+                        aria-valuetext={timeString}
+                        aria-valuenow={Math.min(100, Math.max(0, Math.round(progress)))}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                    >
                         <circle
                             cx="96"
                             cy="96"

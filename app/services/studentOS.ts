@@ -368,25 +368,7 @@ export async function createAssessment(studentId, input, client?: SupabaseClient
   return data;
 }
 
-export async function uploadAssessmentFile(studentId, file, client?: SupabaseClient<Database>): Promise<{ path: string }> {
-  if (!studentId) throw new Error('studentId required');
-  if (!file) throw new Error('file required');
-  const supabaseClient = client || defaultSupabase;
-
-  const timestamp = Date.now();
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = `${studentId}/${timestamp}_${safeName}`;
-
-  const { error } = await supabaseClient.storage
-    .from('assessment-pdfs')
-    .upload(path, file, {
-      contentType: file.type || 'application/pdf',
-      upsert: false,
-    });
-
-  if (error) throw error;
-  return { path };
-}
+export { uploadAssessmentFile } from './studentOS/assessments';
 
 export async function deleteAssessmentFiles(paths: string[] = [], client?: SupabaseClient<Database>) {
   if (!paths.length) return;

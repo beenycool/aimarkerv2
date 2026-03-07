@@ -419,7 +419,6 @@ export default function GCSEMarkerApp() {
 
                     const duplicate = await PaperStorage.checkForDuplicate(files.paper, studentId);
                     if (duplicate && duplicate.parsed_questions) {
-                        console.log("Found duplicate paper with cached data, reusing:", duplicate.id);
                         files.paper.fromLibrary = true;
                         files.paper.parsedQuestions = duplicate.parsed_questions;
                         files.paper.parsedMarkScheme = duplicate.parsed_mark_scheme;
@@ -439,7 +438,6 @@ export default function GCSEMarkerApp() {
 
             // 2. Check for cached questions (from library OR duplicate check)
             if (files.paper.fromLibrary && files.paper.parsedQuestions) {
-                console.log("Using cached questions");
                 setParsingStatus('Restoring previous analysis...');
                 questions = files.paper.parsedQuestions;
                 metadata = files.paper.parsedMetadata || {};
