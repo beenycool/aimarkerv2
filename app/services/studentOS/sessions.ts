@@ -305,7 +305,7 @@ export async function getSessionCompletionStats(studentId: string) {
       : 0;
 
     // Analyze by day of week
-    const byDayOfWeek: Record<string, any> = {
+    const byDayOfWeek: Record<string, { done: number; total: number }> = {
       Mon: { done: 0, total: 0 }, Tue: { done: 0, total: 0 }, Wed: { done: 0, total: 0 },
       Thu: { done: 0, total: 0 }, Fri: { done: 0, total: 0 }, Sat: { done: 0, total: 0 },
       Sun: { done: 0, total: 0 }
@@ -319,7 +319,7 @@ export async function getSessionCompletionStats(studentId: string) {
     }
 
     // Analyze by time of day (if start_time is tracked)
-    const byTimeOfDay: Record<string, any> = { morning: { done: 0, total: 0 }, afternoon: { done: 0, total: 0 }, evening: { done: 0, total: 0 } };
+    const byTimeOfDay: Record<string, { done: number; total: number }> = { morning: { done: 0, total: 0 }, afternoon: { done: 0, total: 0 }, evening: { done: 0, total: 0 } };
     for (const s of pastSessions.filter((x): x is typeof x & { start_time: string } => !!x.start_time)) {
       const hour = parseInt(s.start_time.split(':')[0], 10);
       const period = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
