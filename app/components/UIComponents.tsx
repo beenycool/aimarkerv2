@@ -253,6 +253,7 @@ const DOMPURIFY_CONFIG = Object.freeze({
         'blockquote',
         'br',
         'code',
+        'div',
         'em',
         'h1',
         'h2',
