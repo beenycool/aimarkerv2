@@ -251,9 +251,7 @@ const DOMPURIFY_CONFIG: import('dompurify').Config = Object.freeze({
     ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'merror', 'mpadded', 'mphantom', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
     ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
     ALLOWED_TAGS: [
-        'a',
         'blockquote',
-        'br',
         'code',
         'em',
         'h1',
@@ -268,13 +266,13 @@ const DOMPURIFY_CONFIG: import('dompurify').Config = Object.freeze({
         'strong',
         'ul'
     ],
-    ALLOWED_ATTR: ['class', 'href', 'rel', 'style'],
+    ALLOWED_ATTR: ['class', 'style'],
     afterSanitizeAttributes(node: Element) {
         if (node.tagName === 'A') {
             node.setAttribute('rel', 'noopener noreferrer');
         }
     }
-});
+} as const);
 
 export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
     const sanitizedHTML = useMemo(() => {
