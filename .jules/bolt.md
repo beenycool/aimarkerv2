@@ -6,3 +6,7 @@
 
 **Learning:** React components that use `useMemo` for heavy text parsing (`MarkdownText`) often define their helper functions inside the component body. This causes unnecessary allocations and defeats the exhaustive dependency logic in linters since the helpers' references change on every render.
 **Action:** Move pure functions, static constants (like class dictionaries), and stateless helper functions outside of React components. This eliminates churn, improves memory utilization slightly, and guarantees the hook dependencies are structurally sound.
+
+## 2024-05-17 - Combine multiple array reduces into a single pass
+**Learning:** Optimizing multiple iterations over the same data structure by combining them into a single `reduce` pass can yield performance benefits (halving the number of iterations).
+**Action:** When calculating multiple aggregate statistics from an array (like total earned marks and total possible marks), use a single `.reduce()` that updates a combined accumulator object instead of iterating the array multiple times.

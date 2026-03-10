@@ -155,8 +155,14 @@ export default function DashboardClient({
     }, [subjects, attempts]);
 
     const overallReadiness = useMemo(() => {
-        const earned = attempts.reduce((s, a) => s + Number(a.marks_awarded || 0), 0);
-        const total = attempts.reduce((s, a) => s + Number(a.marks_total || 0), 0);
+        const { earned, total } = attempts.reduce(
+            (acc, a) => {
+                acc.earned += Number(a.marks_awarded || 0);
+                acc.total += Number(a.marks_total || 0);
+                return acc;
+            },
+            { earned: 0, total: 0 }
+        );
         return pct(earned, total);
     }, [attempts]);
 
