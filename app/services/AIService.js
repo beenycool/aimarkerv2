@@ -941,7 +941,9 @@ You must return your assessment in the exact JSON format below. Do not output an
             return `- ${s.name}: Grade ${grade}%${weaknessesForSubject ? `, Weaknesses: ${weaknessesForSubject}` : ''}`;
         }).join('\n');
 
-        const assessmentSummary = upcomingAssessments.length > 0 ? upcomingAssessments.map(a => { const daysUntil = Math.ceil((new Date(a.date) - new Date()) / (1000 * 60 * 60 * 24)); const subjectName = subjects.find(s => s.id === a.subject_id)?.name || 'Unknown'; return `- ${subjectName} ${a.kind || 'assessment'} in ${daysUntil} days (${a.date})`; }).join('\n') : 'No upcoming assessments scheduled.';
+        const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
+        const now = new Date();
+        const assessmentSummary = upcomingAssessments.length > 0 ? upcomingAssessments.map(a => { const daysUntil = Math.ceil((new Date(a.date) - now) / (1000 * 60 * 60 * 24)); const subjectName = subjectMap.get(a.subject_id) || 'Unknown'; return `- ${subjectName} ${a.kind || 'assessment'} in ${daysUntil} days (${a.date})`; }).join('\n') : 'No upcoming assessments scheduled.';
         const topWeaknesses = Object.entries(weaknesses).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `"${k}" (${v}x)`).join(', ') || 'No weakness data yet.';
         const unavailableDays = settings.unavailable_days || [];
         const availableDates = weekDates.filter(d => !unavailableDays.includes(d.day));
