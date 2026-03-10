@@ -16,3 +16,7 @@
 
 **Learning:** Using `.filter().sort()[0]` to find a single minimum or maximum value is an O(N log N) anti-pattern that creates unnecessary array allocations. In `app/services/studentOS/sessions.ts` and `app/services/studentOS.ts`, this was used multiple times per function call, scaling poorly for large arrays.
 **Action:** When finding extremes (min/max), use a single O(N) `for` loop, updating the best/worst values sequentially. This avoids the sorting penalty and intermediate array allocations.
+
+## 2024-05-17 - Combine multiple array reduces into a single pass
+**Learning:** Optimizing multiple iterations over the same data structure by combining them into a single `reduce` pass can yield performance benefits (halving the number of iterations).
+**Action:** When calculating multiple aggregate statistics from an array (like total earned marks and total possible marks), use a single `.reduce()` that updates a combined accumulator object instead of iterating the array multiple times.
