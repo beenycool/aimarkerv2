@@ -1,51 +1,18 @@
 // @ts-nocheck
-import React, { memo, useId } from 'react';
+import React, { memo } from 'react';
 import { Calculator } from 'lucide-react';
 
-const symbolLabels = {
-    '²': 'Squared',
-    '³': 'Cubed',
-    '½': 'One half',
-    '¼': 'One quarter',
-    '√': 'Square root',
-    '∞': 'Infinity',
-    '×': 'Multiply',
-    '÷': 'Divide',
-    '±': 'Plus or minus',
-    '≈': 'Approximately equal',
-    '≠': 'Not equal to',
-    '≡': 'Identical to',
-    '≤': 'Less than or equal to',
-    '≥': 'Greater than or equal to',
-    '°': 'Degrees',
-    '℃': 'Degrees Celsius',
-    '℉': 'Degrees Fahrenheit',
-    'µ': 'Micro',
-    'π': 'Pi',
-    'Ω': 'Omega',
-    'λ': 'Lambda',
-    'Δ': 'Delta',
-    'Σ': 'Sigma',
-    '→': 'Right arrow',
-    '←': 'Left arrow',
-    '↔': 'Left right arrow',
-    '↑': 'Up arrow',
-    '↓': 'Down arrow'
-};
-
-const symbols = Object.keys(symbolLabels);
-
 const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
-    const panelId = useId();
+    const symbols = ['²', '³', '½', '¼', '√', '∞', '×', '÷', '±', '≈', '≠', '≡', '≤', '≥', '°', '℃', '℉', 'µ', 'π', 'Ω', 'λ', 'Δ', 'Σ', '→', '←', '↔', '↑', '↓'];
 
     if (!isOpen) {
         return (
             <button
                 type="button"
                 onClick={toggleOpen}
-                aria-expanded={false}
-                aria-controls={panelId}
-                className="mt-2 text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                className="mt-2 text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 rounded-sm px-1"
+                aria-expanded="false"
+                aria-controls="math-keyboard-panel"
             >
                 <Calculator className="w-3 h-3" /> Show Math Keyboard
             </button>
@@ -53,15 +20,16 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
     }
 
     return (
-        <div id={panelId} className="mt-2 animate-in slide-in-from-top-2">
+        <div id="math-keyboard-panel" className="mt-2 animate-in slide-in-from-top-2">
             <div className="flex justify-between items-center mb-1">
                 <span className="text-xs font-bold text-muted-foreground uppercase">Scientific Symbols</span>
                 <button
                     type="button"
                     onClick={toggleOpen}
-                    aria-expanded={true}
-                    aria-controls={panelId}
-                    className="text-xs text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1"
+                    className="text-xs text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive rounded-sm px-1"
+                    aria-label="Close Math Keyboard"
+                    aria-expanded="true"
+                    aria-controls="math-keyboard-panel"
                 >
                     Close
                 </button>
@@ -71,10 +39,10 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
                     <button
                         key={s}
                         type="button"
-                        aria-label={`Insert ${symbolLabels[s] || s}`}
-                        title={symbolLabels[s]}
                         onClick={() => onInsert(s)}
-                        className="h-8 bg-card rounded shadow-sm border border-border hover:bg-primary/10 hover:border-primary/30 hover:text-primary font-mono font-bold text-foreground transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        className="h-8 bg-card rounded shadow-sm border border-border hover:bg-primary/10 hover:border-primary/30 hover:text-primary font-mono font-bold text-foreground transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary"
+                        aria-label={`Insert mathematical symbol ${s}`}
+                        title={`Insert ${s}`}
                     >
                         {s}
                     </button>
