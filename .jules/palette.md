@@ -19,3 +19,8 @@
 
 **Learning:** Icon-only buttons (like Delete) must have `aria-label` for screen readers. Also, `opacity-0` elements should be visible on focus (`focus:opacity-100`) to be accessible via keyboard. Search inputs are greatly improved by a clear button when text is present.
 **Action:** Always check `aria-label` for icon buttons and ensure focus visibility for hidden-by-default controls. Add clear buttons to all search inputs.
+
+## 2025-03-13 - [MathKeyboard Accessbility and Type]
+
+**Learning:** Buttons inside input or form contexts (like generic symbol buttons in `MathKeyboard.tsx`) must explicitly declare `type="button"` to prevent unintended form submissions. Additionally, custom interactive grid elements require `focus-visible` styles (e.g., `focus-visible:ring-2`, `focus-visible:outline-none`), `aria-label`, and `title` to ensure proper keyboard navigation and screen reader context.
+**Action:** Always ensure any `<button>` placed near or inside input forms has `type="button"`. Ensure custom grid elements acting as buttons have focus states and `aria-label`/`title` so screen readers interpret them properly rather than just reading symbols as plain text.
