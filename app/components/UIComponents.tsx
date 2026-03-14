@@ -244,8 +244,9 @@ const renderMarkdown = (rawText: string): string => {
     return html.join("");
 };
 
-const DOMPURIFY_CONFIG: import('dompurify').Config = {
-    ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
+// Extracted static configuration to prevent unnecessary allocations on every render
+const DOMPURIFY_CONFIG = {
+    ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstylele', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
     ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
     ALLOWED_TAGS: [
         'a',
@@ -267,7 +268,7 @@ const DOMPURIFY_CONFIG: import('dompurify').Config = {
         'ul'
     ],
     ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
-};
+} as const;
 
 export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
     const sanitizedHTML = useMemo(() => {
@@ -276,7 +277,8 @@ export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) =
         return DOMPurify.sanitize(rendered, DOMPURIFY_CONFIG);
     }, [text]);
 
-    if (!sanitizedHTML) return null;
+    if (!text) return null;
+
     return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
 });
 MarkdownText.displayName = 'MarkdownText';
