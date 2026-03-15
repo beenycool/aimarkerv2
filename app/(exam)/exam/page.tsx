@@ -737,7 +737,7 @@ export default function GCSEMarkerApp() {
 
     const handleGenerateStudyPlan = async (percentage) => {
         setStudyPlan({ loading: true, content: null });
-        const stats = exam.getSummaryStats();
+        const stats = exam.getSummaryStats;
         const keyToUse = hackClubApiKey || null;
 
         if (!canUseHackClub) {
@@ -891,7 +891,7 @@ export default function GCSEMarkerApp() {
         const question = exam.currentQuestion;
         const hasFeedback = !!exam.feedbacks[question.id];
         const progressPercent = ((exam.currentQIndex + 1) / exam.activeQuestions.length) * 100;
-        const stats = exam.getSummaryStats();
+        const stats = exam.getSummaryStats;
 
         if (!files.paper) {
             return (
@@ -1150,7 +1150,7 @@ export default function GCSEMarkerApp() {
     }
 
     if (phase === 'summary') {
-        const stats = exam.getSummaryStats();
+        const stats = exam.getSummaryStats;
         const weaknessList = Object.entries(stats.weaknessCounts).sort((a, b) => b[1] - a[1]);
 
         return (

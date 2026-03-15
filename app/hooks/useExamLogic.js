@@ -304,9 +304,28 @@ const useExamLogic = () => {
     const hasCurrentFeedback = currentQuestion ? !!feedbacks[currentQuestion.id] : false;
 
     // Calculate summary stats
-    const getSummaryStats = useCallback(() => {
-        const totalScore = Object.values(feedbacks).reduce((acc, curr) => acc + (curr?.score || 0), 0);
-        const totalPossible = activeQuestions.reduce((acc, curr) => acc + (curr?.marks || 0), 0);
+    // Memoize the returned object to prevent O(N) recalculations on every render
+    const getSummaryStats = useMemo(() => {
+        let totalScore = 0;
+        let totalPossible = 0;
+        const weaknessCounts = {};
+
+        // Single pass over feedbacks
+        const feedbackKeys = Object.keys(feedbacks);
+        for (let i = 0; i < feedbackKeys.length; i++) {
+            const fb = feedbacks[feedbackKeys[i]];
+            if (!fb) continue;
+            totalScore += fb.score || 0;
+            if (fb.primaryFlaw) {
+                weaknessCounts[fb.primaryFlaw] = (weaknessCounts[fb.primaryFlaw] || 0) + 1;
+            }
+        }
+
+        // Single pass over active questions
+        for (let i = 0; i < activeQuestions.length; i++) {
+            totalPossible += activeQuestions[i]?.marks || 0;
+        }
+
         const percentage = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
 
         let grade = 'U';
@@ -315,11 +334,6 @@ const useExamLogic = () => {
         else if (percentage >= 70) grade = '7';
         else if (percentage >= 50) grade = '5';
         else if (percentage >= 40) grade = '4';
-
-        const weaknessCounts = Object.values(feedbacks).reduce((acc, fb) => {
-            if (fb?.primaryFlaw) acc[fb.primaryFlaw] = (acc[fb.primaryFlaw] || 0) + 1;
-            return acc;
-        }, {});
 
         return { totalScore, totalPossible, percentage, grade, weaknessCounts };
     }, [feedbacks, activeQuestions]);
