@@ -1,5 +1,10 @@
 # Palette's Journal
 
+## 2025-03-15 - Interactive grid components inside forms
+
+**Learning:** Buttons inside input contexts (like the generic symbol buttons in `MathKeyboard.tsx`) must explicitly declare `type="button"` to prevent unintended form submissions when users hit enter, or click the buttons. Additionally, interactive grids of custom buttons require explicit `focus-visible` styling (e.g., `focus-visible:ring-2`, `focus-visible:outline-none`), `aria-label`, and `title` to ensure they are accessible for keyboard navigation and screen readers.
+**Action:** When creating or maintaining button grids (especially within input or form components), explicitly set `type="button"`, add `focus-visible` styles, provide `aria-label` attributes to the container and buttons, and add `title` for hover tooltips to provide comprehensive keyboard navigation and context.
+
 ## 2025-02-19 - Focus styles for hidden inputs
 
 **Learning:** When using `sr-only` inputs (like file uploads), the parent label needs explicit `focus-within` styles to give keyboard users visual feedback.
