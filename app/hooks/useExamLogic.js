@@ -304,7 +304,10 @@ const useExamLogic = () => {
     const hasCurrentFeedback = currentQuestion ? !!feedbacks[currentQuestion.id] : false;
 
     // Calculate summary stats
-    const getSummaryStats = useCallback(() => {
+    // ⚡ Bolt: Memoize the calculation of summary stats so the O(N) reduce operations
+    // over activeQuestions and feedbacks are only performed when they change, rather
+    // than being re-evaluated every time getSummaryStats is called.
+    const summaryStats = useMemo(() => {
         const totalScore = Object.values(feedbacks).reduce((acc, curr) => acc + (curr?.score || 0), 0);
         const totalPossible = activeQuestions.reduce((acc, curr) => acc + (curr?.marks || 0), 0);
         const percentage = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
@@ -323,6 +326,10 @@ const useExamLogic = () => {
 
         return { totalScore, totalPossible, percentage, grade, weaknessCounts };
     }, [feedbacks, activeQuestions]);
+
+    const getSummaryStats = useCallback(() => {
+        return summaryStats;
+    }, [summaryStats]);
 
     return {
         // State
