@@ -330,19 +330,31 @@ export async function getSessionCompletionStats(studentId: string) {
     // Generate insights for AI
     const insights: string[] = [];
 
-    // Find worst day
-    const worstDay = Object.entries(byDayOfWeek)
-      .filter(([_, stats]) => stats.total >= 2)
-      .sort((a, b) => (a[1].done / a[1].total) - (b[1].done / b[1].total))[0];
-    if (worstDay && (worstDay[1].done / worstDay[1].total) < 0.5) {
+    // Find worst and best days using a single O(N) pass
+    let worstDay: [string, { done: number; total: number }] | null = null;
+    let bestDay: [string, { done: number; total: number }] | null = null;
+    let worstRate = Infinity;
+    let bestRate = -Infinity;
+
+    for (const [day, stats] of Object.entries(byDayOfWeek)) {
+      if (stats.total >= 2) {
+        const rate = stats.done / stats.total;
+        if (rate < worstRate) {
+          worstRate = rate;
+          worstDay = [day, stats];
+        }
+        if (rate > bestRate) {
+          bestRate = rate;
+          bestDay = [day, stats];
+        }
+      }
+    }
+
+    if (worstDay && worstRate < 0.5) {
       insights.push(`Student often skips sessions on ${worstDay[0]}`);
     }
 
-    // Find best day
-    const bestDay = Object.entries(byDayOfWeek)
-      .filter(([_, stats]) => stats.total >= 2)
-      .sort((a, b) => (b[1].done / b[1].total) - (a[1].done / a[1].total))[0];
-    if (bestDay && (bestDay[1].done / bestDay[1].total) > 0.8) {
+    if (bestDay && bestRate > 0.8) {
       insights.push(`Student is most consistent on ${bestDay[0]}`);
     }
 
