@@ -57,6 +57,8 @@ export function AppSidebar() {
                 size="icon"
                 className="fixed top-4 left-4 z-50 lg:hidden"
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label={isOpen ? "Close menu" : "Open menu"}
+                aria-expanded={isOpen}
             >
                 {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
