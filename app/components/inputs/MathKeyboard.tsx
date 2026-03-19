@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { memo } from 'react';
+import React, { memo, useId } from 'react';
 import { Calculator } from 'lucide-react';
 
 const symbolLabels = {
@@ -33,8 +33,10 @@ const symbolLabels = {
     '↓': 'Down arrow'
 };
 
+const symbols = Object.keys(symbolLabels);
+
 const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
-    const symbols = ['²', '³', '½', '¼', '√', '∞', '×', '÷', '±', '≈', '≠', '≡', '≤', '≥', '°', '℃', '℉', 'µ', 'π', 'Ω', 'λ', 'Δ', 'Σ', '→', '←', '↔', '↑', '↓'];
+    const panelId = useId();
 
     if (!isOpen) {
         return (
@@ -42,7 +44,7 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
                 type="button"
                 onClick={toggleOpen}
                 aria-expanded={false}
-                aria-controls="math-keyboard-panel"
+                aria-controls={panelId}
                 className="mt-2 text-xs font-bold text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
             >
                 <Calculator className="w-3 h-3" /> Show Math Keyboard
@@ -51,14 +53,14 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }) => {
     }
 
     return (
-        <div id="math-keyboard-panel" className="mt-2 animate-in slide-in-from-top-2">
+        <div id={panelId} className="mt-2 animate-in slide-in-from-top-2">
             <div className="flex justify-between items-center mb-1">
                 <span className="text-xs font-bold text-muted-foreground uppercase">Scientific Symbols</span>
                 <button
                     type="button"
                     onClick={toggleOpen}
                     aria-expanded={true}
-                    aria-controls="math-keyboard-panel"
+                    aria-controls={panelId}
                     className="text-xs text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded px-1"
                 >
                     Close
