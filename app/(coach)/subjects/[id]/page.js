@@ -48,13 +48,24 @@ function SkeletonCard() {
 
 // Progress ring component for visual appeal
 function ProgressRing({ value, size = 120, strokeWidth = 8 }) {
+  const normalizedValue = Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (value / 100) * circumference;
+  const offset = circumference - (normalizedValue / 100) * circumference;
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90" width={size} height={size}>
+      <svg
+        className="transform -rotate-90"
+        width={size}
+        height={size}
+        role="progressbar"
+        aria-label="Readiness progress"
+        aria-valuenow={normalizedValue}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={`${normalizedValue}%`}
+      >
         <circle
           className="text-secondary"
           strokeWidth={strokeWidth}
@@ -77,8 +88,8 @@ function ProgressRing({ value, size = 120, strokeWidth = 8 }) {
           cy={size / 2}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold text-foreground">{value}%</span>
+      <div aria-hidden="true" className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold text-foreground">{normalizedValue}%</span>
         <span className="text-xs text-muted-foreground">Ready</span>
       </div>
     </div>
