@@ -943,7 +943,17 @@ You must return your assessment in the exact JSON format below. Do not output an
 
         const subjectMap = new Map(subjects.map(s => [s.id, s.name]));
         const now = new Date();
-        const assessmentSummary = upcomingAssessments.length > 0 ? upcomingAssessments.map(a => { const daysUntil = Math.ceil((new Date(a.date) - now) / (1000 * 60 * 60 * 24)); const subjectName = subjectMap.get(a.subject_id) || 'Unknown'; return `- ${subjectName} ${a.kind || 'assessment'} in ${daysUntil} days (${a.date})`; }).join('\n') : 'No upcoming assessments scheduled.';
+        const MS_PER_DAY = 1000 * 60 * 60 * 24;
+        const assessmentSummary = (() => {
+            if (upcomingAssessments.length === 0) {
+                return 'No upcoming assessments scheduled.';
+            }
+            return upcomingAssessments.map(a => {
+                const daysUntil = Math.ceil((new Date(a.date) - now) / MS_PER_DAY);
+                const subjectName = subjectMap.get(a.subject_id) || 'Unknown';
+                return `- ${subjectName} ${a.kind || 'assessment'} in ${daysUntil} days (${a.date})`;
+            }).join('\n');
+        })();
         const topWeaknesses = Object.entries(weaknesses).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `"${k}" (${v}x)`).join(', ') || 'No weakness data yet.';
 
         // Performance optimization: Construct Set once outside loop for O(1) membership checks
