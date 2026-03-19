@@ -1,5 +1,10 @@
 # Palette's Journal
 
+## 2026-03-01 - Accessible State Toggles in Navigation
+
+**Learning:** Mobile menu toggles (and similar dynamic icon buttons) often fail screen readers by only changing the visual icon without updating the accessible name.
+**Action:** Always combine a dynamic `aria-label` (e.g., "Open menu" vs "Close menu") with `aria-expanded` on navigation toggles to ensure the current state and action are clearly communicated to assistive technologies.
+
 ## 2025-02-19 - Focus styles for hidden inputs
 
 **Learning:** When using `sr-only` inputs (like file uploads), the parent label needs explicit `focus-within` styles to give keyboard users visual feedback.
