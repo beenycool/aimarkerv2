@@ -25,7 +25,7 @@
 **Learning:** Icon-only buttons (like Delete) must have `aria-label` for screen readers. Also, `opacity-0` elements should be visible on focus (`focus:opacity-100`) to be accessible via keyboard. Search inputs are greatly improved by a clear button when text is present.
 **Action:** Always check `aria-label` for icon buttons and ensure focus visibility for hidden-by-default controls. Add clear buttons to all search inputs.
 
-## 2026-03-08 - ARIA Labels for Dynamic Inputs
+## 2025-03-11 - Math Keyboard Accessibility and Usability
 
-**Learning:** The `AdaptiveInput` component generates various dynamic input structures (lists, tables) which visually rely on placeholders or nearby structural context, leaving screen readers without explicit accessible names for each field.
-**Action:** Always ensure dynamically generated input fields in complex structures (like tables and lists) have explicit, unique `aria-label` attributes (e.g., ``aria-label={`Table cell row ${rIndex + 1} column ${cIndex + 1}`}``) to maintain context for screen readers.
+**Learning:** Generic symbol buttons in a custom keyboard block (like `MathKeyboard.tsx`) must explicitly declare `type="button"`. Otherwise, if the keyboard is rendered inside a form context, they act as default submit buttons and trigger unintended form submissions. Furthermore, these buttons need explicit `focus-visible` styles (`focus-visible:ring-2`, `focus-visible:outline-none`) to ensure keyboard users can confidently navigate the grid of symbols.
+**Action:** Always verify `type="button"` and `focus-visible` styles on custom interactive grid elements like math symbols or emoji pickers. Include `aria-label` and `title` to provide screen reader and tooltip context for non-standard symbols.
