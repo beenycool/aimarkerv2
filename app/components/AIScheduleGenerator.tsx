@@ -308,8 +308,8 @@ export function AIScheduleGenerator({
             setStatusMessage('Saving your schedule...');
 
             // ⚡ Bolt: Replace O(N*M) nested array `.find()` calls with O(N+M) `Map` lookups
-            const subjectMap = new Map(subjects.map(sub => [sub.name.toLowerCase(), sub]));
-            const weekDatesMap = new Map(weekDates.map(wd => [wd.day, wd]));
+            const subjectMap = new Map(subjects.slice().reverse().map(sub => [sub.name.toLowerCase(), sub]));
+            const weekDatesMap = new Map(weekDates.slice().reverse().map(wd => [wd.day, wd]));
 
             // Map AI sessions to DB format
             const sessionsToSave = result.sessions.map(s => {
