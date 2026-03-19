@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from '@jest/globals';
 import { getGcseDatesForYear, GCSE_KEY_DATES } from './gcseDates.js';
 
 describe('getGcseDatesForYear', () => {
