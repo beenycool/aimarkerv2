@@ -244,8 +244,7 @@ const renderMarkdown = (rawText: string): string => {
     return html.join("");
 };
 
-// Extracted static configuration to prevent unnecessary allocations on every render
-const DOMPURIFY_CONFIG = Object.freeze({
+const DOMPURIFY_CONFIG = {
     ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
     ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
     ALLOWED_TAGS: [
@@ -267,7 +266,7 @@ const DOMPURIFY_CONFIG = Object.freeze({
         'ul'
     ],
     ALLOWED_ATTR: ['class', 'href', 'rel', 'target', 'style']
-});
+};
 
 export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
     const sanitizedHTML = useMemo(() => {
