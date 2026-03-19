@@ -274,10 +274,10 @@ export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) =
     const sanitizedHTML = useMemo(() => {
         if (!text) return "";
         const rendered = renderMarkdown(text);
-        return DOMPurify.sanitize(rendered, DOMPURIFY_CONFIG);
+        return DOMPurify.sanitize(rendered, { ...DOMPURIFY_CONFIG });
     }, [text]);
 
-    if (!text) return null;
+    if (!sanitizedHTML) return null;
 
     return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
 });
