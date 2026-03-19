@@ -328,7 +328,10 @@ const useExamLogic = () => {
     }, [feedbacks, activeQuestions]);
 
     const getSummaryStats = useCallback(() => {
-        return summaryStats;
+        return {
+            ...summaryStats,
+            weaknessCounts: { ...summaryStats.weaknessCounts }
+        };
     }, [summaryStats]);
 
     return {
