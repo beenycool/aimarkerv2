@@ -2,43 +2,21 @@ import { describe, expect, test } from 'bun:test';
 import { getGcseDatesForYear, GCSE_KEY_DATES } from './gcseDates.js';
 
 describe('getGcseDatesForYear', () => {
-  test('returns correct dates for existing year 2025', () => {
-    const result = getGcseDatesForYear(2025);
-    expect(result).toBe(GCSE_KEY_DATES[2025]);
+  test.each([2025, 2026, 2027])('returns correct dates for existing year %i', (year) => {
+    const result = getGcseDatesForYear(year);
+    expect(result).toBe(GCSE_KEY_DATES[year]);
   });
 
-  test('returns correct dates for existing year 2026', () => {
-    const result = getGcseDatesForYear(2026);
-    expect(result).toBe(GCSE_KEY_DATES[2026]);
-  });
+  const fallbackTestCases = [
+    ['a non-existing year (2024)', 2024],
+    ['a non-existing year (2028)', 2028],
+    ['undefined', undefined],
+    ['null', null],
+    ['an empty string', ''],
+  ];
 
-  test('returns correct dates for existing year 2027', () => {
-    const result = getGcseDatesForYear(2027);
-    expect(result).toBe(GCSE_KEY_DATES[2027]);
-  });
-
-  test('returns fallback dates (2026) for non-existing year (e.g., 2024)', () => {
-    const result = getGcseDatesForYear(2024);
-    expect(result).toBe(GCSE_KEY_DATES[2026]);
-  });
-
-  test('returns fallback dates (2026) for non-existing year (e.g., 2028)', () => {
-    const result = getGcseDatesForYear(2028);
-    expect(result).toBe(GCSE_KEY_DATES[2026]);
-  });
-
-  test('returns fallback dates (2026) when year is undefined', () => {
-    const result = getGcseDatesForYear(undefined);
-    expect(result).toBe(GCSE_KEY_DATES[2026]);
-  });
-
-  test('returns fallback dates (2026) when year is null', () => {
-    const result = getGcseDatesForYear(null);
-    expect(result).toBe(GCSE_KEY_DATES[2026]);
-  });
-
-  test('returns fallback dates (2026) when year is empty string', () => {
-    const result = getGcseDatesForYear('');
+  test.each(fallbackTestCases)('returns fallback dates (2026) when year is %s', (_description, value) => {
+    const result = getGcseDatesForYear(value);
     expect(result).toBe(GCSE_KEY_DATES[2026]);
   });
 });
