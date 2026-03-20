@@ -24,3 +24,13 @@
 
 **Learning:** Generic dynamically rendered input elements (like inside `AdaptiveInput`) often lack a11y context because they aren't tied to explicit `<label>` tags. Screen readers need `aria-label` for these to be accessible.
 **Action:** Always verify `aria-label` on dynamic text inputs, radio buttons, and textareas, especially when they are programmatically generated inside lists or tables.
+
+## 2025-03-11 - Math Keyboard Accessibility and Usability
+
+**Learning:** Generic symbol buttons in a custom keyboard block (like `MathKeyboard.tsx`) must explicitly declare `type="button"`. Otherwise, if the keyboard is rendered inside a form context, they act as default submit buttons and trigger unintended form submissions. Furthermore, these buttons need explicit `focus-visible` styles (`focus-visible:ring-2`, `focus-visible:outline-none`) to ensure keyboard users can confidently navigate the grid of symbols.
+**Action:** Always verify `type="button"` and `focus-visible` styles on custom interactive grid elements like math symbols or emoji pickers. Include `aria-label` and `title` to provide screen reader and tooltip context for non-standard symbols.
+
+## 2026-03-19 - Accessibility for Contextual Math Keyboards
+
+**Learning:** Buttons inside specialized input contexts (like custom math keyboards or interactive grid elements) must explicitly declare `type="button"` to avoid unintended form submission. Furthermore, these custom interactive grid inputs need explicit `focus-visible` styling (e.g., `focus-visible:ring-2`, `focus-visible:outline-none`) and descriptive `aria-label` attributes so screen readers and keyboard users can properly navigate the context. Avoid redundant `title` attributes when `aria-label` is present. Keep panel elements mounted (using `hidden`/`aria-hidden`) so `aria-controls` relationships remain valid at all times.
+**Action:** Always verify that contextual buttons use `type="button"`, check `aria-expanded`/`aria-controls` for toggles, and provide robust `focus-visible` UI cues combined with semantic labels (`aria-label`) for any grid or custom element maps. Use a stable `id` (via `useId()`) for panel elements and keep them mounted.
