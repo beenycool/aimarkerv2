@@ -307,20 +307,29 @@ export function AIScheduleGenerator({
             setStep('saving');
             setStatusMessage('Saving your schedule...');
 
-            // ⚡ Bolt: Replace O(N*M) nested array `.find()` calls with O(N+M) `Map` lookups
-            const subjectMap = new Map(subjects.slice().reverse().map(sub => [sub.name.toLowerCase(), sub]));
-            const weekDatesMap = new Map(weekDates.slice().reverse().map(wd => [wd.day, wd]));
+            // Pre-compute maps for O(1) lookups
+            const normalizeKey = (v: string) => v.trim().toLowerCase();
+            const subjectMap = new Map<string, string>();
+            for (const sub of subjects) {
+                const key = normalizeKey(sub.name);
+                if (!subjectMap.has(key)) subjectMap.set(key, sub.id);
+            }
+            const dateMap = new Map(weekDates.map(wd => [normalizeKey(wd.day), wd.isoDate]));
+            const validIsoDates = new Set(weekDates.map(wd => wd.isoDate));
 
             // Map AI sessions to DB format
             const sessionsToSave = result.sessions.map(s => {
-                const subject = subjectMap.get(s.subjectName.toLowerCase());
+                const subjectId = subjectMap.get(normalizeKey(s.subjectName));
 
                 // FORCE correct date from our local state
-                const matchedDateInfo = weekDatesMap.get(s.day);
-                const finalDate = matchedDateInfo ? matchedDateInfo.isoDate : s.date;
+                const matchedDateIso = dateMap.get(normalizeKey(s.day));
+                const finalDate = matchedDateIso ?? (validIsoDates.has(s.date) ? s.date : null);
+                if (!finalDate) {
+                    console.warn(`Invalid session date from AI output: ${s.day} / ${s.date}`);
+                }
 
                 return {
-                    subject_id: subject?.id || null,
+                    subject_id: subjectId || null,
                     planned_for: finalDate,
                     duration_minutes: s.duration,
                     topic: s.topic,
