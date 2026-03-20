@@ -282,6 +282,7 @@ export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) =
     }, [text]);
 
     if (!sanitizedHTML) return null;
+
     return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
 });
 MarkdownText.displayName = 'MarkdownText';
