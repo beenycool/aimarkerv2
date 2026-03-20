@@ -312,6 +312,7 @@ export function AIScheduleGenerator({
             const subjectMap = new Map<string, string>();
             for (const sub of subjects) {
                 const key = normalizeKey(sub.name);
+                // Preserve first match deterministically if duplicates exist
                 if (!subjectMap.has(key)) subjectMap.set(key, sub.id);
             }
             const dateMap = new Map(weekDates.map(wd => [normalizeKey(wd.day), wd.isoDate]));
