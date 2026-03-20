@@ -244,7 +244,7 @@ const renderMarkdown = (rawText: string): string => {
     return html.join("");
 };
 
-const DOMPURIFY_CONFIG = {
+const DOMPURIFY_CONFIG: import('dompurify').Config = {
     ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
     ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
     ALLOWED_TAGS: [
@@ -273,11 +273,10 @@ export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) =
     const sanitizedHTML = useMemo(() => {
         if (!text) return "";
         const rendered = renderMarkdown(text);
-        return DOMPurify.sanitize(rendered, { ...DOMPURIFY_CONFIG });
+        return DOMPurify.sanitize(rendered, DOMPURIFY_CONFIG);
     }, [text]);
 
     if (!sanitizedHTML) return null;
-
     return <div className={`leading-relaxed ${className}`} dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />;
 });
 MarkdownText.displayName = 'MarkdownText';
