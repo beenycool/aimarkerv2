@@ -99,7 +99,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
                                         return (
                                             <td key={cIndex} className="p-0 border-r border-border last:border-0 relative">
                                                 {isPrefilled ? (<div className="w-full h-full px-6 py-4 bg-muted/40 text-muted-foreground font-medium select-none">{initialData[rIndex][cIndex]}</div>) : (
-                                                    <input type="text" aria-label={`Table cell row ${rIndex + 1} column ${cIndex + 1}`} className="w-full h-full px-6 py-4 bg-transparent outline-none focus:ring-2 focus:ring-inset focus:ring-primary text-foreground placeholder-muted-foreground/50" value={cell} onChange={(e) => handleCellChange(rIndex, cIndex, e.target.value)} placeholder="Type..." />
+                                                    <input type="text" aria-label={`Input for ${headers[cIndex]} at row ${rIndex + 1}`} className="w-full h-full px-6 py-4 bg-transparent outline-none focus:ring-2 focus:ring-inset focus:ring-primary text-foreground placeholder-muted-foreground/50" value={cell} onChange={(e) => handleCellChange(rIndex, cIndex, e.target.value)} placeholder="Type..." />
                                                 )}
                                             </td>
                                         );
