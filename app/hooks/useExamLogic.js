@@ -304,12 +304,29 @@ const useExamLogic = () => {
     const hasCurrentFeedback = currentQuestion ? !!feedbacks[currentQuestion.id] : false;
 
     // Calculate summary stats
-    // ⚡ Bolt: Memoize the calculation of summary stats so the O(N) reduce operations
-    // over activeQuestions and feedbacks are only performed when they change, rather
-    // than being re-evaluated every time getSummaryStats is called.
-    const summaryStats = useMemo(() => {
-        const totalScore = Object.values(feedbacks).reduce((acc, curr) => acc + (curr?.score || 0), 0);
-        const totalPossible = activeQuestions.reduce((acc, curr) => acc + (curr?.marks || 0), 0);
+    // Memoize the returned object to prevent O(N) recalculations on every render
+    const getSummaryStats = useMemo(() => {
+        let totalScore = 0;
+        let totalPossible = 0;
+        const weaknessCounts = {};
+
+        // Single pass over feedbacks
+        for (const fb of Object.values(feedbacks)) {
+            if (!fb) {
+                continue;
+            }
+
+            totalScore += fb.score || 0;
+            if (fb.primaryFlaw) {
+                weaknessCounts[fb.primaryFlaw] = (weaknessCounts[fb.primaryFlaw] || 0) + 1;
+            }
+        }
+
+        // Single pass over active questions
+        for (const question of activeQuestions) {
+            totalPossible += question?.marks || 0;
+        }
+
         const percentage = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
 
         let grade = 'U';
@@ -319,20 +336,8 @@ const useExamLogic = () => {
         else if (percentage >= 50) grade = '5';
         else if (percentage >= 40) grade = '4';
 
-        const weaknessCounts = Object.values(feedbacks).reduce((acc, fb) => {
-            if (fb?.primaryFlaw) acc[fb.primaryFlaw] = (acc[fb.primaryFlaw] || 0) + 1;
-            return acc;
-        }, {});
-
         return { totalScore, totalPossible, percentage, grade, weaknessCounts };
     }, [feedbacks, activeQuestions]);
-
-    const getSummaryStats = useCallback(() => {
-        return {
-            ...summaryStats,
-            weaknessCounts: { ...summaryStats.weaknessCounts }
-        };
-    }, [summaryStats]);
 
     return {
         // State
