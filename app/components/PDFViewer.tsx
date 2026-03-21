@@ -261,8 +261,27 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
             style={{ width: `${pdfViewerWidth}%` }}
         >
             <div role="tablist" aria-label="PDF source" className="bg-card border-b border-border p-2 flex gap-2">
-                <button type="button" role="tab" aria-selected={activePdfTab === 'paper'} onClick={() => onTabChange('paper')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activePdfTab === 'paper' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Question Paper</button>
-                {hasInsert && <button type="button" role="tab" aria-selected={activePdfTab === 'insert'} onClick={() => onTabChange('insert')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activePdfTab === 'insert' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Source Material</button>}
+                {[
+                    { id: 'paper', label: 'Question Paper' },
+                    ...(hasInsert ? [{ id: 'insert', label: 'Source Material' }] : []),
+                ].map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        id={`pdf-tab-${id}`}
+                        aria-selected={activePdfTab === id}
+                        aria-controls="pdf-panel"
+                        onClick={() => onTabChange(id)}
+                        className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                            activePdfTab === id
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
             
             <div className="bg-card border-b border-border p-2 flex gap-2 items-center">
@@ -307,6 +326,8 @@ className={`p-2 rounded transition-colors ${!annotationMode ? 'bg-primary text-p
             
             <div 
                 ref={containerRef}
+                id="pdf-panel"
+                role="tabpanel"
                 className="flex-1 bg-muted/50 relative overflow-auto flex justify-center p-4 h-full"
             >
                 <div className="relative">
