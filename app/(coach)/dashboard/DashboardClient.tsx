@@ -172,11 +172,22 @@ export default function DashboardClient({
     }, [attempts]);
 
     const nextMock = useMemo(() => {
-        const todayDate = new Date();
-        const upcoming = (assessments || [])
-            .filter((a) => a?.date && new Date(a.date + 'T00:00:00') >= todayDate)
-            .sort((a, b) => new Date(a.date!).getTime() - new Date(b.date!).getTime());
-        return upcoming[0] || null;
+        // ⚡ Bolt: Replaced O(N log N) .filter().sort()[0] with O(N) single loop.
+        // Prevents unnecessary array allocations and sorting overhead.
+        const todayTime = new Date().getTime();
+        let closestMock = null;
+        let minTime = Infinity;
+
+        for (const a of assessments || []) {
+            if (!a?.date) continue;
+            // Parse date string once per item
+            const time = new Date(a.date + 'T00:00:00').getTime();
+            if (time >= todayTime && time < minTime) {
+                minTime = time;
+                closestMock = a;
+            }
+        }
+        return closestMock;
     }, [assessments]);
 
     // Dynamic countdown cards based on user's exam year
