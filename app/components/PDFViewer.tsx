@@ -261,8 +261,8 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
             style={{ width: `${pdfViewerWidth}%` }}
         >
             <div className="bg-card border-b border-border p-2 flex gap-2">
-                <button onClick={() => onTabChange('paper')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'paper' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Question Paper</button>
-                {hasInsert && <button onClick={() => onTabChange('insert')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors ${activePdfTab === 'insert' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Source Material</button>}
+                <button type="button" aria-current={activePdfTab === 'paper' ? 'page' : undefined} onClick={() => onTabChange('paper')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activePdfTab === 'paper' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Question Paper</button>
+                {hasInsert && <button type="button" aria-current={activePdfTab === 'insert' ? 'page' : undefined} onClick={() => onTabChange('insert')} className={`flex-1 px-4 py-2 rounded-md text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${activePdfTab === 'insert' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>Source Material</button>}
             </div>
             
             <div className="bg-card border-b border-border p-2 flex gap-2 items-center">
