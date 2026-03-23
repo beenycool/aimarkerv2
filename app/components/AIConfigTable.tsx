@@ -402,6 +402,8 @@ export default function AIConfigTable({
                                 <button
                                     type="button"
                                     key={key}
+                                    type="button"
+                                    aria-label={`Select profile ${profile.name}`}
                                     onClick={() => applyProfile(key, profile.config)}
                                     className={`relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}
                                     aria-label={`Select profile ${profile.name}. Description: ${profile.description}`}
@@ -428,7 +430,12 @@ export default function AIConfigTable({
                                     const isActive = activeProfile === profileKey;
                                     return (
                                         <div key={profile.name} className={`relative p-3 rounded-lg border-2 text-left transition-all ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}>
-                                            <button type="button" onClick={() => applyProfile(profileKey, profile.config)} className="w-full text-left" aria-label={`Select profile ${profile.name}. Created ${new Date(profile.createdAt).toLocaleDateString()}`}>
+                                            <button
+                                                type="button"
+                                                aria-label={`Select custom profile ${profile.name}`}
+                                                onClick={() => applyProfile(profileKey, profile.config)}
+                                                className="w-full text-left"
+                                            >
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <User className="h-4 w-4 text-purple-500" />
                                                     <span className="font-medium text-sm truncate pr-6">{profile.name}</span>

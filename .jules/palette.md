@@ -49,3 +49,8 @@
 
 **Learning:** Custom interactive elements designed to look like tabs (like the Question Paper / Source Material buttons in the PDFViewer) often lack explicit `type="button"` attributes and active state indicators (`aria-current`). Next.js's default UI often requires manual intervention to ensure proper keyboard navigation focus rings (`focus-visible`).
 **Action:** When building or refactoring custom tab buttons, always explicitly set `type="button"`, use `aria-current={isActive ? 'page' : undefined}` to expose the active state to screen readers, and add `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2` to ensure proper visible keyboard navigation.
+
+## 2026-03-20 - Accessible Profile Selection Buttons
+
+**Learning:** Interactive profile selection buttons in tables/lists (like those in `AIConfigTable.tsx`) often lack explicit `type="button"` and `aria-label` attributes. Without `type="button"`, they can trigger unwanted form submissions if the component is used within a larger form. Without `aria-label`, screen readers may just announce the text content which might be insufficient context (e.g. just the profile name without knowing it's an action to select it).
+**Action:** Always ensure custom button components mapping over dynamic data include `type="button"` and a descriptive `aria-label` (e.g., `aria-label="Select profile {profile.name}"`).
