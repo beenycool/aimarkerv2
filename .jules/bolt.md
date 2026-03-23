@@ -11,3 +11,8 @@
 
 **Learning:** In `AIScheduleGenerator`, nesting `array.find()` inside an `array.map()` for data processing caused an O(N*M) time complexity bottleneck. Pre-computing a `Map` or dictionary outside the loop for O(1) lookups significantly optimizes the time complexity to O(N+M) and is cleaner to read.
 **Action:** Always watch out for nested iterations (especially `find` or `filter` inside loops) when processing data arrays, and proactively refactor them using Map lookups.
+
+## 2025-05-20 - O(N log N) Filter/Sort Anti-pattern
+
+**Learning:** Chaining `.filter().sort()[0]` on arrays (like `assessments`) to find the minimum or maximum element is a common anti-pattern in React frontend files (like `DashboardClient.tsx`). It causes unnecessary O(N) array allocations via `.filter()` and triggers an O(N log N) `.sort()` operation just to extract a single element, which becomes noticeable as the array grows or inside React hooks.
+**Action:** Always replace the `.filter().sort()[0]` anti-pattern with a simple O(N) single loop or `reduce` method to track the target value (e.g., minimum or maximum), significantly reducing array churn and calculation overhead.
