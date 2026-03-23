@@ -400,9 +400,11 @@ export default function AIConfigTable({
                             const isActive = activeProfile === key;
                             return (
                                 <button
+                                    type="button"
                                     key={key}
                                     onClick={() => applyProfile(key, profile.config)}
                                     className={`relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}
+                                    aria-label={`Select profile ${profile.name}. Description: ${profile.description}`}
                                 >
                                     {profile.badge && <Badge variant="secondary" className="absolute -top-2 -right-2 text-[10px] px-1.5">{profile.badge}</Badge>}
                                     <div className="flex items-center gap-2 mb-1">
@@ -426,12 +428,14 @@ export default function AIConfigTable({
                                     const isActive = activeProfile === profileKey;
                                     return (
                                         <div key={profile.name} className={`relative p-3 rounded-lg border-2 text-left transition-all ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}>
-                                            <button onClick={() => applyProfile(profileKey, profile.config)} className="w-full text-left">
+                                            <button type="button" onClick={() => applyProfile(profileKey, profile.config)} className="w-full text-left" aria-label={`Select profile ${profile.name}. Created ${new Date(profile.createdAt).toLocaleDateString()}`}>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <User className="h-4 w-4 text-purple-500" />
                                                     <span className="font-medium text-sm truncate pr-6">{profile.name}</span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">Created {new Date(profile.createdAt).toLocaleDateString()}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Created {new Date(profile.createdAt).toLocaleDateString()}
+                                                </p>
                                             </button>
                                             {isActive && <div className="absolute top-2 right-8"><Check className="h-4 w-4 text-primary" /></div>}
                                             {onDeleteProfile && (
