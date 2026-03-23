@@ -400,6 +400,7 @@ export default function AIConfigTable({
                             const isActive = activeProfile === key;
                             return (
                                 <button
+                                    type="button"
                                     key={key}
                                     onClick={() => applyProfile(key, profile.config)}
                                     className={`relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}
@@ -409,7 +410,10 @@ export default function AIConfigTable({
                                         <Icon className={`h-4 w-4 ${profile.color}`} />
                                         <span className="font-medium text-sm">{profile.name}</span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">{profile.description}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        <span className="sr-only">Select profile {profile.name}. Description: </span>
+                                        {profile.description}
+                                    </p>
                                     {isActive && <div className="absolute top-2 right-2"><Check className="h-4 w-4 text-primary" /></div>}
                                 </button>
                             );
@@ -426,12 +430,15 @@ export default function AIConfigTable({
                                     const isActive = activeProfile === profileKey;
                                     return (
                                         <div key={profile.name} className={`relative p-3 rounded-lg border-2 text-left transition-all ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}>
-                                            <button onClick={() => applyProfile(profileKey, profile.config)} className="w-full text-left">
+                                            <button type="button" onClick={() => applyProfile(profileKey, profile.config)} className="w-full text-left">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <User className="h-4 w-4 text-purple-500" />
                                                     <span className="font-medium text-sm truncate pr-6">{profile.name}</span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground">Created {new Date(profile.createdAt).toLocaleDateString()}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    <span className="sr-only">Select profile {profile.name}. </span>
+                                                    Created {new Date(profile.createdAt).toLocaleDateString()}
+                                                </p>
                                             </button>
                                             {isActive && <div className="absolute top-2 right-8"><Check className="h-4 w-4 text-primary" /></div>}
                                             {onDeleteProfile && (
