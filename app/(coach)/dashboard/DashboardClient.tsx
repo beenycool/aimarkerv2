@@ -174,14 +174,16 @@ export default function DashboardClient({
     const nextMock = useMemo(() => {
         // ⚡ Bolt: Replaced O(N log N) .filter().sort()[0] with O(N) single loop.
         // Prevents unnecessary array allocations and sorting overhead.
-        const todayTime = new Date().getTime();
+        const now = new Date();
+        const todayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         let closestMock = null;
         let minTime = Infinity;
 
         for (const a of assessments || []) {
             if (!a?.date) continue;
             // Parse date string once per item
-            const time = new Date(a.date + 'T00:00:00').getTime();
+            const time = new Date(`${a.date}T00:00:00`).getTime();
+            if (!Number.isFinite(time)) continue;
             if (time >= todayTime && time < minTime) {
                 minTime = time;
                 closestMock = a;
