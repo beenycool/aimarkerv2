@@ -19,15 +19,15 @@
 
 ## 2026-03-24 - React Canvas Event State Optimization
 
-**Learning:** Relying on React state updates () in high-frequency event handlers like  causes heavy UI lag, especially in complex components like . Using  to track intermediate drawing points and drawing directly to the  provides smooth 60fps interaction by bypassing the React render cycle.
-**Action:** Always prefer  and direct DOM/Canvas API manipulation for high-frequency user interactions (e.g., drawing, scrolling, dragging), and only sync the final result to React state on  or .
-
-## 2026-03-24 - React Canvas Event State Optimization
-
-**Learning:** Relying on React state updates (\`setState\`) in high-frequency event handlers like \`mousemove\` causes heavy UI lag, especially in complex components like \`PDFViewer\`. Using \`useRef\` to track intermediate drawing points and drawing directly to the \`CanvasRenderingContext2D\` provides smooth 60fps interaction by bypassing the React render cycle.
-**Action:** Always prefer \`useRef\` and direct DOM/Canvas API manipulation for high-frequency user interactions (e.g., drawing, scrolling, dragging), and only sync the final result to React state on \`mouseup\` or \`mouseleave\`.
+**Learning:** Relying on React state updates (`setState`) in high-frequency event handlers like `mousemove` causes heavy UI lag, especially in complex components like `PDFViewer`. Using `useRef` to track intermediate drawing points and drawing directly to the `CanvasRenderingContext2D` provides smooth 60fps interaction by bypassing the React render cycle.
+**Action:** Always prefer `useRef` and direct DOM/Canvas API manipulation for high-frequency user interactions (e.g., drawing, scrolling, dragging), and only sync the final result to React state on `mouseup` or `mouseleave`.
 
 ## 2026-03-24 - React Component Micro-optimizations (Referential Equality)
 
 **Learning:** When replacing `Array.filter()` or returning default arrays inside `useCallback` or `useMemo` hooks (e.g., `sessionsByDay.get(isoDate) || []`), returning a newly instantiated literal `[]` on every call breaks referential equality in React. This can trigger unnecessary re-renders in child components that depend on these values.
 **Action:** Always define a static constant outside the component (e.g., `const EMPTY_ARRAY = [];`) and return that reference instead of `[]` to preserve referential equality when falling back to empty states.
+
+## 2026-03-05 - Map Lookup vs Array Search during Renders
+
+**Learning:** Declaring O(N) array search functions like `const getName = (id) => items.find(i => i.id === id)` inside React components is an anti-pattern when called repeatedly during list rendering (e.g. `list.map(...)`). This creates an unnecessary O(N*M) time complexity.
+**Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
