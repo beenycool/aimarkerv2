@@ -55,9 +55,17 @@ export function InterleavingContent({
                             return (
                                 <Badge
                                     key={subject.id}
+                                    role="button"
+                                    tabIndex={0}
                                     variant={isSelected ? 'default' : 'secondary'}
-                                    className="cursor-pointer py-1.5 px-3"
+                                    className="cursor-pointer py-1.5 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     onClick={() => toggleSubject(subject.name)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            toggleSubject(subject.name);
+                                        }
+                                    }}
                                 >
                                     {isSelected && (
                                         <CheckCircle2 className="h-3 w-3 mr-1" />

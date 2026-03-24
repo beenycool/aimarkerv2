@@ -229,11 +229,19 @@ export function SessionDialog({
                                 {[15, 25, 30, 45, 60].map((d) => (
                                     <Badge
                                         key={d}
+                                        role="button"
+                                        tabIndex={0}
                                         variant={formData.duration_minutes === d ? 'default' : 'outline'}
-                                        className="cursor-pointer"
+                                        className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         onClick={() =>
                                             setFormData({ ...formData, duration_minutes: d })
                                         }
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                setFormData({ ...formData, duration_minutes: d });
+                                            }
+                                        }}
                                     >
                                         {d}m
                                     </Badge>
