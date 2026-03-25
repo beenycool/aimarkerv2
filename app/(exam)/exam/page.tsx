@@ -6,8 +6,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, AlertTriangle, HelpCircle, Copy
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, AlertTriangle, HelpCircle, Copy, Maximize, Minimize
 } from 'lucide-react';
+import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
 
 // Import Shadcn UI components
 import { Button } from '@/app/components/ui/button';
@@ -46,6 +47,7 @@ export default function GCSEMarkerApp() {
 
     // PDF viewer state
     const [activePdfTab, setActivePdfTab] = useState('paper');
+    const [focusMode, setFocusMode] = useState(false);
     const [pdfPage, setPdfPage] = useState(1);
     const [pdfScale, setPdfScale] = useState(1.5);
 
@@ -923,56 +925,80 @@ export default function GCSEMarkerApp() {
         return (
             <div className="min-h-screen bg-background flex flex-col h-screen overflow-hidden">
                 {/* Header */}
-                <header className="bg-card border-b px-6 py-3 flex justify-between items-center shadow-sm z-10">
-                    <div className="flex items-center gap-4">
-                        <Badge variant="default" className="font-semibold">
-                            GCSE Mock
-                        </Badge>
-                        <h2 className="text-foreground font-medium hidden sm:block truncate max-w-[200px]">
-                            {files.paper?.name || "Mock Paper"}
-                        </h2>
+                {!focusMode ? (
+                    <>
+                        <header className="bg-card border-b px-6 py-3 flex justify-between items-center shadow-sm z-10">
+                            <div className="flex items-center gap-4">
+                                <Badge variant="default" className="font-semibold">
+                                    GCSE Mock
+                                </Badge>
+                                <h2 className="text-foreground font-medium hidden sm:block truncate max-w-[200px]">
+                                    {files.paper?.name || "Mock Paper"}
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-mono font-bold text-foreground">{formatTime(timeElapsed)}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-sm border-l pl-4 text-muted-foreground font-medium">
+                                    Marks:
+                                    <span className="font-mono font-bold text-foreground ml-1">
+                                        {stats.totalScore}/{stats.totalPossible}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 border-l pl-4">
+                                    <span className="text-sm font-medium text-muted-foreground">Q</span>
+                                    <span className="text-sm font-bold text-foreground">{exam.currentQIndex + 1}/{exam.activeQuestions.length}</span>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => setFocusMode(true)} className="gap-2 hidden md:flex">
+                                    <Maximize className="w-4 h-4" /> Focus Mode
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={clearSaveData} className="text-muted-foreground hover:text-destructive">
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </header>
+                        {/* Progress bar */}
+                        <div className="bg-card border-b px-6 py-2">
+                            <Progress value={progressPercent} className="h-1.5" />
+                        </div>
+                    </>
+                ) : (
+                    <div className="absolute top-4 right-6 z-50 flex gap-2">
+                        <div className="bg-card/80 backdrop-blur-md shadow-lg border rounded-full px-4 py-2 flex items-center gap-4">
+                            <div className="flex items-center gap-2 text-sm">
+                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-mono font-bold text-foreground">{formatTime(timeElapsed)}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setFocusMode(false)} className="h-8 gap-2 text-muted-foreground hover:text-foreground">
+                                <Minimize className="w-4 h-4" /> Exit Focus
+                            </Button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2 text-sm">
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-mono font-bold text-foreground">{formatTime(timeElapsed)}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm border-l pl-4 text-muted-foreground font-medium">
-                            Marks:
-                            <span className="font-mono font-bold text-foreground ml-1">
-                                {stats.totalScore}/{stats.totalPossible}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2 border-l pl-4">
-                            <span className="text-sm font-medium text-muted-foreground">Q</span>
-                            <span className="text-sm font-bold text-foreground">{exam.currentQIndex + 1}/{exam.activeQuestions.length}</span>
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={clearSaveData} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </header>
+                )}
 
-                {/* Progress bar */}
-                <div className="bg-card border-b px-6 py-2">
-                    <Progress value={progressPercent} className="h-1.5" />
-                </div>
+                <main className={`flex-1 flex overflow-hidden ${focusMode ? 'h-screen' : 'h-[calc(100vh-96px)]'}`}>
+                    <PanelGroup direction="horizontal" autoSaveId="exam-panels">
+                        {/* PDF Viewer */}
+                        <Panel defaultSize={50} minSize={20} className="relative z-10 hidden md:block">
+                            <PDFViewer
+                                file={activePdfTab === 'paper' ? files.paper : files.insert}
+                                pageNumber={pdfPage}
+                                scale={pdfScale}
+                                onPageChange={setPdfPage}
+                                onScaleChange={setPdfScale}
+                                activePdfTab={activePdfTab}
+                                onTabChange={setActivePdfTab}
+                                hasInsert={!!files.insert}
+                            />
+                        </Panel>
 
-                <main className="flex-1 flex overflow-hidden h-[calc(100vh-96px)]">
-                    {/* PDF Viewer */}
-                    <PDFViewer
-                        file={activePdfTab === 'paper' ? files.paper : files.insert}
-                        pageNumber={pdfPage}
-                        scale={pdfScale}
-                        onPageChange={setPdfPage}
-                        onScaleChange={setPdfScale}
-                        activePdfTab={activePdfTab}
-                        onTabChange={setActivePdfTab}
-                        hasInsert={!!files.insert}
-                    />
+                        <PanelResizeHandle className="w-2 bg-border hover:bg-primary/50 transition-colors hidden md:block" />
 
-                    {/* Right Panel: Exam Interface */}
-                    <div className="flex-1 flex flex-col overflow-y-auto bg-card relative">
+                        {/* Right Panel: Exam Interface */}
+                        <Panel defaultSize={50} minSize={30}>
+                            <div className="h-full flex flex-col overflow-y-auto bg-card relative">
                         <div className="max-w-3xl mx-auto w-full p-6 md:p-10 pb-32">
                             <div className="mb-8 relative">
                                 <div className="flex items-center justify-between mb-4">
@@ -1143,7 +1169,9 @@ export default function GCSEMarkerApp() {
                                 })}
                             </div>
                         </div>
-                    </div>
+                            </div>
+                        </Panel>
+                    </PanelGroup>
                 </main>
             </div>
         );
