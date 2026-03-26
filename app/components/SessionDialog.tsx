@@ -230,6 +230,7 @@ export function SessionDialog({
                                     <Badge
                                         key={d}
                                         role="button"
+                                        aria-pressed={formData.duration_minutes === d}
                                         tabIndex={0}
                                         variant={formData.duration_minutes === d ? 'default' : 'outline'}
                                         className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -239,7 +240,7 @@ export function SessionDialog({
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' || e.key === ' ') {
                                                 e.preventDefault();
-                                                setFormData({ ...formData, duration_minutes: d });
+                                                e.currentTarget.click();
                                             }
                                         }}
                                     >

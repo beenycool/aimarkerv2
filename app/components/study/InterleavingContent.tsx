@@ -56,6 +56,7 @@ export function InterleavingContent({
                                 <Badge
                                     key={subject.id}
                                     role="button"
+                                    aria-pressed={isSelected}
                                     tabIndex={0}
                                     variant={isSelected ? 'default' : 'secondary'}
                                     className="cursor-pointer py-1.5 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -63,7 +64,7 @@ export function InterleavingContent({
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
                                             e.preventDefault();
-                                            toggleSubject(subject.name);
+                                            e.currentTarget.click();
                                         }
                                     }}
                                 >
