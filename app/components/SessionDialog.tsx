@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -132,7 +132,15 @@ export function SessionDialog({
         }
     };
 
-    const getSubjectName = (id?: string) => subjects.find(s => s.id === id)?.name || 'General Study';
+    const subjectMap = useMemo(() => {
+        return new Map(subjects.map(s => [s.id, s.name]));
+    }, [subjects]);
+
+    // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
+    // Transforms O(N*M) rendering time complexity into O(N+M).
+    const getSubjectName = useCallback((id?: string) => {
+        return subjectMap.get(id || '') || 'General Study';
+    }, [subjectMap]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
