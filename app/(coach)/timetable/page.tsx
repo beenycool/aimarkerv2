@@ -95,9 +95,21 @@ export default function TimetablePage() {
         loadData();
     }, [loadData]);
 
-    const getSubjectName = (subjectId?: string) => {
-        return subjects.find(s => s.id === subjectId)?.name || 'Study Session';
-    };
+    // ⚡ Bolt: Pre-computed Map for O(1) lookups instead of O(N) array.find() inside render loops
+    const subjectNameMap = useMemo(() => {
+        const map = new Map<string, string>();
+        subjects.forEach(s => {
+            if (s.id && s.name) {
+                map.set(s.id, s.name);
+            }
+        });
+        return map;
+    }, [subjects]);
+
+    const getSubjectName = useCallback((subjectId?: string) => {
+        if (!subjectId) return 'Study Session';
+        return subjectNameMap.get(subjectId) || 'Study Session';
+    }, [subjectNameMap]);
 
     const weekDates = useMemo(() => {
         if (!anchorDate) return [];
