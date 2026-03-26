@@ -97,19 +97,17 @@ export default function TimetablePage() {
 
     // ⚡ Bolt: Pre-computed Map for O(1) lookups instead of O(N) array.find() inside render loops
     const subjectNameMap = useMemo(() => {
-        const map = new Map<string, string>();
-        subjects.forEach(s => {
-            if (s.id && s.name) {
-                map.set(s.id, s.name);
-            }
-        });
-        return map;
+        return new Map(
+            subjects
+                .filter(s => s.id && s.name)
+                .map(s => [s.id, s.name])
+        );
     }, [subjects]);
 
-    const getSubjectName = useCallback((subjectId?: string) => {
+    const getSubjectName = (subjectId?: string) => {
         if (!subjectId) return 'Study Session';
         return subjectNameMap.get(subjectId) || 'Study Session';
-    }, [subjectNameMap]);
+    };
 
     const weekDates = useMemo(() => {
         if (!anchorDate) return [];
