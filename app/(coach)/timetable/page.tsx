@@ -45,6 +45,7 @@ interface Session {
 }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const EMPTY_SESSIONS: ReadonlyArray<Session> = [];
 
 export default function TimetablePage() {
     const studentId = useStudentId();
@@ -95,19 +96,28 @@ export default function TimetablePage() {
         loadData();
     }, [loadData]);
 
-    // ⚡ Bolt: Pre-computed Map for O(1) lookups instead of O(N) array.find() inside render loops
-    const subjectNameMap = useMemo(() => {
-        return new Map(
-            subjects
-                .filter(s => s.id && s.name)
-                .map(s => [s.id, s.name])
-        );
-    }, [subjects]);
+    // ⚡ Bolt: Replaced O(N) .find with O(1) Map lookup
+    const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
 
-    const getSubjectName = (subjectId?: string) => {
+    const getSubjectName = useCallback((subjectId?: string) => {
         if (!subjectId) return 'Study Session';
-        return subjectNameMap.get(subjectId) || 'Study Session';
-    };
+        return subjectMap.get(subjectId) || 'Study Session';
+    }, [subjectMap]);
+
+    // ⚡ Bolt: Pre-group sessions by day to replace O(N) .filter with O(1) lookup
+    const sessionsByDay = useMemo(() => {
+        const map = new Map<string, Session[]>();
+        for (const s of sessions) {
+            if (!s.planned_for) continue;
+            let daySessions = map.get(s.planned_for);
+            if (!daySessions) {
+                daySessions = [];
+                map.set(s.planned_for, daySessions);
+            }
+            daySessions.push(s);
+        }
+        return map;
+    }, [sessions]);
 
     const weekDates = useMemo(() => {
         if (!anchorDate) return [];
@@ -128,9 +138,9 @@ export default function TimetablePage() {
         });
     }, [anchorDate, currentWeek]);
 
-    const getSessionsForDay = (isoDate: string) => {
-        return sessions.filter(s => s.planned_for === isoDate);
-    };
+    const getSessionsForDay = useCallback((isoDate: string): ReadonlyArray<Session> => {
+        return sessionsByDay.get(isoDate) ?? EMPTY_SESSIONS;
+    }, [sessionsByDay]);
 
     const getSessionTypeColor = (sessionType?: string) => {
         switch (sessionType) {
