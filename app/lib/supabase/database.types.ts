@@ -9,6 +9,29 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      active_exam_sessions: {
+        Row: {
+          id: string
+          student_id: string
+          paper_id: string
+          state: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          paper_id: string
+          state?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          paper_id?: string
+          state?: Json
+          updated_at?: string
+        }
+      }
       subjects: {
         Row: {
           id: string
