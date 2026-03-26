@@ -95,8 +95,18 @@ export default function TimetablePage() {
         loadData();
     }, [loadData]);
 
+    // ⚡ Bolt: Pre-computed Map for O(1) lookups instead of O(N) array.find() inside render loops
+    const subjectNameMap = useMemo(() => {
+        return new Map(
+            subjects
+                .filter(s => s.id && s.name)
+                .map(s => [s.id, s.name])
+        );
+    }, [subjects]);
+
     const getSubjectName = (subjectId?: string) => {
-        return subjects.find(s => s.id === subjectId)?.name || 'Study Session';
+        if (!subjectId) return 'Study Session';
+        return subjectNameMap.get(subjectId) || 'Study Session';
     };
 
     const weekDates = useMemo(() => {
