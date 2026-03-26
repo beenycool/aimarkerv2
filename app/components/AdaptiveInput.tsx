@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
+import React, { useState, useId, useRef, useEffect, memo, useCallback } from 'react';
 import { TableIcon, BarChart2 } from 'lucide-react';
 import MathKeyboard from './inputs/MathKeyboard';
 import GraphCanvas from './inputs/GraphCanvas';
@@ -36,6 +36,7 @@ interface AdaptiveInputProps {
  * IMPORTANT: Use key={question.id} when rendering this component to prevent state bleeding
  */
 const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphConfig, value, onChange, graphFigure }: AdaptiveInputProps) => {
+    const radioGroupId = useId();
     const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
     const [figureBackground, setFigureBackground] = useState(null);
 
@@ -56,7 +57,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
             <div className="space-y-2">
                 {options.map((opt, idx) => (
                     <label key={idx} className={`flex items-center p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-all ${value === opt ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border'}`}>
-                        <input type="radio" name="mcq" className="w-4 h-4 text-primary focus:ring-primary" checked={value === opt} onChange={() => onChange(opt)} />
+                        <input type="radio" name={`mcq-${radioGroupId}`} className="w-4 h-4 text-primary focus:ring-primary" checked={value === opt} onChange={() => onChange(opt)} />
                         <span className="ml-3 text-foreground font-medium">{opt}</span>
                     </label>
                 ))}
@@ -72,7 +73,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
                 {Array.from({ length: listCount }).map((_, idx) => (
                     <div key={idx} className="flex items-center">
                         <span className="text-muted-foreground font-bold mr-3 w-6 text-right">{idx + 1})</span>
-                        <input type="text" aria-label={`Point ${idx + 1}`} className="flex-1 p-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none" value={listValues[idx] || ''} onChange={(e) => handleListChange(idx, e.target.value)} placeholder={`Point ${idx + 1}`} />
+                        <input type="text" className="flex-1 p-2 border border-input bg-background rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none" value={listValues[idx] || ''} onChange={(e) => handleListChange(idx, e.target.value)} placeholder={`Point ${idx + 1}`} />
                     </div>
                 ))}
             </div>
@@ -99,7 +100,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
                                         return (
                                             <td key={cIndex} className="p-0 border-r border-border last:border-0 relative">
                                                 {isPrefilled ? (<div className="w-full h-full px-6 py-4 bg-muted/40 text-muted-foreground font-medium select-none">{initialData[rIndex][cIndex]}</div>) : (
-                                                    <input type="text" aria-label={`Input for ${headers[cIndex]} at row ${rIndex + 1}`} className="w-full h-full px-6 py-4 bg-transparent outline-none focus:ring-2 focus:ring-inset focus:ring-primary text-foreground placeholder-muted-foreground/50" value={cell} onChange={(e) => handleCellChange(rIndex, cIndex, e.target.value)} placeholder="Type..." />
+                                                    <input type="text" className="w-full h-full px-6 py-4 bg-transparent outline-none focus:ring-2 focus:ring-inset focus:ring-primary text-foreground placeholder-muted-foreground/50" value={cell} onChange={(e) => handleCellChange(rIndex, cIndex, e.target.value)} placeholder="Type..." />
                                                 )}
                                             </td>
                                         );
@@ -132,7 +133,20 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
         return (
             <div className="relative">
 
-                <textarea aria-label="Long text answer" className="w-full h-48 p-4 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none font-serif leading-relaxed text-foreground" placeholder="Type your answer here..." value={value || ''} onChange={(e) => onChange(e.target.value)} />
+                <textarea
+                    className="w-full min-h-[12rem] p-4 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-y font-serif leading-relaxed text-foreground"
+                    placeholder="Type your answer here..."
+                    value={value || ''}
+                    onChange={(e) => {
+                        onChange(e.target.value);
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                    onFocus={(e) => {
+                        e.target.style.height = 'auto';
+                        e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                />
                 <MathKeyboard onInsert={handleSymbolInsert} isOpen={isKeyboardOpen} toggleOpen={() => setIsKeyboardOpen(!isKeyboardOpen)} />
             </div>
         );
@@ -140,7 +154,7 @@ const AdaptiveInput = memo(({ type, options, listCount, tableStructure, graphCon
 
     return (
         <div>
-            <input type="text" aria-label="Answer" className="w-full p-3 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground" placeholder="Type your answer here..." value={value || ''} onChange={(e) => onChange(e.target.value)} />
+            <input type="text" className="w-full p-3 border border-input bg-background rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none text-foreground" placeholder="Type your answer here..." value={value || ''} onChange={(e) => onChange(e.target.value)} />
             <MathKeyboard onInsert={handleSymbolInsert} isOpen={isKeyboardOpen} toggleOpen={() => setIsKeyboardOpen(!isKeyboardOpen)} />
         </div>
     );
