@@ -133,11 +133,7 @@ export function SessionDialog({
     };
 
     const subjectMap = useMemo(() => {
-        const map = new Map<string, string>();
-        for (const s of subjects) {
-            map.set(s.id, s.name);
-        }
-        return map;
+        return new Map(subjects.map(s => [s.id, s.name]));
     }, [subjects]);
 
     // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
