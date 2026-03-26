@@ -15,7 +15,12 @@ export async function GET(request) {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (authError) {
+        console.error('Supabase authentication error:', authError);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+
+    if (!user) {
         return NextResponse.json(
             { error: "Authentication required. Please sign in to use this feature." },
             { status: 401 }
