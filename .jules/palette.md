@@ -54,3 +54,8 @@
 
 **Learning:** Interactive profile selection buttons in tables/lists (like those in `AIConfigTable.tsx`) often lack explicit `type="button"` and `aria-label` attributes. Without `type="button"`, they can trigger unwanted form submissions if the component is used within a larger form. Without `aria-label`, screen readers may just announce the text content which might be insufficient context (e.g. just the profile name without knowing it's an action to select it).
 **Action:** Always ensure custom button components mapping over dynamic data include `type="button"` and a descriptive `aria-label` (e.g., `aria-label="Select profile {profile.name}"`).
+
+## 2026-03-26 - Keyboard Navigation for Interactive Badges
+
+**Learning:** When turning non-interactive elements like `Badge` `div`s into clickable UI selectors (e.g., for subjects in `InterleavingContent.tsx` or durations in `SessionDialog.tsx`), the `onClick` handler alone leaves keyboard users stranded.
+**Action:** Always ensure full keyboard accessibility by adding `role="button"`, `tabIndex={0}`, an `onKeyDown` handler that responds to 'Enter' and 'Space' keys, and explicit visible focus states (e.g., `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`).

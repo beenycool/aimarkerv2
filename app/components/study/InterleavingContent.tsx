@@ -58,13 +58,14 @@ export function InterleavingContent({
                                     role="button"
                                     aria-pressed={isSelected}
                                     tabIndex={0}
+                                    aria-label={`Toggle subject ${subject.name}`}
                                     variant={isSelected ? 'default' : 'secondary'}
                                     className="cursor-pointer py-1.5 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     onClick={() => toggleSubject(subject.name)}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
+                                        if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
                                             e.preventDefault();
-                                            e.currentTarget.click();
+                                            toggleSubject(subject.name);
                                         }
                                     }}
                                 >

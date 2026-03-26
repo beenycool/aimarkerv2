@@ -232,15 +232,16 @@ export function SessionDialog({
                                         role="button"
                                         aria-pressed={formData.duration_minutes === d}
                                         tabIndex={0}
+                                        aria-label={`${d} minutes`}
                                         variant={formData.duration_minutes === d ? 'default' : 'outline'}
                                         className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                         onClick={() =>
                                             setFormData({ ...formData, duration_minutes: d })
                                         }
                                         onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
+                                            if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
                                                 e.preventDefault();
-                                                e.currentTarget.click();
+                                                setFormData({ ...formData, duration_minutes: d });
                                             }
                                         }}
                                     >
