@@ -5,10 +5,28 @@
  */
 
 import { NextResponse } from 'next/server';
+import { createClient } from '@/app/lib/supabase/server';
+
 
 const HACKCLUB_SEARCH_API_KEY = process.env.HACKCLUB_SEARCH_API_KEY;
 
 export async function GET(request) {
+    // Enforce authentication
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+        console.error('Supabase authentication error:', authError);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+
+    if (!user) {
+        return NextResponse.json(
+            { error: "Authentication required. Please sign in to use this feature." },
+            { status: 401 }
+        );
+    }
+
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q');
     const count = searchParams.get('count') || '5';
