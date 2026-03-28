@@ -35,7 +35,16 @@ function getOrCreateAnonymousId(): string | null {
         // Prefer crypto UUID when available
         if (window.crypto?.randomUUID) {
             id = window.crypto.randomUUID();
+        } else if (window.crypto?.getRandomValues) {
+            // Secure fallback for browsers supporting getRandomValues but not randomUUID
+            const array = new Uint8Array(16);
+            window.crypto.getRandomValues(array);
+            const hex = Array.from(array)
+                .map((b) => b.toString(16).padStart(2, '0'))
+                .join('');
+            id = `${Date.now()}-${hex}`;
         } else {
+            // Insecure fallback for very old browsers
             id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         }
         window.localStorage.setItem(ANONYMOUS_STORAGE_KEY, id);
