@@ -285,7 +285,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                     type="button"
                     aria-label="Draw"
                     onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
-className={`p-2 rounded transition-colors ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+className={`p-2 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
           title="Draw"
         >
                     <Pencil className="w-4 h-4" />
@@ -294,7 +294,7 @@ className={`p-2 rounded transition-colors ${annotationMode === 'draw' ? 'bg-prim
                     type="button"
                     aria-label="Highlight"
                     onClick={() => setAnnotationMode(annotationMode === 'highlight' ? null : 'highlight')}
-className={`p-2 rounded transition-colors ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+className={`p-2 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
           title="Highlight"
                 >
                     <Highlighter className="w-4 h-4" />
@@ -303,7 +303,7 @@ className={`p-2 rounded transition-colors ${annotationMode === 'highlight' ? 'bg
                     type="button"
                     aria-label="Clear annotations on this page"
                     onClick={clearAnnotationsOnPage}
-className="p-2 rounded hover:bg-muted"
+className="p-2 rounded hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           title="Clear annotations on this page"
         >
                     <Eraser className="w-4 h-4" />
@@ -312,7 +312,7 @@ className="p-2 rounded hover:bg-muted"
                     type="button"
                     aria-label="Pan mode"
                     onClick={() => setAnnotationMode(null)}
-className={`p-2 rounded transition-colors ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+className={`p-2 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
           title="Pan mode"
         >
                     <Move className="w-4 h-4" />
@@ -354,13 +354,13 @@ className={`p-2 rounded transition-colors ${!annotationMode ? 'bg-primary text-p
             <div className="bg-card p-3 flex justify-between items-center border-t border-border">
                 <div className="flex gap-2">
                 <div className="flex gap-2">
-                    <button type="button" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30" aria-label="Previous page"><ChevronLeft className="w-5 h-5" /></button>
-                    <button type="button" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30" aria-label="Next page"><ChevronRight className="w-5 h-5" /></button>
+                    <button type="button" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Previous page"><ChevronLeft className="w-5 h-5" /></button>
+                    <button type="button" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className="p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Next page"><ChevronRight className="w-5 h-5" /></button>
                 </div>
                 <span className="text-foreground font-mono font-bold text-sm">Page {pageNumber} {numPages ? `/ ${numPages}` : ''}</span>
                 <div className="flex gap-2">
-                    <button type="button" onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className="p-2 text-foreground hover:bg-muted rounded" aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
-                    <button type="button" onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className="p-2 text-foreground hover:bg-muted rounded" aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
+                    <button type="button" onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className="p-2 text-foreground hover:bg-muted rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
+                    <button type="button" onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className="p-2 text-foreground hover:bg-muted rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
                 </div>
                 </div>
             </div>
