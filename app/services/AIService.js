@@ -1165,8 +1165,6 @@ IMPORTANT:
                 const cleaned = cleanGeminiJSON(response);
                 const topics = JSON.parse(cleaned);
 
-                // Log which source was used
-                console.log(`Topic research for ${subject} completed using: ${searchResults.source}`);
                 return topics;
             }
 
