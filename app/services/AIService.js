@@ -1072,7 +1072,7 @@ Generate a smart, personalized study schedule.
         // Add verified topics context
         const verifiedTopicsStr = context.verifiedTopics
             ? Object.entries(context.verifiedTopics).map(([subjId, topics]) => {
-                // ⚡ Bolt: Replaced O(N) .find with O(1) Map lookup
+                // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
                 const sName = subjectMap.get(subjId) || subjId;
                 return `- ${sName}: ${(topics || []).join(', ')}`;
             }).join('\n')
