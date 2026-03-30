@@ -218,6 +218,7 @@ function AIAssistedContent({
     studentData: { name: string; weaknesses: { label: string }[] };
 }) {
     const [userResponse, setUserResponse] = React.useState('');
+    const responseId = React.useId();
 
     const icons: Record<string, React.ReactNode> = {
         'active-recall': <Brain className="h-6 w-6 text-accent" />,
@@ -284,8 +285,9 @@ function AIAssistedContent({
                     {/* Practice Area */}
                     {(techniqueId === 'active-recall' || techniqueId === 'elaboration') && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Your Response</label>
+                            <label htmlFor={responseId} className="text-sm font-medium">Your Response</label>
                             <textarea
+                                id={responseId}
                                 value={userResponse}
                                 onChange={(e) => setUserResponse(e.target.value)}
                                 placeholder="Write your answer here... Don't peek at your notes!"
