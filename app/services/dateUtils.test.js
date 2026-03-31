@@ -1,5 +1,5 @@
 import { describe, expect, test, setSystemTime, afterEach } from 'bun:test';
-import { formatShort, isoToday, clamp, bandFromPercent } from './dateUtils.js';
+import { formatShort, isoToday, clamp, bandFromPercent, pct } from './dateUtils.js';
 
 describe('formatShort', () => {
   test('formats valid ISO date string correctly', () => {
@@ -97,6 +97,37 @@ describe('clamp', () => {
     expect(clamp(5, 10, 0)).toBe(10);
     expect(clamp(-5, 10, 0)).toBe(10);
     expect(clamp(15, 10, 0)).toBe(10);
+  });
+});
+
+describe('pct', () => {
+  test('returns correct percentage for standard values', () => {
+    expect(pct(50, 100)).toBe(50);
+    expect(pct(1, 4)).toBe(25);
+    expect(pct(0, 100)).toBe(0);
+  });
+
+  test('rounds to the nearest integer', () => {
+    expect(pct(1, 3)).toBe(33); // 33.333...
+    expect(pct(2, 3)).toBe(67); // 66.666...
+    expect(pct(5, 7)).toBe(71); // 71.428...
+    expect(pct(6, 7)).toBe(86); // 85.714...
+  });
+
+  test.each([
+    { den: 0, case: 'zero' },
+    { den: undefined, case: 'undefined' },
+    { den: null, case: 'null' },
+  ])('returns 0 when denominator is $case', ({ den }) => {
+    expect(pct(10, den)).toBe(0);
+  });
+
+  test.each([
+    { num: -5, den: 10, expected: -50, case: 'negative numerator' },
+    { num: 5, den: -10, expected: -50, case: 'negative denominator' },
+    { num: -5, den: -10, expected: 50, case: 'both negative' },
+  ])('handles $case', ({ num, den, expected }) => {
+    expect(pct(num, den)).toBe(expected);
   });
 });
 

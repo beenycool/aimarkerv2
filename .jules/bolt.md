@@ -1,8 +1,3 @@
-## 2025-05-20 - Map Scope in Micro-Optimizations
-
-**Learning:** When applying the O(N+M) Map pre-computation optimization to replace nested `find()` calls inside `.map()`, it is critical to verify the scope in which the Map is instantiated. Reusing an existing Map without ensuring it is available within the closure of the target loop leads to `ReferenceError` crashes at runtime.
-**Action:** Always ensure the `Map` is instantiated or accessible within the specific block or function scope where the optimization is applied, rather than assuming global or outer-scope availability.
-
 ## 2025-05-20 - Web Search Caching
 **Learning:** `searchWeb` calls were unoptimized, leading to potential redundant API calls for the same query. Implementing a simple in-memory cache with TTL significantly reduces these calls without complex infrastructure changes.
 **Action:** When implementing external API wrappers, always consider if the results are cacheable and add a caching layer if appropriate, especially for expensive or rate-limited APIs.
@@ -35,8 +30,12 @@
 ## 2026-03-05 - Map Lookup vs Array Search during Renders
 
 **Learning:** Declaring O(N) array search functions like `const getName = (id) => items.find(i => i.id === id)` inside React components is an anti-pattern when called repeatedly during list rendering (e.g. `list.map(...)`). This creates an unnecessary O(N*M) time complexity.
+<<<<<<< HEAD
 **Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
+=======
+**Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
+## 2026-03-24 - Batch State Updates vs Sequential Loops
 
-## 2026-03-30 - Array vs Map Lookups in Renders
-**Learning:** In `app/(coach)/assessments/page.tsx`, calling an O(N) array search function (`subjects.find`) inside repeated list mappings or handlers creates unnecessary computational overhead during renders. Pre-computing a `Map` with `useMemo` and using O(1) lookups reduces render time complexity from O(N*M) to O(N+M).
-**Action:** Always proactively replace repeated `.find()` lookups within render loops or callback handlers with pre-computed `Map` lookups using `useMemo` and `useCallback`.
+**Learning:** Using a `for` loop to sequentially update React state (e.g., `setState(prev => [...prev, newItem])`) with an artificial `setTimeout` delay is a performance anti-pattern. This causes O(N^2) array copying complexity, triggers N redundant re-renders, and adds an unnecessary O(N) artificial delay to the user experience.
+**Action:** Always replace sequential state update loops with a single batch update (`setState(allItems)`) to reduce the overall update complexity from O(N^2) to O(N) and consolidate N re-renders into one, providing an immediate and efficient UI response.
+>>>>>>> c629d37 (Apply reviewer suggestions for PR #143)
