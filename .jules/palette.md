@@ -60,6 +60,12 @@
 **Learning:** When turning non-interactive elements like `Badge` `div`s into clickable UI selectors (e.g., for subjects in `InterleavingContent.tsx` or durations in `SessionDialog.tsx`), the `onClick` handler alone leaves keyboard users stranded.
 **Action:** Always ensure full keyboard accessibility by adding `role="button"`, `tabIndex={0}`, an `onKeyDown` handler that responds to 'Enter' and 'Space' keys, and explicit visible focus states (e.g., `focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`).
 
+## 2026-03-30 - Associated Label for Active Recall Input
+
+**Learning:** When generating interactive user inputs within modals or dynamically loaded React components (like the "Your Response" `textarea` in `TechniqueModal.tsx`), explicit visible labels must be programmatically associated with their input using `htmlFor` and a matching `id`. Otherwise, clicking the label will not focus the input, and screen readers will fail to announce the label when the user navigates into the text area.
+**Action:** Always link visible `<label>` elements to their corresponding inputs by generating a unique ID (e.g., using React's `useId()`) and applying it to the input's `id` and the label's `htmlFor` attributes.
+
 ## 2026-03-28 - [Keyboard Focus Accessibility]
+
 **Learning:** Custom interactive tool buttons in the application (like those in `PDFViewer.tsx`) consistently lacked explicit visual keyboard focus indicators, rendering them invisible to users navigating strictly via keyboard.
 **Action:** When adding or auditing icon-only utility buttons or custom toolbar components, ensure to apply the standard set of focus utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`) used by the existing `Button` variants to maintain a consistent and accessible keyboard navigation experience.
