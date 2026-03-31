@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React, { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { PenTool, Pencil, Type, ImageOff, Trash2 } from 'lucide-react';
+const baseButtonClasses = 'p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1';
+
 
 const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBackground }) => {
     const canvasRef = useRef(null);
