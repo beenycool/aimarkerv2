@@ -207,16 +207,16 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
-                <button aria-label="Add Point tool" title="Add Point" onClick={() => setTool('point')} className={`p-2 rounded ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                <button type="button" aria-pressed={tool === 'point'} aria-label="Add Point tool" title="Add Point" onClick={() => setTool('point')} className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
                     <div className="flex items-center gap-1 text-xs font-bold"><span className="text-lg">×</span> Point</div>
                 </button>
-                <button aria-label="Add Line tool" title="Add Line" onClick={() => setTool('line')} className={`p-2 rounded ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                <button type="button" aria-pressed={tool === 'line'} aria-label="Add Line tool" title="Add Line" onClick={() => setTool('line')} className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
                     <div className="flex items-center gap-1 text-xs font-bold"><PenTool className="w-4 h-4" /> Line</div>
                 </button>
-                <button aria-label="Sketch tool" title="Freehand Sketch" onClick={() => setTool('sketch')} className={`p-2 rounded ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                <button type="button" aria-pressed={tool === 'sketch'} aria-label="Sketch tool" title="Freehand Sketch" onClick={() => setTool('sketch')} className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
                     <div className="flex items-center gap-1 text-xs font-bold"><Pencil className="w-4 h-4" /> Sketch</div>
                 </button>
-                <button aria-label="Add Label tool" title="Add Text Label" onClick={() => setTool('label')} className={`p-2 rounded ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
+                <button type="button" aria-pressed={tool === 'label'} aria-label="Add Label tool" title="Add Text Label" onClick={() => setTool('label')} className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}>
                     <div className="flex items-center gap-1 text-xs font-bold"><Type className="w-4 h-4" /> Label</div>
                 </button>
                 {tool === 'label' && (
@@ -232,11 +232,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 )}
                 <div className="h-6 w-px bg-border mx-2"></div>
                 {backgroundImage && onClearBackground && (
-                    <button type="button" aria-label="Remove background image" onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground" title="Remove figure background">
+                    <button type="button" aria-label="Remove background image" onClick={onClearBackground} className="p-2 rounded hover:bg-muted text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1" title="Remove figure background">
                         <ImageOff className="w-4 h-4" />
                     </button>
                 )}
-                <button type="button" aria-label="Clear all canvas contents" title="Clear Canvas" onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive"><Trash2 className="w-4 h-4" /></button>
+                <button type="button" aria-label="Clear all canvas contents" title="Clear Canvas" onClick={() => onChange({ points: [], lines: [], labels: [], paths: [] })} className="p-2 rounded hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"><Trash2 className="w-4 h-4" /></button>
             </div>
             <div className="border border-border rounded-lg overflow-hidden shadow-inner bg-white self-start">
                 <canvas ref={canvasRef} width={width} height={height} onMouseDown={handleMouseDown} onMouseMove={(e) => { handleMouseMove(e); handleSketchMove(e); }} onMouseUp={handleMouseUp} onMouseLeave={handleMouseLeave} className="cursor-crosshair block" />
