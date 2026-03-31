@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -668,9 +668,13 @@ export default function AssessmentsPage() {
         shouldCleanupUploadsRef.current = true;
     };
 
-    const getSubjectName = (subjectId?: string) => {
-        return subjects.find(s => s.id === subjectId)?.name || 'Unknown Subject';
-    };
+    // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
+    const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
+
+    const getSubjectName = useCallback((subjectId?: string) => {
+        if (!subjectId) return 'Unknown Subject';
+        return subjectMap.get(subjectId) || 'Unknown Subject';
+    }, [subjectMap]);
 
     const getKindLabel = (kind?: string) => {
         if (!kind) return 'Assessment';
