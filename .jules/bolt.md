@@ -1,3 +1,8 @@
+## 2025-05-20 - Map Scope in Micro-Optimizations
+
+**Learning:** When applying the O(N+M) Map pre-computation optimization to replace nested `find()` calls inside `.map()`, it is critical to verify the scope in which the Map is instantiated. Reusing an existing Map without ensuring it is available within the closure of the target loop leads to `ReferenceError` crashes at runtime.
+**Action:** Always ensure the `Map` is instantiated or accessible within the specific block or function scope where the optimization is applied, rather than assuming global or outer-scope availability.
+
 ## 2025-05-20 - Web Search Caching
 **Learning:** `searchWeb` calls were unoptimized, leading to potential redundant API calls for the same query. Implementing a simple in-memory cache with TTL significantly reduces these calls without complex infrastructure changes.
 **Action:** When implementing external API wrappers, always consider if the results are cacheable and add a caching layer if appropriate, especially for expensive or rate-limited APIs.
