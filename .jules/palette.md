@@ -69,3 +69,8 @@
 
 **Learning:** Custom interactive tool buttons in the application (like those in `PDFViewer.tsx`) consistently lacked explicit visual keyboard focus indicators, rendering them invisible to users navigating strictly via keyboard.
 **Action:** When adding or auditing icon-only utility buttons or custom toolbar components, ensure to apply the standard set of focus utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`) used by the existing `Button` variants to maintain a consistent and accessible keyboard navigation experience.
+
+## 2026-03-30 - Semantic Grouping for Custom Button Lists
+
+**Learning:** When creating a list of custom buttons or interactive badges that represent a single choice or set of choices (like "Select 2-3 subjects" or "Session length"), wrapping them with a standalone `<label>` tag is invalid HTML and breaks screen reader context because a `<label>` must be associated with a valid form input element.
+**Action:** Instead of `<label>`, use a semantic `<div role="group" aria-labelledby="[id]">` to contain the buttons, and use a standard `<div id="[id]">` for the descriptive text. This ensures screen readers correctly announce the group's purpose when navigating the buttons.

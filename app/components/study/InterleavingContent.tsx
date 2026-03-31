@@ -46,8 +46,8 @@ export function InterleavingContent({
             </div>
 
             {/* Subject Selection */}
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Select 2-3 subjects to interleave</label>
+            <div className="space-y-2" role="group" aria-labelledby="subjects-label">
+                <div id="subjects-label" className="text-sm font-medium">Select 2-3 subjects to interleave</div>
                 <div className="flex flex-wrap gap-2">
                     {subjects.length > 0 ? (
                         subjects.map(subject => {
@@ -85,14 +85,15 @@ export function InterleavingContent({
             </div>
 
             {/* Session Time */}
-            <div className="space-y-2">
-                <label className="text-sm font-medium">Session length</label>
+            <div className="space-y-2" role="group" aria-labelledby="session-length-label">
+                <div id="session-length-label" className="text-sm font-medium">Session length</div>
                 <div className="flex gap-2">
                     {SESSION_TIMES.map(time => (
                         <Button
                             key={time}
                             variant={sessionTime === time ? 'default' : 'outline'}
                             size="sm"
+                            aria-pressed={sessionTime === time}
                             onClick={() => setSessionTime(time)}
                         >
                             {time} mins
