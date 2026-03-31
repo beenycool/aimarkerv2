@@ -32,11 +32,8 @@ function getOrCreateAnonymousId(): string | null {
 
     let id = window.localStorage.getItem(ANONYMOUS_STORAGE_KEY);
     if (!id) {
-        // Prefer crypto UUID when available
-        if (window.crypto?.randomUUID) {
-            id = window.crypto.randomUUID();
-        } else if (window.crypto?.getRandomValues) {
-            // Secure fallback for browsers supporting getRandomValues but not randomUUID
+        if (window.crypto?.getRandomValues) {
+            // Generate a cryptographically secure random value
             const array = new Uint8Array(16);
             window.crypto.getRandomValues(array);
             const hex = Array.from(array)
