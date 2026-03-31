@@ -36,3 +36,7 @@
 
 **Learning:** Declaring O(N) array search functions like `const getName = (id) => items.find(i => i.id === id)` inside React components is an anti-pattern when called repeatedly during list rendering (e.g. `list.map(...)`). This creates an unnecessary O(N*M) time complexity.
 **Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
+
+## 2026-03-30 - Array vs Map Lookups in Renders
+**Learning:** In `app/(coach)/assessments/page.tsx`, calling an O(N) array search function (`subjects.find`) inside repeated list mappings or handlers creates unnecessary computational overhead during renders. Pre-computing a `Map` with `useMemo` and using O(1) lookups reduces render time complexity from O(N*M) to O(N+M).
+**Action:** Always proactively replace repeated `.find()` lookups within render loops or callback handlers with pre-computed `Map` lookups using `useMemo` and `useCallback`.

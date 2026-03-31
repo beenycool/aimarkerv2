@@ -173,6 +173,9 @@ export default function AssessmentsPage() {
         date: false,
     });
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+    // ⚡ Bolt: Pre-compute subject map for O(1) lookups during render
+    const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
     const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -555,7 +558,7 @@ export default function AssessmentsPage() {
 
         setIsSuggesting(true);
 
-        const subjectName = subjects.find(s => s.id === formSubject)?.name || '';
+        const subjectName = subjectMap.get(formSubject) || '';
         const topics = suggestedTopics[subjectName] || suggestedTopics.default;
         const nextTopics = topics.filter((topic) => !formTopics.includes(topic)).slice(0, 4);
         setFormTopics(prev => Array.from(new Set([...prev, ...nextTopics])));
@@ -669,8 +672,6 @@ export default function AssessmentsPage() {
     };
 
     // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
-    const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
-
     const getSubjectName = useCallback((subjectId?: string) => {
         if (!subjectId) return 'Unknown Subject';
         return subjectMap.get(subjectId) || 'Unknown Subject';
