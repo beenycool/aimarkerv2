@@ -29,13 +29,8 @@
 
 ## 2026-03-05 - Map Lookup vs Array Search during Renders
 
-**Learning:** Declaring O(N) array search functions like `const getName = (id) => items.find(i => i.id === id)` inside React components is an anti-pattern when called repeatedly during list rendering (e.g. `list.map(...)`). This creates an unnecessary O(N*M) time complexity.
-<<<<<<< HEAD
-**Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
-=======
 **Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
 ## 2026-03-24 - Batch State Updates vs Sequential Loops
 
 **Learning:** Using a `for` loop to sequentially update React state (e.g., `setState(prev => [...prev, newItem])`) with an artificial `setTimeout` delay is a performance anti-pattern. This causes O(N^2) array copying complexity, triggers N redundant re-renders, and adds an unnecessary O(N) artificial delay to the user experience.
 **Action:** Always replace sequential state update loops with a single batch update (`setState(allItems)`) to reduce the overall update complexity from O(N^2) to O(N) and consolidate N re-renders into one, providing an immediate and efficient UI response.
->>>>>>> c629d37 (Apply reviewer suggestions for PR #143)
