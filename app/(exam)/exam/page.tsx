@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic';
 import {
     CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, AlertTriangle, HelpCircle, Copy, Maximize, Minimize
 } from 'lucide-react';
-import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+import { Group, Panel, Separator } from 'react-resizable-panels';
 
 // Import Shadcn UI components
 import { Button } from '@/app/components/ui/button';
@@ -979,7 +979,7 @@ export default function GCSEMarkerApp() {
                 )}
 
                 <main className={`flex-1 flex overflow-hidden ${focusMode ? 'h-screen' : 'h-[calc(100vh-96px)]'}`}>
-                    <PanelGroup direction="horizontal" autoSaveId="exam-panels">
+                    <Group direction="horizontal" autoSaveId="exam-panels">
                         {/* PDF Viewer */}
                         <Panel defaultSize={50} minSize={20} className="relative z-10 hidden md:block">
                             <PDFViewer
@@ -994,7 +994,7 @@ export default function GCSEMarkerApp() {
                             />
                         </Panel>
 
-                        <PanelResizeHandle className="w-2 bg-border hover:bg-primary/50 transition-colors hidden md:block" />
+                        <Separator className="w-2 bg-border hover:bg-primary/50 transition-colors hidden md:block" />
 
                         {/* Right Panel: Exam Interface */}
                         <Panel defaultSize={50} minSize={30}>
@@ -1171,7 +1171,7 @@ export default function GCSEMarkerApp() {
                         </div>
                             </div>
                         </Panel>
-                    </PanelGroup>
+                    </Group>
                 </main>
             </div>
         );

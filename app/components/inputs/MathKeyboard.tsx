@@ -38,7 +38,7 @@ const symbolLabels = {
   '↓': 'Down arrow'
 };
 
-const symbols = Object.keys(symbolLabels);
+const symbols = Object.keys(symbolLabels) as (keyof typeof symbolLabels)[];
 
 const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }: MathKeyboardProps) => {
   const panelId = useId();
