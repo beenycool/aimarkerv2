@@ -15,13 +15,15 @@ export interface Database {
           student_id: string
           paper_id: string
           state: Json
-          updated_at: string
+          created_at: string
+          updated_at: string | null
         }
         Insert: {
           id?: string
           student_id: string
           paper_id: string
           state?: Json
+          created_at?: string
           updated_at?: string
         }
         Update: {
@@ -29,6 +31,7 @@ export interface Database {
           student_id?: string
           paper_id?: string
           state?: Json
+          created_at?: string
           updated_at?: string
         }
       }
