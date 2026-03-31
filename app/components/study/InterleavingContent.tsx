@@ -22,6 +22,11 @@ export function InterleavingContent({
 }: InterleavingContentProps) {
     const [selectedSubjects, setSelectedSubjects] = React.useState<string[]>([]);
     const [sessionTime, setSessionTime] = React.useState(45);
+    
+    // Generate unique IDs for accessibility labels
+    const baseId = React.useId();
+    const subjectsLabelId = `${baseId}-subjects-label`;
+    const sessionLengthLabelId = `${baseId}-session-length-label`;
 
     const toggleSubject = (name: string) => {
         setSelectedSubjects(prev =>
@@ -46,8 +51,8 @@ export function InterleavingContent({
             </div>
 
             {/* Subject Selection */}
-            <div className="space-y-2" role="group" aria-labelledby="subjects-label">
-                <div id="subjects-label" className="text-sm font-medium">Select 2-3 subjects to interleave</div>
+            <div className="space-y-2" role="group" aria-labelledby={subjectsLabelId}>
+                <div id={subjectsLabelId} className="text-sm font-medium">Select 2-3 subjects to interleave</div>
                 <div className="flex flex-wrap gap-2">
                     {subjects.length > 0 ? (
                         subjects.map(subject => {
@@ -85,8 +90,8 @@ export function InterleavingContent({
             </div>
 
             {/* Session Time */}
-            <div className="space-y-2" role="group" aria-labelledby="session-length-label">
-                <div id="session-length-label" className="text-sm font-medium">Session length</div>
+            <div className="space-y-2" role="group" aria-labelledby={sessionLengthLabelId}>
+                <div id={sessionLengthLabelId} className="text-sm font-medium">Session length</div>
                 <div className="flex gap-2">
                     {SESSION_TIMES.map(time => (
                         <Button
