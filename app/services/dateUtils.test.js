@@ -114,25 +114,20 @@ describe('pct', () => {
     expect(pct(6, 7)).toBe(86); // 85.714...
   });
 
-  test('returns 0 when denominator is 0', () => {
-    expect(pct(10, 0)).toBe(0);
+  test.each([
+    { den: 0, case: 'zero' },
+    { den: undefined, case: 'undefined' },
+    { den: null, case: 'null' },
+  ])('returns 0 when denominator is $case', ({ den }) => {
+    expect(pct(10, den)).toBe(0);
   });
 
-  test('returns 0 when denominator is undefined or null', () => {
-    expect(pct(10, undefined)).toBe(0);
-    expect(pct(10, null)).toBe(0);
-  });
-
-  test('handles negative numerators', () => {
-    expect(pct(-5, 10)).toBe(-50);
-  });
-
-  test('handles negative denominators', () => {
-    expect(pct(5, -10)).toBe(-50);
-  });
-
-  test('handles both negative', () => {
-    expect(pct(-5, -10)).toBe(50);
+  test.each([
+    { num: -5, den: 10, expected: -50, case: 'negative numerator' },
+    { num: 5, den: -10, expected: -50, case: 'negative denominator' },
+    { num: -5, den: -10, expected: 50, case: 'both negative' },
+  ])('handles $case', ({ num, den, expected }) => {
+    expect(pct(num, den)).toBe(expected);
   });
 });
 
