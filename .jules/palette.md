@@ -64,3 +64,8 @@
 
 **Learning:** When generating interactive user inputs within modals or dynamically loaded React components (like the "Your Response" `textarea` in `TechniqueModal.tsx`), explicit visible labels must be programmatically associated with their input using `htmlFor` and a matching `id`. Otherwise, clicking the label will not focus the input, and screen readers will fail to announce the label when the user navigates into the text area.
 **Action:** Always link visible `<label>` elements to their corresponding inputs by generating a unique ID (e.g., using React's `useId()`) and applying it to the input's `id` and the label's `htmlFor` attributes.
+
+## 2026-03-28 - [Keyboard Focus Accessibility]
+
+**Learning:** Custom interactive tool buttons in the application (like those in `PDFViewer.tsx`) consistently lacked explicit visual keyboard focus indicators, rendering them invisible to users navigating strictly via keyboard.
+**Action:** When adding or auditing icon-only utility buttons or custom toolbar components, ensure to apply the standard set of focus utility classes (e.g., `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`) used by the existing `Button` variants to maintain a consistent and accessible keyboard navigation experience.
