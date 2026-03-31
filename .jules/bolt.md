@@ -29,6 +29,7 @@
 
 ## 2026-03-05 - Map Lookup vs Array Search during Renders
 
+**Learning:** Declaring O(N) array search functions like `const getName = (id) => items.find(i => i.id === id)` inside React components is an anti-pattern when called repeatedly during list rendering (e.g. `list.map(...)`). This creates an unnecessary O(N*M) time complexity.
 **Action:** Always refactor these O(N) lookup functions to use `useMemo` to pre-compute a `Map`, exposing a new `useCallback` function for O(1) map lookups, optimizing render time down to O(N+M).
 ## 2026-03-24 - Batch State Updates vs Sequential Loops
 

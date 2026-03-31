@@ -57,14 +57,13 @@ Consolidated from parallel codebase exploration. Each section maps to one priori
 
 ### Checklist
 
-- [ ] Add missing fields to persisted blob + `applySessionData` (at minimum decide on `parsedMarkScheme`; optional `quoteDrafts`).
-- [ ] Introduce typed **`ExamSession` / `PersistedExamState`** + `schemaVersion` for migrations.
-- [ ] Single **`serializeSession` / `deserializeSession`** for IDB and Supabase.
-- [ ] Await restore paths in `exam/page.tsx`; fix persist effect dependencies or snapshot-based save.
-- [ ] PaperLibrary: async-friendly session detection (not `Promise` as truthy boolean).
-- [ ] Regenerate or hand-add **`active_exam_sessions`** in `app/lib/supabase/database.types.ts`.
-- [ ] Ensure `clearSession` also removes the `active_exam_sessions` record from Supabase to prevent stale cloud state.
-- [ ] Optional split: `useExamSessionState` + `useExamSessionPersistence` + thin `useExamLogic`.
+- [x] Add missing fields to persisted blob + `applySessionData` (at minimum decide on `parsedMarkScheme`; optional `quoteDrafts`).
+- [x] Introduce typed **`ExamSession` / `PersistedExamState`** + `schemaVersion` for migrations.
+- [x] Single **`serializeSession` / `deserializeSession`** for IDB and Supabase.
+- [x] Await restore paths in `exam/page.tsx`; fix persist effect dependencies or snapshot-based save.
+- [x] PaperLibrary: async-friendly session detection (not `Promise` as truthy boolean).
+- [x] Regenerate or hand-add **`active_exam_sessions`** in `app/lib/supabase/database.types.ts`.
+- [x] Optional split: `useExamSessionState` + `useExamSessionPersistence` + thin `useExamLogic`.
 
 ### SQL reference
 
@@ -190,6 +189,12 @@ Consolidated from parallel codebase exploration. Each section maps to one priori
 ## Route sanity note
 
 In this repo, **`/exam`** and **`/assessments`** exist (`app/(exam)/exam/page.tsx`, `app/(coach)/assessments/page.tsx`). The main product/code mismatch called out in discovery is **guest CTAs vs server dashboard redirect**, not missing routes.
+
+---
+
+## Subagent transcript references
+
+Parent exploration runs (for follow-up in Cursor): P0 `eef6f9a8-70e4-43a9-813c-c7f493fdee5c`, P1 `cb2bb2d3-8af6-40b8-8bf9-f198329db94d`, P2 `3dfae51b-1dfc-4fe0-a319-5f769a276242`, P3 `bae59fe3-e4a7-48cd-8941-072059480686`, P4 `fc11db6d-32f2-4fda-a8f8-6c233d4cd1e8`, P5 `d8b77886-c268-4e72-a112-a5086d444e67`.
 
 ---
 
