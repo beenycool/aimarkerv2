@@ -79,3 +79,10 @@
 
 **Learning:** When using generic UI `Button` components (like from a Next.js/React component library) inside complex study modalities and dynamically rendered modals (`TechniqueModal.tsx`, `PomodoroContent.tsx`, `InterleavingContent.tsx`), they will default to `type="submit"` in standard HTML form contexts if a `type` is not explicitly provided. This can lead to unintended page reloads or form submissions if these smaller study UI blocks are ever nested inside larger forms.
 **Action:** Always explicitly provide `type="button"` to interactive custom button elements (`<Button>`) when they are meant to act strictly as UI toggles, asynchronous triggers, or state-changers, rather than form submitters.
+
+
+## 2024-05-15 - Contextualized Disabled States
+
+**Learning:** Conditionally disabling interactive UI elements (like a "Generate" button when fewer than the required inputs are selected) is good practice, but without context, it causes confusion and a poor user experience. Users and screen readers need to understand *why* the action is unavailable. Dynamic button text helps; visible helper text with `aria-describedby` is more reliable than relying on `title` alone for disabled controls because disabled buttons often use `pointer-events: none`, so native tooltips may not show on hover.
+
+**Action:** When adding `disabled={condition}` to a `<Button>`, explain every distinct disabled state (for example loading versus validation) using visible helper text tied with `aria-describedby`, and use the button label as a clear call to action when appropriate (e.g. "Select 2+ Subjects to Mix" instead of only "Get Combinations").
