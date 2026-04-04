@@ -74,3 +74,8 @@
 
 **Learning:** When creating a list of custom buttons or interactive badges that represent a single choice or set of choices (like "Select 2-3 subjects" or "Session length"), wrapping them with a standalone `<label>` tag is invalid HTML and breaks screen reader context because a `<label>` must be associated with a valid form input element.
 **Action:** Instead of `<label>`, use a semantic `<div role="group" aria-labelledby="[id]">` to contain the buttons, and use a standard `<div id="[id]">` for the descriptive text. This ensures screen readers correctly announce the group's purpose when navigating the buttons.
+
+## 2026-04-01 - Avoid Unintended Form Submissions with generic UI Button
+
+**Learning:** When using generic UI `Button` components (like from a Next.js/React component library) inside complex study modalities and dynamically rendered modals (`TechniqueModal.tsx`, `PomodoroContent.tsx`, `InterleavingContent.tsx`), they will default to `type="submit"` in standard HTML form contexts if a `type` is not explicitly provided. This can lead to unintended page reloads or form submissions if these smaller study UI blocks are ever nested inside larger forms.
+**Action:** Always explicitly provide `type="button"` to interactive custom button elements (`<Button>`) when they are meant to act strictly as UI toggles, asynchronous triggers, or state-changers, rather than form submitters.

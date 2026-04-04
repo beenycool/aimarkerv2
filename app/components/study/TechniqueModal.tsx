@@ -253,6 +253,7 @@ function AIAssistedContent({
             {/* Generate Button */}
             {!aiContent && (
                 <Button
+                    type="button"
                     onClick={onGenerate}
                     disabled={isGenerating}
                     className="w-full gap-2"
@@ -305,9 +306,19 @@ function AIAssistedContent({
                         </div>
                     )}
 
-                    <Button variant="outline" onClick={onGenerate} className="w-full gap-2">
-                        <RefreshCcw className="h-4 w-4" />
-                        Generate New Prompts
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onGenerate}
+                        disabled={isGenerating}
+                        className="w-full gap-2"
+                    >
+                        {isGenerating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <RefreshCcw className="h-4 w-4" />
+                        )}
+                        {isGenerating ? 'Generating prompts...' : 'Generate New Prompts'}
                     </Button>
                 </div>
             )}

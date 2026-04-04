@@ -96,6 +96,7 @@ export function InterleavingContent({
                     {SESSION_TIMES.map(time => (
                         <Button
                             key={time}
+                            type="button"
                             variant={sessionTime === time ? 'default' : 'outline'}
                             size="sm"
                             aria-pressed={sessionTime === time}
@@ -109,6 +110,7 @@ export function InterleavingContent({
 
             {/* AI Suggestions */}
             <Button
+                type="button"
                 onClick={onGenerate}
                 disabled={isGenerating}
                 variant="outline"

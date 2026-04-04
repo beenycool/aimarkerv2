@@ -105,17 +105,17 @@ export function PomodoroContent({
             {/* Controls */}
             <div className="flex justify-center gap-3">
                 {timerState.isRunning ? (
-                    <Button onClick={onPause} variant="outline" size="lg" className="gap-2">
+                    <Button type="button" onClick={onPause} variant="outline" size="lg" className="gap-2">
                         <Pause className="h-5 w-5" />
                         Pause
                     </Button>
                 ) : (
-                    <Button onClick={onStart} size="lg" className="gap-2">
+                    <Button type="button" onClick={onStart} size="lg" className="gap-2">
                         <Play className="h-5 w-5" />
                         {timerState.isPaused ? 'Resume' : 'Start'}
                     </Button>
                 )}
-                <Button onClick={() => onReset(false)} variant="outline" size="lg" className="gap-2">
+                <Button type="button" onClick={() => onReset(false)} variant="outline" size="lg" className="gap-2">
                     <RotateCcw className="h-5 w-5" />
                     Reset
                 </Button>
