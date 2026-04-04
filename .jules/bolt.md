@@ -36,6 +36,7 @@
 **Learning:** Using a `for` loop to sequentially update React state (e.g., `setState(prev => [...prev, newItem])`) with an artificial `setTimeout` delay is a performance anti-pattern. This causes O(N^2) array copying complexity, triggers N redundant re-renders, and adds an unnecessary O(N) artificial delay to the user experience.
 **Action:** Always replace sequential state update loops with a single batch update (`setState(allItems)`) to reduce the overall update complexity from O(N^2) to O(N) and consolidate N re-renders into one, providing an immediate and efficient UI response.
 
-## 2024-03-22 - O(N*M) Map Aggregation
+## 2026-03-22 - O(N+M) Map Aggregation
+
 **Learning:** Nested array iterations like `.filter()` and `.reduce()` inside a `.map()` create a significant bottleneck (O(N*M)) for relational data aggregation, such as calculating stats per subject across large attempt histories.
 **Action:** Always pre-aggregate relational data using a single-pass `Map` (O(N)) before the main `.map()` loop (O(M)), reducing overall time complexity to O(N+M) and reducing redundant memory allocations.
