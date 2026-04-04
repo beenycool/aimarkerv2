@@ -86,13 +86,21 @@ export default function SubjectsPage() {
                 // ⚡ Bolt: Replaced O(N*M) nested .filter().reduce() inside .map() with O(N+M) Map aggregation.
                 // Pre-compute earned marks, total marks, and last attempt per subject_id in a single pass.
                 const attemptsMap = new Map<string, { earned: number; total: number; lastAttempt?: string }>();
-                for (const a of (attempts || []) as { subject_id: string; marks_awarded?: number; marks_total?: number; attempted_at?: string }[]) {
-                    const current = attemptsMap.get(a.subject_id) || { earned: 0, total: 0, lastAttempt: undefined };
-                    attemptsMap.set(a.subject_id, {
-                        earned: current.earned + Number(a.marks_awarded || 0),
-                        total: current.total + Number(a.marks_total || 0),
-                        lastAttempt: current.lastAttempt ?? a.attempted_at
-                    });
+                for (const a of (attempts || []) as { subject_id?: string; marks_awarded?: number; marks_total?: number; attempted_at?: string }[]) {
+                    if (!a.subject_id) continue;
+                    let agg = attemptsMap.get(a.subject_id);
+                    if (!agg) {
+                        agg = { earned: 0, total: 0, lastAttempt: a.attempted_at };
+                        attemptsMap.set(a.subject_id, agg);
+                    }
+                    agg.earned += Number(a.marks_awarded || 0);
+                    agg.total += Number(a.marks_total || 0);
+                    if (
+                        a.attempted_at &&
+                        (!agg.lastAttempt || a.attempted_at > agg.lastAttempt)
+                    ) {
+                        agg.lastAttempt = a.attempted_at;
+                    }
                 }
 
                 // Calculate stats for each subject using O(1) Map lookups
