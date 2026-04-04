@@ -83,20 +83,29 @@ export default function SubjectsPage() {
                     listQuestionAttempts(studentId, { limit: 500 }),
                 ]);
 
-                // Calculate stats for each subject
+                // ⚡ Bolt: Replaced O(N*M) nested .filter().reduce() inside .map() with O(N+M) Map aggregation.
+                // Pre-compute earned marks, total marks, and last attempt per subject_id in a single pass.
+                const attemptsMap = new Map<string, { earned: number; total: number; lastAttempt?: string }>();
+                for (const a of (attempts || []) as { subject_id: string; marks_awarded?: number; marks_total?: number; attempted_at?: string }[]) {
+                    const current = attemptsMap.get(a.subject_id) || { earned: 0, total: 0, lastAttempt: undefined };
+                    attemptsMap.set(a.subject_id, {
+                        earned: current.earned + Number(a.marks_awarded || 0),
+                        total: current.total + Number(a.marks_total || 0),
+                        lastAttempt: current.lastAttempt ?? a.attempted_at
+                    });
+                }
+
+                // Calculate stats for each subject using O(1) Map lookups
                 const subjectsWithStats: SubjectWithStats[] = (subs || []).map((s: Subject) => {
-                    const subjectAttempts = (attempts || []).filter((a: { subject_id: string }) => a.subject_id === s.id);
-                    const earned = subjectAttempts.reduce((sum: number, a: { marks_awarded?: number }) => sum + Number(a.marks_awarded || 0), 0);
-                    const total = subjectAttempts.reduce((sum: number, a: { marks_total?: number }) => sum + Number(a.marks_total || 0), 0);
-                    const confidence = pct(earned, total);
-                    const lastAttempt = subjectAttempts[0]?.attempted_at;
+                    const stats = attemptsMap.get(s.id) || { earned: 0, total: 0, lastAttempt: undefined };
+                    const confidence = pct(stats.earned, stats.total);
 
                     return {
                         ...s,
                         currentGrade: bandFromPercent(confidence),
                         progress: confidence,
-                        lastPracticed: lastAttempt
-                            ? new Date(lastAttempt).toLocaleDateString()
+                        lastPracticed: stats.lastAttempt
+                            ? new Date(stats.lastAttempt).toLocaleDateString()
                             : 'Never',
                         trend: confidence >= 70 ? 'up' : confidence >= 50 ? 'stable' : 'down',
                         confidence,
