@@ -27,6 +27,18 @@ export function InterleavingContent({
     const baseId = React.useId();
     const subjectsLabelId = `${baseId}-subjects-label`;
     const sessionLengthLabelId = `${baseId}-session-length-label`;
+    const generateHintId = `${baseId}-generate-hint`;
+
+    const noSubjects = subjects.length === 0;
+    const needsMoreSubjects = selectedSubjects.length < 2;
+    const isGenerateDisabled = isGenerating || noSubjects || needsMoreSubjects;
+    const generateDisabledMessage = isGenerating
+        ? 'Generating topic combinations...'
+        : noSubjects
+            ? 'Add subjects in Settings first to get combinations.'
+            : needsMoreSubjects
+                ? 'Select at least 2 subjects to get combinations.'
+                : '';
 
     const toggleSubject = (name: string) => {
         setSelectedSubjects(prev =>
@@ -110,9 +122,10 @@ export function InterleavingContent({
             {/* AI Suggestions */}
             <Button
                 onClick={onGenerate}
-                disabled={isGenerating || subjects.length === 0 || selectedSubjects.length < 2}
+                disabled={isGenerateDisabled}
                 variant="outline"
                 className="w-full gap-2"
+                aria-describedby={isGenerateDisabled ? generateHintId : undefined}
             >
                 {isGenerating ? (
                     <>
@@ -122,10 +135,20 @@ export function InterleavingContent({
                 ) : (
                     <>
                         <Sparkles className="h-4 w-4" />
-                        Get AI Topic Combinations
+                        {noSubjects
+                            ? 'Add subjects in Settings'
+                            : needsMoreSubjects
+                                ? 'Select 2+ Subjects to Mix'
+                                : 'Get AI Topic Combinations'}
                     </>
                 )}
             </Button>
+
+            {isGenerateDisabled && (
+                <p id={generateHintId} className="text-xs text-muted-foreground">
+                    {generateDisabledMessage}
+                </p>
+            )}
 
             {aiContent && (
                 <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
