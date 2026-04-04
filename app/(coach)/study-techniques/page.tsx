@@ -221,7 +221,6 @@ export default function StudyTechniquesPage() {
                     <CardContent>
                         <div className="grid sm:grid-cols-3 gap-3">
                             {recommendedTechniques.map((rec) => {
-                                // ⚡ Bolt: Replaced O(N) techniques.find() lookup with O(1) Map lookup
                                 const technique = techniqueMap.get(rec.id);
                                 if (!technique) return null;
                                 const IconComponent = technique.icon;
