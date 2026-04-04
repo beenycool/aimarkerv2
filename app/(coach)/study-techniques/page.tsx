@@ -114,6 +114,8 @@ const techniques = [
     },
 ];
 
+const techniqueMap = new Map(techniques.map(t => [t.id, t]));
+
 const resources = [
     {
         title: '📚 Books',
@@ -219,7 +221,7 @@ export default function StudyTechniquesPage() {
                     <CardContent>
                         <div className="grid sm:grid-cols-3 gap-3">
                             {recommendedTechniques.map((rec) => {
-                                const technique = techniques.find(t => t.id === rec.id);
+                                const technique = techniqueMap.get(rec.id);
                                 if (!technique) return null;
                                 const IconComponent = technique.icon;
                                 return (
