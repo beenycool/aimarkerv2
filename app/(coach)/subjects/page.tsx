@@ -85,6 +85,7 @@ export default function SubjectsPage() {
 
                 // ⚡ Bolt: Replaced O(N*M) nested .filter().reduce() inside .map() with O(N+M) Map aggregation.
                 // Pre-compute earned marks, total marks, and last attempt per subject_id in a single pass.
+                // listQuestionAttempts returns rows sorted desc by attempted_at, so the first row per subject is latest.
                 const attemptsMap = new Map<string, { earned: number; total: number; lastAttempt?: string }>();
                 for (const a of (attempts || []) as { subject_id?: string; marks_awarded?: number; marks_total?: number; attempted_at?: string }[]) {
                     if (!a.subject_id) continue;
@@ -95,10 +96,7 @@ export default function SubjectsPage() {
                     }
                     agg.earned += Number(a.marks_awarded || 0);
                     agg.total += Number(a.marks_total || 0);
-                    if (
-                        a.attempted_at &&
-                        (!agg.lastAttempt || a.attempted_at > agg.lastAttempt)
-                    ) {
+                    if (a.attempted_at && !agg.lastAttempt) {
                         agg.lastAttempt = a.attempted_at;
                     }
                 }
