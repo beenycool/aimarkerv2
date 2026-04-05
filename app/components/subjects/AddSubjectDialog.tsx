@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import {
     Dialog,
     DialogContent,
@@ -65,6 +65,8 @@ export function AddSubjectDialog({
     const [examBoard, setExamBoard] = useState("");
     const [targetGrade, setTargetGrade] = useState("");
 
+    const hintId = useId();
+
     const resetForm = () => {
         setName("");
         setCustomName("");
@@ -85,6 +87,8 @@ export function AddSubjectDialog({
     const availableSubjects = GCSE_SUBJECTS.filter(
         (s) => !existingSubjects.includes(s)
     );
+
+    const isSubmitDisabled = (!name || (name === "Other" && !customName)) || !examBoard || !targetGrade;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -158,20 +162,26 @@ export function AddSubjectDialog({
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            disabled={
-                                (!name || (name === "Other" && !customName)) ||
-                                !examBoard ||
-                                !targetGrade
-                            }
-                        >
-                            Add Subject
-                        </Button>
+                    <DialogFooter className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2">
+                        {isSubmitDisabled ? (
+                            <p id={hintId} className="text-xs text-muted-foreground order-last sm:order-first text-left mt-2 sm:mt-0">
+                                Please fill all fields to add a subject.
+                            </p>
+                        ) : (
+                            <div className="order-last sm:order-first"></div>
+                        )}
+                        <div className="flex justify-end gap-2 w-full sm:w-auto">
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isSubmitDisabled}
+                                aria-describedby={isSubmitDisabled ? hintId : undefined}
+                            >
+                                Add Subject
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>
