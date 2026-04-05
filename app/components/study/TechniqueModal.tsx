@@ -22,6 +22,7 @@ import {
     Loader2,
     Sparkles
 } from 'lucide-react';
+import { VoiceDictationButton } from '@/app/components/VoiceDictationButton';
 import { useStudyTechniques, TimerState } from '@/app/hooks/useStudyTechniques';
 import { PomodoroContent } from './PomodoroContent';
 import { InterleavingContent } from './InterleavingContent';
@@ -221,6 +222,13 @@ function AIAssistedContent({
     const [userResponse, setUserResponse] = React.useState('');
     const responseId = React.useId();
 
+    const appendDictated = React.useCallback((fragment: string) => {
+        setUserResponse((cur) => {
+            const joiner = cur.length > 0 && !/\s$/.test(cur) ? ' ' : '';
+            return cur + joiner + fragment;
+        });
+    }, []);
+
     const icons: Record<string, React.ReactNode> = {
         'active-recall': <Brain className="h-6 w-6 text-accent" />,
         'elaboration': <BookOpen className="h-6 w-6 text-warning" />,
@@ -253,7 +261,6 @@ function AIAssistedContent({
             {/* Generate Button */}
             {!aiContent && (
                 <Button
-                    type="button"
                     onClick={onGenerate}
                     disabled={isGenerating}
                     className="w-full gap-2"
@@ -288,13 +295,16 @@ function AIAssistedContent({
                     {(techniqueId === 'active-recall' || techniqueId === 'elaboration') && (
                         <div className="space-y-2">
                             <Label htmlFor={responseId}>Your Response</Label>
-                            <textarea
-                                id={responseId}
-                                value={userResponse}
-                                onChange={(e) => setUserResponse(e.target.value)}
-                                placeholder="Write your answer here... Don't peek at your notes!"
-                                className="w-full h-32 p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
+                            <div className="flex gap-2 items-start">
+                                <textarea
+                                    id={responseId}
+                                    value={userResponse}
+                                    onChange={(e) => setUserResponse(e.target.value)}
+                                    placeholder="Write or dictate your answer... Don't peek at your notes!"
+                                    className="flex-1 min-w-0 h-32 p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                                />
+                                <VoiceDictationButton onAppend={appendDictated} className="mt-1" />
+                            </div>
                             <p className="text-xs text-muted-foreground">
                                 {userResponse.length > 0 && (
                                     <span className="flex items-center gap-1 text-success">
@@ -306,19 +316,9 @@ function AIAssistedContent({
                         </div>
                     )}
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={onGenerate}
-                        disabled={isGenerating}
-                        className="w-full gap-2"
-                    >
-                        {isGenerating ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <RefreshCcw className="h-4 w-4" />
-                        )}
-                        {isGenerating ? 'Generating prompts...' : 'Generate New Prompts'}
+                    <Button variant="outline" onClick={onGenerate} className="w-full gap-2">
+                        <RefreshCcw className="h-4 w-4" />
+                        Generate New Prompts
                     </Button>
                 </div>
             )}

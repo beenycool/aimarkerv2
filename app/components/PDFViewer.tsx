@@ -258,7 +258,12 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         <div 
             className="bg-muted/30 flex flex-col hidden md:flex h-full w-full"
         >
-            <div role="tablist" aria-label="PDF source" className="bg-card border-b border-border p-2 flex gap-2">
+            <div className="sticky top-0 z-20 shrink-0 bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/90 border-b border-border shadow-sm">
+            <div
+                role="tablist"
+                aria-label="PDF source"
+                className="p-2 flex gap-2 border-b border-border/60"
+            >
                 {[
                     { id: 'paper', label: 'Question Paper' },
                     ...(hasInsert ? [{ id: 'insert', label: 'Source Material' }] : []),
@@ -282,7 +287,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                 ))}
             </div>
             
-            <div className="bg-card border-b border-border p-2 flex gap-2 items-center">
+            <div className="p-2 flex gap-2 items-center">
                 <span className="text-xs text-muted-foreground mr-2">Annotations:</span>
                 <button 
                     type="button"
@@ -320,6 +325,7 @@ className={`p-2 rounded transition-colors ${focusVisibleClasses} ${!annotationMo
         >
                     <Move className="w-4 h-4" />
                 </button>
+            </div>
             </div>
             
             <div 

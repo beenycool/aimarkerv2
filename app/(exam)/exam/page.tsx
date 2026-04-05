@@ -2,13 +2,15 @@
 'use client';
 import { toast } from "sonner";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
-    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, AlertTriangle, HelpCircle, Copy, Maximize, Minimize
+    CheckCircle, RefreshCw, BarChart2, Lightbulb, GraduationCap, Sparkles, Save, Trash2, SkipForward, Eye, Key, Brain, ImageIcon, ArrowLeft, Clock, AlertTriangle, HelpCircle, Copy, Maximize, Minimize,
+    Pin, PinOff, FileText
 } from 'lucide-react';
-import { Group, Panel, Separator } from 'react-resizable-panels';
+import { Group, Panel, Separator, usePanelRef } from 'react-resizable-panels';
+import { burstConfetti } from '@/app/lib/confetti';
 
 // Import Shadcn UI components
 import { Button } from '@/app/components/ui/button';
@@ -48,6 +50,10 @@ export default function GCSEMarkerApp() {
     // PDF viewer state
     const [activePdfTab, setActivePdfTab] = useState('paper');
     const [focusMode, setFocusMode] = useState(false);
+    const [pdfEmphasized, setPdfEmphasized] = useState(false);
+    const [weaknessPaperLoading, setWeaknessPaperLoading] = useState(false);
+    const pdfPanelRef = usePanelRef();
+    const summaryConfettiFired = useRef(false);
     const [pdfPage, setPdfPage] = useState(1);
     const [pdfScale, setPdfScale] = useState(1.5);
 
@@ -141,6 +147,12 @@ export default function GCSEMarkerApp() {
         let timer;
         if (phase === 'exam') timer = setInterval(() => setTimeElapsed(p => p + 1), 1000);
         return () => clearInterval(timer);
+    }, [phase]);
+
+    useEffect(() => {
+        if (phase !== 'summary' || summaryConfettiFired.current) return;
+        summaryConfettiFired.current = true;
+        void burstConfetti({ particleCount: 120, spread: 82, origin: { y: 0.58 } });
     }, [phase]);
 
     // Save API keys
@@ -756,6 +768,46 @@ export default function GCSEMarkerApp() {
 
     const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
+    const togglePdfEmphasis = useCallback(() => {
+        setPdfEmphasized((prev) => {
+            const next = !prev;
+            queueMicrotask(() => {
+                pdfPanelRef.current?.resize(next ? '56%' : '50%');
+            });
+            return next;
+        });
+    }, [pdfPanelRef]);
+
+    const generateWeaknessPaper = useCallback(async () => {
+        if (!studentId && !user) {
+            toast.error('Sign in to generate a weakness paper.');
+            return;
+        }
+        setWeaknessPaperLoading(true);
+        try {
+            const res = await fetch('/api/weakness-paper', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ apiKey: hackClubApiKey || undefined }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Generation failed');
+            const blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `weakness-practice-${new Date().toISOString().slice(0, 10)}.md`;
+            a.rel = 'noopener';
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('Downloaded practice paper (Markdown). Print or open in any editor.');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Could not generate paper');
+        } finally {
+            setWeaknessPaperLoading(false);
+        }
+    }, [studentId, user, hackClubApiKey]);
+
     // === RENDER PHASES ===
 
     if (phase === 'upload') {
@@ -856,6 +908,29 @@ export default function GCSEMarkerApp() {
                                     checkSessionForPaper={exam.checkSessionForPaper}
                                 />
                             </div>
+
+                            <div className="border-t pt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-sm font-medium text-foreground">Custom weakness paper</p>
+                                    <p className="text-xs text-muted-foreground max-w-md mt-1">
+                                        Builds a printable Markdown exam from your top mistake patterns and recent wrong answers. Uses your Hack Club key or the server key.
+                                    </p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="gap-2 shrink-0"
+                                    disabled={weaknessPaperLoading}
+                                    onClick={generateWeaknessPaper}
+                                >
+                                    {weaknessPaperLoading ? (
+                                        <RefreshCw className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <FileText className="w-4 h-4" />
+                                    )}
+                                    Generate from mistakes
+                                </Button>
+                            </div>
                         </CardContent>
 
                         <CardFooter>
@@ -923,7 +998,13 @@ export default function GCSEMarkerApp() {
         }
 
         return (
-            <div className="min-h-screen bg-background flex flex-col h-screen overflow-hidden">
+            <div
+                className={
+                    focusMode
+                        ? 'fixed inset-0 z-50 bg-background flex flex-col h-[100dvh] overflow-hidden'
+                        : 'min-h-screen bg-background flex flex-col h-screen overflow-hidden'
+                }
+            >
                 {/* Header */}
                 {!focusMode ? (
                     <>
@@ -951,8 +1032,19 @@ export default function GCSEMarkerApp() {
                                     <span className="text-sm font-medium text-muted-foreground">Q</span>
                                     <span className="text-sm font-bold text-foreground">{exam.currentQIndex + 1}/{exam.activeQuestions.length}</span>
                                 </div>
-                                <Button variant="outline" size="sm" onClick={() => setFocusMode(true)} className="gap-2 hidden md:flex">
-                                    <Maximize className="w-4 h-4" /> Focus Mode
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={togglePdfEmphasis}
+                                    className="gap-2 hidden md:flex"
+                                    aria-pressed={pdfEmphasized}
+                                    title="Give more horizontal space to the PDF"
+                                >
+                                    {pdfEmphasized ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                                    {pdfEmphasized ? 'Balance panels' : 'More PDF space'}
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => setFocusMode(true)} className="gap-2">
+                                    <Maximize className="w-4 h-4" /> Focus mode
                                 </Button>
                                 <Button variant="ghost" size="icon" onClick={clearSaveData} className="text-muted-foreground hover:text-destructive">
                                     <Trash2 className="w-4 h-4" />
@@ -965,7 +1057,7 @@ export default function GCSEMarkerApp() {
                         </div>
                     </>
                 ) : (
-                    <div className="absolute top-4 right-6 z-50 flex gap-2">
+                    <div className="absolute top-4 right-6 z-[60] flex gap-2">
                         <div className="bg-card/80 backdrop-blur-md shadow-lg border rounded-full px-4 py-2 flex items-center gap-4">
                             <div className="flex items-center gap-2 text-sm">
                                 <Clock className="h-4 w-4 text-muted-foreground" />
@@ -979,9 +1071,16 @@ export default function GCSEMarkerApp() {
                 )}
 
                 <main className={`flex-1 flex overflow-hidden ${focusMode ? 'h-screen' : 'h-[calc(100vh-96px)]'}`}>
-                    <Group orientation="horizontal" id="exam-panels">
+                    <Group direction="horizontal" autoSaveId="exam-panels">
                         {/* PDF Viewer */}
-                        <Panel defaultSize={50} minSize={20} className="relative z-10 hidden md:block">
+                        <Panel
+                            panelRef={pdfPanelRef}
+                            id="exam-pdf"
+                            defaultSize={50}
+                            minSize={22}
+                            maxSize={72}
+                            className="relative z-10 hidden md:block"
+                        >
                             <PDFViewer
                                 file={activePdfTab === 'paper' ? files.paper : files.insert}
                                 pageNumber={pdfPage}
@@ -1089,6 +1188,7 @@ export default function GCSEMarkerApp() {
                                     value={exam.userAnswers[question.id]}
                                     onChange={onAnswerChange}
                                     graphFigure={question.type === 'graph_drawing' ? graphFigure : null}
+                                    multipleChoiceLegend={question.type === 'multiple_choice' ? question.question : undefined}
                                 />
                             </div>
 
