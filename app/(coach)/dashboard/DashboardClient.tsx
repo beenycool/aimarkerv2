@@ -38,6 +38,7 @@ import {
     getStudyStreak,
     getWeeklyAttemptStats,
 } from '../../services/studentOS';
+import type { QuestionAttempt } from '../../services/studentOS/types';
 import { generateDashboardInsights } from '../../services/AICoachService';
 
 interface AIInsights {
@@ -60,24 +61,26 @@ const getConfidenceBg = (confidence: number) => {
     return "bg-destructive";
 };
 
-// Types for data
+// Types for data (aligned with studentOS row shapes)
 interface Subject {
     id: string;
     name: string;
-    exam_board?: string;
-    target_grade?: string;
+    exam_board?: string | null;
+    target_grade?: string | null;
 }
 
 interface Attempt {
-    subject_id: string;
-    marks_awarded?: number;
-    marks_total?: number;
+    student_id?: string;
+    subject_id: string | null;
+    marks_awarded?: number | null;
+    marks_total?: number | null;
     attempted_at?: string;
-    primary_flaw?: string;
+    primary_flaw?: string | null;
+    question_type?: string | null;
 }
 
 interface Assessment {
-    date?: string;
+    date?: string | null;
     kind?: string;
 }
 
@@ -136,7 +139,9 @@ export default function DashboardClient({
             byId[s.id] = { subject: s, earned: 0, total: 0, lastAttempt: null };
         }
         for (const a of attempts) {
-            const bucket = byId[a.subject_id];
+            const sid = a.subject_id;
+            if (!sid) continue;
+            const bucket = byId[sid];
             if (!bucket) continue;
             bucket.earned += Number(a.marks_awarded || 0);
             bucket.total += Number(a.marks_total || 0);
@@ -167,7 +172,7 @@ export default function DashboardClient({
     }, [subjectStats]);
 
     const topWeaknesses = useMemo(() => {
-        const counts = weaknessCountsFromAttempts(attempts);
+        const counts = weaknessCountsFromAttempts(attempts as QuestionAttempt[]);
         return pickTopWeaknesses(counts, 6);
     }, [attempts]);
 

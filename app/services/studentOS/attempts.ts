@@ -1,13 +1,14 @@
-// @ts-nocheck
-import { supabase } from '../supabaseClient';
 import { QuestionAttempt, PerformanceStatsBase } from './types';
 import { pickTopWeaknesses as pickTopWeaknessesUtil } from '../mathUtils';
+import { clientOrDefault, type StudentOSSupabase } from './getSupabase';
 
 export async function listQuestionAttempts(
   studentId: string,
-  { subjectId = null, limit = 200, sinceISO = null }: { subjectId?: string | null; limit?: number; sinceISO?: string | null } = {}
+  { subjectId = null, limit = 200, sinceISO = null }: { subjectId?: string | null; limit?: number; sinceISO?: string | null } = {},
+  client?: StudentOSSupabase
 ): Promise<QuestionAttempt[]> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
 
   let q = supabase
     .from('question_attempts')
@@ -19,7 +20,7 @@ export async function listQuestionAttempts(
   if (subjectId) q = q.eq('subject_id', subjectId);
   if (sinceISO) q = q.gte('attempted_at', sinceISO);
 
-  const { data, error } = await q;
+  const { data, error } = await q.returns<QuestionAttempt[]>();
   if (error) throw error;
   return data || [];
 }
@@ -27,13 +28,14 @@ export async function listQuestionAttempts(
 /**
  * Safe attempt logger: never throws (so it won’t break marking UX).
  */
-export async function logQuestionAttemptSafe(row: Partial<QuestionAttempt>): Promise<void> {
+export async function logQuestionAttemptSafe(row: Partial<QuestionAttempt>, client?: StudentOSSupabase): Promise<void> {
   try {
     if (!row?.student_id) return;
+    const supabase = clientOrDefault(client);
     const payload = {
       ...row,
       attempted_at: row.attempted_at || new Date().toISOString(),
-    } as QuestionAttempt;
+    };
     const { error } = await supabase.from('question_attempts').insert(payload as any);
     if (error) console.warn('logQuestionAttemptSafe error:', error);
   } catch (e) {
@@ -58,10 +60,11 @@ export function pickTopWeaknesses(counts: Record<string, number>, limit = 5): { 
 /**
  * Get weekly attempt statistics for trend comparison
  */
-export async function getWeeklyAttemptStats(studentId: string) {
+export async function getWeeklyAttemptStats(studentId: string, client?: StudentOSSupabase) {
   if (!studentId) return { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } };
 
   try {
+    const supabase = clientOrDefault(client);
     const now = new Date();
     const startOfThisWeek = new Date(now);
     startOfThisWeek.setDate(now.getDate() - now.getDay());
@@ -75,7 +78,8 @@ export async function getWeeklyAttemptStats(studentId: string) {
       .select('marks_awarded, marks_total, attempted_at')
       .eq('student_id', studentId)
       .gte('attempted_at', startOfLastWeek.toISOString())
-      .order('attempted_at', { ascending: false });
+      .order('attempted_at', { ascending: false })
+      .returns<{ marks_awarded: number | null; marks_total: number | null; attempted_at: string }[]>();
 
     if (error || !attempts?.length) {
       return { thisWeek: { earned: 0, total: 0 }, lastWeek: { earned: 0, total: 0 } };
@@ -102,16 +106,26 @@ export async function getWeeklyAttemptStats(studentId: string) {
  * Get topic-level performance (more granular than subject-level)
  * Groups attempts by topic/question_type to identify specific weak areas
  */
-export async function getTopicPerformance(studentId: string) {
+export async function getTopicPerformance(studentId: string, client?: StudentOSSupabase) {
   if (!studentId) return { byTopic: {}, byQuestionType: {} };
 
   try {
+    const supabase = clientOrDefault(client);
     const { data: attempts, error } = await supabase
       .from('question_attempts')
       .select('subject_id, marks_awarded, marks_total, primary_flaw, question_type')
       .eq('student_id', studentId)
       .order('attempted_at', { ascending: false })
-      .limit(500);
+      .limit(500)
+      .returns<
+        {
+          subject_id: string | null;
+          marks_awarded: number | null;
+          marks_total: number | null;
+          primary_flaw: string | null;
+          question_type: string | null;
+        }[]
+      >();
 
     if (error || !attempts?.length) return { byTopic: {}, byQuestionType: {} };
 
@@ -155,16 +169,18 @@ export async function getTopicPerformance(studentId: string) {
 /**
  * Get subject performance stats (average score per subject)
  */
-export async function getSubjectPerformance(studentId: string) {
+export async function getSubjectPerformance(studentId: string, client?: StudentOSSupabase) {
   if (!studentId) return {};
 
   try {
+    const supabase = clientOrDefault(client);
     const { data: attempts, error } = await supabase
       .from('question_attempts')
       .select('subject_id, marks_awarded, marks_total')
       .eq('student_id', studentId)
       .order('attempted_at', { ascending: false })
-      .limit(500);
+      .limit(500)
+      .returns<{ subject_id: string | null; marks_awarded: number | null; marks_total: number | null }[]>();
 
     if (error || !attempts?.length) return {};
 

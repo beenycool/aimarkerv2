@@ -21,31 +21,20 @@ import {
 } from '@/app/components/ui/select';
 import { Badge } from '@/app/components/ui/badge';
 import { Clock, Trash2, Calendar, BookOpen } from 'lucide-react';
+import type { StudySession } from '@/app/services/studentOS/types';
 
 interface Subject {
     id: string;
     name: string;
 }
 
-interface Session {
-    id?: string;
-    subject_id?: string;
-    session_type?: string;
-    planned_for?: string;
-    duration_minutes?: number;
-    status?: string;
-    topic?: string;
-    notes?: string;
-    start_time?: string;
-}
-
 interface SessionDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    session?: Session | null;
+    session?: StudySession | null;
     subjects: Subject[];
     defaultDate?: string;
-    onSave: (data: Partial<Session>) => Promise<void>;
+    onSave: (data: Partial<StudySession>) => Promise<void>;
     onDelete?: (sessionId: string) => Promise<void>;
 }
 
@@ -62,7 +51,7 @@ export function SessionDialog({
     const [loading, setLoading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(false);
 
-    const [formData, setFormData] = useState<Partial<Session>>({
+    const [formData, setFormData] = useState<Partial<StudySession>>({
         subject_id: '',
         planned_for: '',
         duration_minutes: 30,
@@ -102,7 +91,7 @@ export function SessionDialog({
         try {
             await onSave({
                 ...formData,
-                subject_id: formData.subject_id || undefined,
+                subject_id: formData.subject_id?.trim() ? formData.subject_id : null,
             });
             onOpenChange(false);
         } catch (error) {
@@ -138,7 +127,7 @@ export function SessionDialog({
 
     // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
     // Transforms O(N*M) rendering time complexity into O(N+M).
-    const getSubjectName = useCallback((id?: string) => {
+    const getSubjectName = useCallback((id: string | null | undefined) => {
         return subjectMap.get(id || '') || 'General Study';
     }, [subjectMap]);
 

@@ -402,8 +402,6 @@ export default function AIConfigTable({
                                 <button
                                     type="button"
                                     key={key}
-                                    type="button"
-                                    aria-label={`Select profile ${profile.name}`}
                                     onClick={() => applyProfile(key, profile.config)}
                                     className={`relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}
                                     aria-label={`Select profile ${profile.name}. Description: ${profile.description}`}

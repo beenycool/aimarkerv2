@@ -1,10 +1,10 @@
-// @ts-nocheck - Supabase schema types need alignment; remove when fixed per reviewer
-import { supabase } from '../supabaseClient';
 import { isoToday } from '../dateUtils';
 import { Assessment, AssessmentAttachment } from './types';
+import { clientOrDefault, type StudentOSSupabase } from './getSupabase';
 
-export async function listAssessments(studentId: string): Promise<Assessment[]> {
+export async function listAssessments(studentId: string, client?: StudentOSSupabase): Promise<Assessment[]> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const { data, error } = await supabase
     .from('assessments')
     .select('*')
@@ -14,8 +14,9 @@ export async function listAssessments(studentId: string): Promise<Assessment[]> 
   return data || [];
 }
 
-export async function createAssessment(studentId: string, input: Partial<Assessment>): Promise<Assessment> {
+export async function createAssessment(studentId: string, input: Partial<Assessment>, client?: StudentOSSupabase): Promise<Assessment> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const payload = {
     student_id: studentId,
     subject_id: input.subject_id || null,
@@ -26,14 +27,15 @@ export async function createAssessment(studentId: string, input: Partial<Assessm
     notes: input.notes || null,
     attachments: Array.isArray(input.attachments) ? input.attachments : [],
   };
-  const { data, error } = await supabase.from('assessments').insert(payload).select('*').single();
+  const { data, error } = await supabase.from('assessments').insert(payload as any).select('*').single();
   if (error) throw error;
   return data;
 }
 
-export async function uploadAssessmentFile(studentId: string, file: File): Promise<{ path: string }> {
+export async function uploadAssessmentFile(studentId: string, file: File, client?: StudentOSSupabase): Promise<{ path: string }> {
   if (!studentId) throw new Error('studentId required');
   if (!file) throw new Error('file required');
+  const supabase = clientOrDefault(client);
 
   const timestamp = Date.now();
   // Safe filename handling
@@ -52,19 +54,21 @@ export async function uploadAssessmentFile(studentId: string, file: File): Promi
   return { path };
 }
 
-export async function deleteAssessmentFiles(paths: string[] = []): Promise<void> {
+export async function deleteAssessmentFiles(paths: string[] = [], client?: StudentOSSupabase): Promise<void> {
   if (!paths.length) return;
+  const supabase = clientOrDefault(client);
   const { error } = await supabase.storage.from('assessment-pdfs').remove(paths);
   if (error) throw error;
 }
 
-export async function deleteAssessment(studentId: string, assessmentId: string, attachments: (string | AssessmentAttachment)[] = []): Promise<void> {
+export async function deleteAssessment(studentId: string, assessmentId: string, attachments: (string | AssessmentAttachment)[] = [], client?: StudentOSSupabase): Promise<void> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const attachmentPaths = (attachments || [])
     .map((item) => (typeof item === 'string' ? item : item?.path))
     .filter(Boolean);
   if (attachmentPaths.length) {
-    await deleteAssessmentFiles(attachmentPaths as string[]);
+    await deleteAssessmentFiles(attachmentPaths as string[], client);
   }
   const { error } = await supabase
     .from('assessments')
@@ -77,10 +81,11 @@ export async function deleteAssessment(studentId: string, assessmentId: string, 
 /**
  * Get upcoming assessments (within next 30 days)
  */
-export async function getUpcomingAssessments(studentId: string): Promise<Assessment[]> {
+export async function getUpcomingAssessments(studentId: string, client?: StudentOSSupabase): Promise<Assessment[]> {
   if (!studentId) return [];
 
   try {
+    const supabase = clientOrDefault(client);
     const today = isoToday();
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);

@@ -1,6 +1,6 @@
-// @ts-nocheck
-import { supabase } from '../supabaseClient';
-import { AIPreferences, CustomAPIConfig, StudentSettings } from './types';
+import { AIPreferences, StudentSettings } from './types';
+import { clientOrDefault, type StudentOSSupabase } from './getSupabase';
+
 
 // Default AI preferences for per-feature configuration
 export const DEFAULT_AI_PREFERENCES: AIPreferences = {
@@ -41,8 +41,12 @@ export const DEFAULT_SETTINGS: Omit<StudentSettings, 'student_id'> = {
   busy_periods: [], // e.g., [{start: '12:00', end: '13:00', label: 'Lunch'}]
 };
 
-export async function getOrCreateSettings(studentId: string): Promise<StudentSettings> {
+export async function getOrCreateSettings(
+  studentId: string,
+  client?: StudentOSSupabase
+): Promise<StudentSettings> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
 
   const { data, error } = await supabase
     .from('student_settings')
@@ -59,7 +63,7 @@ export async function getOrCreateSettings(studentId: string): Promise<StudentSet
 
   const { data: inserted, error: insertError } = await supabase
     .from('student_settings')
-    .insert({ student_id: studentId, ...DEFAULT_SETTINGS })
+    .insert({ student_id: studentId, ...DEFAULT_SETTINGS } as any)
     .select('*')
     .single();
 
@@ -67,10 +71,14 @@ export async function getOrCreateSettings(studentId: string): Promise<StudentSet
   return inserted;
 }
 
-export async function updateSettings(studentId: string, patch: Partial<StudentSettings>): Promise<StudentSettings> {
+export async function updateSettings(
+  studentId: string,
+  patch: Partial<StudentSettings>,
+  client?: StudentOSSupabase
+): Promise<StudentSettings> {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
-    .from('student_settings')
+  const supabase = clientOrDefault(client);
+  const { data, error } = await (supabase.from('student_settings') as any)
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
     .select('*')

@@ -79,6 +79,17 @@ export async function POST(request) {
                                     console.warn('Could not extract mime type');
                                     continue;
                                 }
+                                // ~3.2M base64 chars ≈ ~2.4MB binary — stay under typical 4.5MB request limits (e.g. Vercel).
+                                const MAX_INLINE_BASE64_CHARS = 3_200_000;
+                                if (data.length > MAX_INLINE_BASE64_CHARS) {
+                                    return NextResponse.json(
+                                        {
+                                            error:
+                                                'Inline image/PDF is too large. Use a smaller file, compress before base64, or upload to storage and reference by URL instead of sending full base64 in the body.',
+                                        },
+                                        { status: 413 }
+                                    );
+                                }
                                 parts.push({ inline_data: { mime_type: mimeType, data } });
                             } catch (err) {
                                 console.warn('Error processing data URL:', err.message, url?.slice(0, 100));

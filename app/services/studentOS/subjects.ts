@@ -1,9 +1,9 @@
-// @ts-nocheck
-import { supabase } from '../supabaseClient';
 import { Subject } from './types';
+import { clientOrDefault, type StudentOSSupabase } from './getSupabase';
 
-export async function listSubjects(studentId: string): Promise<Subject[]> {
+export async function listSubjects(studentId: string, client?: StudentOSSupabase): Promise<Subject[]> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const { data, error } = await supabase
     .from('subjects')
     .select('*')
@@ -13,8 +13,9 @@ export async function listSubjects(studentId: string): Promise<Subject[]> {
   return data || [];
 }
 
-export async function getSubject(studentId: string, subjectId: string): Promise<Subject> {
+export async function getSubject(studentId: string, subjectId: string, client?: StudentOSSupabase): Promise<Subject> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const { data, error } = await supabase
     .from('subjects')
     .select('*')
@@ -25,8 +26,9 @@ export async function getSubject(studentId: string, subjectId: string): Promise<
   return data;
 }
 
-export async function createSubject(studentId: string, input: Partial<Subject>): Promise<Subject> {
+export async function createSubject(studentId: string, input: Partial<Subject>, client?: StudentOSSupabase): Promise<Subject> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const payload = {
     student_id: studentId,
     name: (input?.name || '').trim(),
@@ -35,19 +37,25 @@ export async function createSubject(studentId: string, input: Partial<Subject>):
     weekly_minutes: Number.isFinite(input?.weekly_minutes) ? input.weekly_minutes : null,
     tier: input?.tier || null,
   };
-  const { data, error } = await supabase.from('subjects').insert(payload).select('*').single();
+  const { data, error } = await supabase.from('subjects').insert(payload as any).select('*').single();
   if (error) throw error;
   return data;
 }
 
-export async function deleteSubject(studentId: string, subjectId: string): Promise<void> {
+export async function deleteSubject(studentId: string, subjectId: string, client?: StudentOSSupabase): Promise<void> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
   const { error } = await supabase.from('subjects').delete().eq('student_id', studentId).eq('id', subjectId);
   if (error) throw error;
 }
 
-export async function ensureSubjectForStudent(studentId: string, { name, exam_board }: { name?: string; exam_board?: string }): Promise<Subject | null> {
+export async function ensureSubjectForStudent(
+  studentId: string,
+  { name, exam_board }: { name?: string; exam_board?: string },
+  client?: StudentOSSupabase
+): Promise<Subject | null> {
   if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
 
   const subjectName = (name || '').trim() || 'Unknown Subject';
   const board = (exam_board || '').trim() || null;
@@ -68,10 +76,9 @@ export async function ensureSubjectForStudent(studentId: string, { name, exam_bo
       student_id: studentId,
       name: subjectName,
       exam_board: board,
-      // sensible defaults so the planner can work immediately
       target_grade: null,
       weekly_minutes: 90,
-    })
+    } as any)
     .select('*')
     .single();
 
