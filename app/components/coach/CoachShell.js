@@ -33,6 +33,7 @@ function NavItem({ href, label, Icon, active, onClick }) {
     <Link
       href={href}
       onClick={onClick}
+      aria-current={active ? 'page' : undefined}
       className={[
         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
         active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100'
@@ -61,11 +62,13 @@ export default function CoachShell({ children }) {
       <div className="md:hidden sticky top-0 z-30 bg-white border-b border-slate-200">
         <div className="flex items-center justify-between px-4 py-3">
           <button
-            onClick={() => setOpen(true)}
+            type="button"
+            onClick={() => setOpen((o) => !o)}
             className="inline-flex items-center justify-center rounded-lg p-2 text-slate-700 hover:bg-slate-100"
-            aria-label="Open menu"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
           >
-            <Menu className="h-5 w-5" />
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
           <Link href="/dashboard" className="font-extrabold tracking-tight text-slate-900">
@@ -104,6 +107,7 @@ export default function CoachShell({ children }) {
               </Link>
 
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-slate-700 hover:bg-slate-100"
                 aria-label="Close menu"
@@ -145,6 +149,7 @@ export default function CoachShell({ children }) {
         {/* Backdrop for mobile */}
         {open && (
           <button
+            type="button"
             className="fixed inset-0 z-30 bg-black/30 md:hidden"
             onClick={() => setOpen(false)}
             aria-label="Close menu backdrop"

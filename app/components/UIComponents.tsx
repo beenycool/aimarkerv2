@@ -391,26 +391,26 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         {/* Explanation Logic: If checklist exists, feedback.text IS the explanation. Otherwise use legacy explanation state. */}
                         {hasChecklist ? (
                             <details className="group">
-                                <summary className="list-none w-full py-2 bg-primary/5 text-primary border border-primary/10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                                <summary className="list-none w-full py-2 bg-primary/5 text-primary border border-primary/10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors cursor-pointer select-none">
                                     <Sparkles className="w-4 h-4" /> Explain This Result
                                 </summary>
-                                 <div className="mt-3 bg-primary/5 border border-primary/10 p-4 rounded-lg animate-in fade-in">
-                                    <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2"><Brain className="w-4 h-4" /> Detailed Explanation</h4>
+                                 <div className="mt-3 coach-voice p-4 rounded-lg animate-in fade-in">
+                                    <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2 font-sans"><Brain className="w-4 h-4" /> Detailed Explanation</h4>
                                     <div className="text-foreground text-sm leading-relaxed"><MarkdownText text={feedback.text} /></div>
                                 </div>
                             </details>
                         ) : (
                     <>
                         {!explanation && (
-                            <button type="button" onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                            <button type="button" onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
                                 {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                 {explaining ? "Preparing explanation..." : "Explain Why"}
                             </button>
                         )}
 
                         {explanation && (
-                            <div className="bg-primary/10 border border-primary/20 p-4 rounded-lg animate-in fade-in">
-                                <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2"><Sparkles className="w-4 h-4" /> Explanation</h4>
+                            <div className="coach-voice p-4 rounded-lg animate-in fade-in">
+                                <h4 className="flex items-center gap-2 text-primary font-bold text-sm mb-2 font-sans"><Sparkles className="w-4 h-4" /> Explanation</h4>
                                 <div className="text-foreground text-sm leading-relaxed"><MarkdownText text={explanation} /></div>
                             </div>
                         )}
@@ -426,7 +426,13 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         <div className="space-y-3 mb-3 max-h-48 overflow-y-auto p-2 bg-muted/30 rounded-lg">
                             {followUpChat.map((msg, i) => (
                                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] p-2 rounded-lg text-sm ${msg.role === 'user' ? 'bg-primary/20 text-primary-foreground' : 'bg-card border border-border text-foreground'}`}>
+                                    <div
+                                        className={`max-w-[85%] p-2 rounded-lg text-sm ${
+                                            msg.role === 'user'
+                                                ? 'bg-primary/20 text-primary-foreground'
+                                                : 'coach-voice text-foreground'
+                                        }`}
+                                    >
                                         <MarkdownText text={msg.text} />
                                     </div>
                                 </div>
@@ -435,19 +441,19 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                     )}
                     <div className="flex gap-2">
                         <input type="text" aria-label="Follow-up question" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-                        <button type="button" aria-label="Send follow-up question" title="Send follow-up question" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <button type="button" aria-label="Send follow-up question" title="Send follow-up question" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
                             {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>
                 </div>
 
                 {onRetry && (
-                    <button type="button" onClick={onRetry} className="w-full mt-2 py-3 border border-border rounded-lg font-semibold flex items-center justify-center gap-2 text-sm text-foreground hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                    <button type="button" onClick={onRetry} className="w-full mt-2 py-3 border border-border rounded-lg font-semibold flex items-center justify-center gap-2 text-sm text-foreground hover:bg-muted/30 transition-colors">
                         <RotateCcw className="w-4 h-4" />
                         Retry question
                     </button>
                 )}
-                <button type="button" onClick={onNext} className="w-full mt-2 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <button type="button" onClick={onNext} className="w-full mt-2 py-3 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors">
                     Next Question <ChevronRight className="w-4 h-4" />
                 </button>
             </div>
