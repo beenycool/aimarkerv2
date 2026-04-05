@@ -24,6 +24,7 @@ import {
     updateSession,
     deleteSession,
 } from '../../services/studentOS';
+import type { StudySession } from '../../services/studentOS/types';
 import { SessionDialog } from '../../components/SessionDialog';
 import { AIScheduleGenerator } from '../../components/AIScheduleGenerator';
 
@@ -32,17 +33,7 @@ interface Subject {
     name: string;
 }
 
-interface Session {
-    id: string;
-    subject_id?: string;
-    session_type?: string;
-    planned_for?: string;
-    duration_minutes?: number;
-    status?: string;
-    topic?: string;
-    notes?: string;
-    start_time?: string;
-}
+type Session = StudySession;
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const EMPTY_SESSIONS: ReadonlyArray<Session> = [];
@@ -99,7 +90,7 @@ export default function TimetablePage() {
     // ⚡ Bolt: Replaced O(N) .find with O(1) Map lookup
     const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
 
-    const getSubjectName = useCallback((subjectId?: string) => {
+    const getSubjectName = useCallback((subjectId?: string | null) => {
         if (!subjectId) return 'Study Session';
         return subjectMap.get(subjectId) || 'Study Session';
     }, [subjectMap]);
@@ -177,13 +168,13 @@ export default function TimetablePage() {
         setSessionDialogOpen(true);
     };
 
-    const handleSaveSession = async (data: Partial<Session>) => {
+    const handleSaveSession = async (data: Partial<StudySession>) => {
         if (!studentId) return;
 
         if (editingSession?.id) {
             await updateSession(studentId, editingSession.id, data);
         } else {
-            await createSession(studentId, data as any);
+            await createSession(studentId, data);
         }
         await loadData();
     };
@@ -290,7 +281,7 @@ export default function TimetablePage() {
                                                                 {session.session_type === 'ai_planned' && (
                                                                     <Sparkles className="h-3 w-3 text-primary shrink-0" />
                                                                 )}
-                                                                {getSubjectName(session.subject_id)}
+                                                                {getSubjectName(session.subject_id ?? undefined)}
                                                             </div>
                                                             {session.start_time && (
                                                                 <div className="text-primary font-medium text-[10px] mt-0.5">

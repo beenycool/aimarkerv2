@@ -1,14 +1,19 @@
-// @ts-nocheck
 import { supabase } from '../supabaseClient';
 import { isoToday } from '../dateUtils';
 import { StudySession } from './types';
+import { clientOrDefault, type StudentOSSupabase } from './getSupabase';
 
-export async function getOrCreateTodayDailySession(studentId: string, { subjectId = null, items = [] }: { subjectId?: string | null; items?: any[] } = {}): Promise<StudySession> {
+export async function getOrCreateTodayDailySession(
+  studentId: string,
+  { subjectId = null, items = [] }: { subjectId?: string | null; items?: unknown[] } = {},
+  client?: StudentOSSupabase
+): Promise<StudySession> {
   if (!studentId) throw new Error('studentId required');
 
+  const db = clientOrDefault(client);
   const today = isoToday();
 
-  let q = supabase
+  let q = db
     .from('study_sessions')
     .select('*')
     .eq('student_id', studentId)
@@ -24,7 +29,7 @@ export async function getOrCreateTodayDailySession(studentId: string, { subjectI
   if (error && error.code !== 'PGRST116') throw error;
   if (existing) return existing;
 
-  const { data: inserted, error: insErr } = await supabase
+  const { data: inserted, error: insErr } = await db
     .from('study_sessions')
     .insert({
       student_id: studentId,
@@ -34,7 +39,7 @@ export async function getOrCreateTodayDailySession(studentId: string, { subjectI
       duration_minutes: 15,
       status: 'planned',
       items,
-    })
+    } as any)
     .select('*')
     .single();
 
@@ -44,8 +49,7 @@ export async function getOrCreateTodayDailySession(studentId: string, { subjectI
 
 export async function completeSession(studentId: string, sessionId: string, reflection: string): Promise<StudySession> {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
-    .from('study_sessions')
+  const { data, error } = await (supabase.from('study_sessions') as any)
     .update({
       status: 'done',
       reflection,
@@ -90,7 +94,7 @@ export async function createSession(studentId: string, sessionData: Partial<Stud
     topic: sessionData.topic || null,
     start_time: sessionData.start_time || null,
   };
-  const { data, error } = await supabase.from('study_sessions').insert(payload).select('*').single();
+  const { data, error } = await supabase.from('study_sessions').insert(payload as any).select('*').single();
   if (error) throw error;
   return data;
 }
@@ -100,8 +104,7 @@ export async function createSession(studentId: string, sessionData: Partial<Stud
  */
 export async function updateSession(studentId: string, sessionId: string, patch: Partial<StudySession>): Promise<StudySession> {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await supabase
-    .from('study_sessions')
+  const { data, error } = await (supabase.from('study_sessions') as any)
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
     .eq('id', sessionId)
@@ -158,7 +161,7 @@ export async function saveSchedule(studentId: string, sessions: Partial<StudySes
 
   if (payloads.length === 0) return [];
 
-  const { data, error } = await supabase.from('study_sessions').insert(payloads).select('*');
+  const { data, error } = await supabase.from('study_sessions').insert(payloads as any).select('*');
   if (error) throw error;
   return data || [];
 }
@@ -166,11 +169,12 @@ export async function saveSchedule(studentId: string, sessions: Partial<StudySes
 /**
  * Calculate consecutive days with completed study sessions (streak)
  */
-export async function getStudyStreak(studentId: string) {
+export async function getStudyStreak(studentId: string, client?: StudentOSSupabase) {
   if (!studentId) return { current: 0, longest: 0 };
 
   try {
-    const { data: sessions, error } = await supabase
+    const db = clientOrDefault(client);
+    const { data: sessions, error } = await db
       .from('study_sessions')
       .select('planned_for, status')
       .eq('student_id', studentId)
@@ -245,7 +249,18 @@ export async function getRecentStudyHistory(studentId: string, days = 14) {
       .select('id, subject_id, topic, status, planned_for, duration_minutes, session_type')
       .eq('student_id', studentId)
       .gte('planned_for', startISO)
-      .order('planned_for', { ascending: false });
+      .order('planned_for', { ascending: false })
+      .returns<
+        {
+          id: string;
+          subject_id: string | null;
+          topic: string | null;
+          status: string;
+          planned_for: string;
+          duration_minutes: number | null;
+          session_type: string;
+        }[]
+      >();
 
     if (error || !sessions?.length) {
       return { recentTopics: [], completedSessions: [], skippedCount: 0 };

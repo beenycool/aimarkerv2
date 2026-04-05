@@ -1,3 +1,6 @@
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
 type RateLimitEntry = {
     count: number;
     expiresAt: number;
@@ -6,6 +9,28 @@ type RateLimitEntry = {
 const WINDOW_MS = 60_000;
 const MAX_KEYS = 500;
 const tokenCache = new Map<string, RateLimitEntry>();
+
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const upstashRedis =
+    upstashUrl && upstashToken ? new Redis({ url: upstashUrl, token: upstashToken }) : null;
+
+const upstashLimiters = new Map<number, Ratelimit>();
+
+function getUpstashLimiter(limit: number): Ratelimit | null {
+    if (!upstashRedis) return null;
+    let lim = upstashLimiters.get(limit);
+    if (!lim) {
+        lim = new Ratelimit({
+            redis: upstashRedis,
+            limiter: Ratelimit.slidingWindow(limit, '60 s'),
+            prefix: 'aimarker-rl',
+        });
+        upstashLimiters.set(limit, lim);
+    }
+    return lim;
+}
 
 function pruneExpiredEntries(now: number) {
     for (const [key, value] of tokenCache.entries()) {
@@ -29,7 +54,7 @@ function pruneExpiredEntries(now: number) {
     }
 }
 
-export function checkRateLimit(identifier: string, limit: number = 10): { success: boolean; limit: number; remaining: number } {
+function checkRateLimitInMemory(identifier: string, limit: number): { success: boolean; limit: number; remaining: number } {
     const now = Date.now();
     pruneExpiredEntries(now);
 
@@ -47,4 +72,20 @@ export function checkRateLimit(identifier: string, limit: number = 10): { succes
     const nextCount = existingEntry.count + 1;
     tokenCache.set(identifier, { ...existingEntry, count: nextCount });
     return { success: true, limit, remaining: Math.max(limit - nextCount, 0) };
+}
+
+/**
+ * Distributed rate limit when `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` are set
+ * (recommended for Vercel/serverless). Otherwise falls back to per-isolate in-memory limiting.
+ */
+export async function checkRateLimit(
+    identifier: string,
+    limit: number = 10
+): Promise<{ success: boolean; limit: number; remaining: number }> {
+    const lim = getUpstashLimiter(limit);
+    if (lim) {
+        const res = await lim.limit(identifier);
+        return { success: res.success, limit, remaining: res.remaining };
+    }
+    return checkRateLimitInMemory(identifier, limit);
 }
