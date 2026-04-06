@@ -70,43 +70,18 @@ import {
     deleteUpcomingExam,
     bulkCreateUpcomingExams,
 } from '../../services/studentOS';
+import type {
+    Assessment as BaseAssessment,
+    AssessmentAttachment,
+    UpcomingExam,
+    Subject,
+} from '../../services/studentOS/types';
 import { AIService } from '../../services/AIService';
 
-interface Assessment {
-    id: string;
+type Assessment = BaseAssessment & {
     fileName?: string;
-    subject_id?: string;
-    kind?: string;
-    date?: string;
-    score?: number;
-    total?: number;
-    notes?: string;
-    attachments?: {
-        path: string;
-        name: string;
-        size: number;
-        type?: string;
-    }[];
-}
-
-interface UpcomingExam {
-    id: string;
-    subject_id?: string;
-    title: string;
-    exam_date: string;
-    exam_time?: string;
-    duration_minutes?: number;
-    location?: string;
-    notes?: string;
-    topics?: string[];
-    source?: string;
-    type?: 'real' | 'mock';
-}
-
-interface Subject {
-    id: string;
-    name: string;
-}
+    attachments?: (AssessmentAttachment & { size?: number })[];
+};
 
 type UploadStatus = 'uploading' | 'uploaded' | 'error';
 
@@ -351,7 +326,7 @@ export default function AssessmentsPage() {
     };
 
     const handleDeleteExam = async () => {
-        if (!studentId || !examToDelete) return;
+        if (!studentId || !examToDelete?.id) return;
         try {
             await deleteUpcomingExam(studentId, examToDelete.id);
             setUpcomingExams(prev => prev.filter(e => e.id !== examToDelete.id));
@@ -365,7 +340,7 @@ export default function AssessmentsPage() {
     };
 
     const handleToggleExamType = async (exam: UpcomingExam) => {
-        if (!studentId) return;
+        if (!studentId || !exam.id) return;
         try {
             const newType = (exam.type || 'real') === 'real' ? 'mock' : 'real';
             await updateUpcomingExam(studentId, exam.id, { type: newType });
@@ -626,7 +601,7 @@ export default function AssessmentsPage() {
     };
 
     const handleConfirmDelete = async () => {
-        if (!studentId || !assessmentToDelete) return;
+        if (!studentId || !assessmentToDelete?.id) return;
         setIsDeleting(true);
         try {
             await deleteAssessment(studentId, assessmentToDelete.id, assessmentToDelete.attachments || []);
@@ -672,7 +647,7 @@ export default function AssessmentsPage() {
     };
 
     // ⚡ Bolt: Replaced O(N) subjects.find() lookup with O(1) Map lookup
-    const getSubjectName = useCallback((subjectId?: string) => {
+    const getSubjectName = useCallback((subjectId?: string | null) => {
         if (!subjectId) return 'Unknown Subject';
         return subjectMap.get(subjectId) || 'Unknown Subject';
     }, [subjectMap]);

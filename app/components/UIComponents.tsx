@@ -5,6 +5,17 @@ import DOMPurify from 'dompurify';
 import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw, X, Check } from 'lucide-react';
 import katex from 'katex';
 
+let dompurifyAnchorRelHookRegistered = false;
+function ensureDompurifyAnchorRelHook() {
+    if (dompurifyAnchorRelHookRegistered) return;
+    DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
+        if (node.tagName === 'A') {
+            node.setAttribute('rel', 'noopener noreferrer');
+        }
+    });
+    dompurifyAnchorRelHookRegistered = true;
+}
+
 interface MarkdownTextProps {
   text: string;
   className?: string;
@@ -247,7 +258,7 @@ const renderMarkdown = (rawText: string): string => {
 // ⚡ Bolt: Hoisted DOMPurify configuration object outside the component body.
 // This prevents recreating this large configuration object on every useMemo computation
 // when rendering MarkdownText, reducing memory allocation overhead and GC churn.
-const DOMPURIFY_CONFIG: import('dompurify').Config = Object.freeze({
+const DOMPURIFY_CONFIG: import('dompurify').Config = {
     ADD_TAGS: ['math', 'mrow', 'annotation', 'semantics', 'mtext', 'mn', 'mo', 'mi', 'mspace', 'mover', 'munder', 'munderover', 'mfrac', 'msqrt', 'mroot', 'merror', 'mpadded', 'mphantom', 'menclose', 'ms', 'mglyph', 'maligngroup', 'malignmark', 'mtable', 'mtr', 'mtd', 'svg', 'path', 'line', 'circle', 'rect', 'polygon', 'polyline', 'ellipse', 'g', 'defs', 'clippath', 'use'],
     ADD_ATTR: ['aria-hidden', 'focusable', 'role', 'd', 'viewBox', 'fill', 'stroke', 'stroke-width', 'x', 'y', 'width', 'height', 'xmlns', 'xlink:href'],
     ALLOWED_TAGS: [
@@ -267,16 +278,12 @@ const DOMPURIFY_CONFIG: import('dompurify').Config = Object.freeze({
         'ul'
     ],
     ALLOWED_ATTR: ['class', 'style'],
-    afterSanitizeAttributes(node: Element) {
-        if (node.tagName === 'A') {
-            node.setAttribute('rel', 'noopener noreferrer');
-        }
-    }
-} as const);
+};
 
 export const MarkdownText = memo(({ text, className = "" }: MarkdownTextProps) => {
     const sanitizedHTML = useMemo(() => {
         if (!text) return "";
+        ensureDompurifyAnchorRelHook();
         const rendered = renderMarkdown(text);
         return DOMPurify.sanitize(rendered, DOMPURIFY_CONFIG);
     }, [text]);

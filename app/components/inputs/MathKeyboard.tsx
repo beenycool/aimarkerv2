@@ -82,12 +82,12 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }: MathKeyboardProps) 
         </button>
       </div>
       <div className="grid grid-cols-8 sm:grid-cols-10 gap-1 bg-muted p-2 rounded-lg border border-border">
-        {symbols.map(s => (
+        {symbols.map((s) => (
           <button
             key={s}
             type="button"
-            aria-label={`Insert ${symbolLabels[s] || s}`}
-            title={symbolLabels[s]}
+            aria-label={`Insert ${(symbolLabels as Record<string, string>)[s] || s}`}
+            title={(symbolLabels as Record<string, string>)[s]}
             onClick={() => onInsert(s)}
             className="h-8 bg-card rounded shadow-sm border border-border hover:bg-primary/10 hover:border-primary/30 hover:text-primary font-mono font-bold text-foreground transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
