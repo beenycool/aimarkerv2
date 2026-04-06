@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/app/lib/supabase/server';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+// ~3.2M base64 chars ≈ ~2.4MB binary — stay under typical 4.5MB request limits (e.g. Vercel).
+const MAX_INLINE_BASE64_CHARS = 3_200_000;
 
 export async function POST(request) {
     try {
@@ -79,8 +81,6 @@ export async function POST(request) {
                                     console.warn('Could not extract mime type');
                                     continue;
                                 }
-                                // ~3.2M base64 chars ≈ ~2.4MB binary — stay under typical 4.5MB request limits (e.g. Vercel).
-                                const MAX_INLINE_BASE64_CHARS = 3_200_000;
                                 if (data.length > MAX_INLINE_BASE64_CHARS) {
                                     return NextResponse.json(
                                         {

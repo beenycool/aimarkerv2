@@ -18,7 +18,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { success } = await checkRateLimit(user.id, 10);
+        const { success } = await checkRateLimit(user.id, 10, 'hackclub');
         if (!success) {
             return NextResponse.json({ error: "Rate limit exceeded. Please wait a minute." }, { status: 429 });
         }

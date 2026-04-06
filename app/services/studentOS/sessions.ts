@@ -1,4 +1,3 @@
-import { supabase } from '../supabaseClient';
 import { isoToday } from '../dateUtils';
 import { StudySession } from './types';
 import { clientOrDefault, type StudentOSSupabase } from './getSupabase';
@@ -47,9 +46,10 @@ export async function getOrCreateTodayDailySession(
   return inserted;
 }
 
-export async function completeSession(studentId: string, sessionId: string, reflection: string): Promise<StudySession> {
+export async function completeSession(studentId: string, sessionId: string, reflection: string, client?: StudentOSSupabase): Promise<StudySession> {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await (supabase.from('study_sessions') as any)
+  const db = clientOrDefault(client);
+  const { data, error } = await (db.from('study_sessions') as any)
     .update({
       status: 'done',
       reflection,
@@ -64,10 +64,10 @@ export async function completeSession(studentId: string, sessionId: string, refl
   return data;
 }
 
-export async function listSessions(studentId: string, { fromDateISO, toDateISO }: { fromDateISO?: string; toDateISO?: string }): Promise<StudySession[]> {
+export async function listSessions(studentId: string, { fromDateISO, toDateISO }: { fromDateISO?: string; toDateISO?: string } = {}, client?: StudentOSSupabase): Promise<StudySession[]> {
   if (!studentId) throw new Error('studentId required');
-
-  let q = supabase.from('study_sessions').select('*').eq('student_id', studentId).order('planned_for', { ascending: true });
+  const db = clientOrDefault(client);
+  let q = db.from('study_sessions').select('*').eq('student_id', studentId).order('planned_for', { ascending: true });
 
   if (fromDateISO) q = q.gte('planned_for', fromDateISO);
   if (toDateISO) q = q.lte('planned_for', toDateISO);
@@ -80,8 +80,9 @@ export async function listSessions(studentId: string, { fromDateISO, toDateISO }
 /**
  * Create a new study session
  */
-export async function createSession(studentId: string, sessionData: Partial<StudySession>): Promise<StudySession> {
+export async function createSession(studentId: string, sessionData: Partial<StudySession>, client?: StudentOSSupabase): Promise<StudySession> {
   if (!studentId) throw new Error('studentId required');
+  const db = clientOrDefault(client);
   const payload = {
     student_id: studentId,
     subject_id: sessionData.subject_id || null,
@@ -94,7 +95,7 @@ export async function createSession(studentId: string, sessionData: Partial<Stud
     topic: sessionData.topic || null,
     start_time: sessionData.start_time || null,
   };
-  const { data, error } = await supabase.from('study_sessions').insert(payload as any).select('*').single();
+  const { data, error } = await db.from('study_sessions').insert(payload as any).select('*').single();
   if (error) throw error;
   return data;
 }
@@ -102,9 +103,10 @@ export async function createSession(studentId: string, sessionData: Partial<Stud
 /**
  * Update an existing study session
  */
-export async function updateSession(studentId: string, sessionId: string, patch: Partial<StudySession>): Promise<StudySession> {
+export async function updateSession(studentId: string, sessionId: string, patch: Partial<StudySession>, client?: StudentOSSupabase): Promise<StudySession> {
   if (!studentId) throw new Error('studentId required');
-  const { data, error } = await (supabase.from('study_sessions') as any)
+  const db = clientOrDefault(client);
+  const { data, error } = await (db.from('study_sessions') as any)
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq('student_id', studentId)
     .eq('id', sessionId)
@@ -117,9 +119,10 @@ export async function updateSession(studentId: string, sessionId: string, patch:
 /**
  * Delete a study session
  */
-export async function deleteSession(studentId: string, sessionId: string): Promise<void> {
+export async function deleteSession(studentId: string, sessionId: string, client?: StudentOSSupabase): Promise<void> {
   if (!studentId) throw new Error('studentId required');
-  const { error } = await supabase
+  const db = clientOrDefault(client);
+  const { error } = await db
     .from('study_sessions')
     .delete()
     .eq('student_id', studentId)
@@ -131,11 +134,12 @@ export async function deleteSession(studentId: string, sessionId: string): Promi
  * Batch save sessions from AI-generated schedule
  * Clears existing planned sessions for the week and inserts new ones
  */
-export async function saveSchedule(studentId: string, sessions: Partial<StudySession>[], weekStartISO: string, weekEndISO: string): Promise<StudySession[]> {
+export async function saveSchedule(studentId: string, sessions: Partial<StudySession>[], weekStartISO: string, weekEndISO: string, client?: StudentOSSupabase): Promise<StudySession[]> {
   if (!studentId) throw new Error('studentId required');
+  const db = clientOrDefault(client);
 
   // Delete existing planned sessions for this week (except completed ones)
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await db
     .from('study_sessions')
     .delete()
     .eq('student_id', studentId)
@@ -161,7 +165,7 @@ export async function saveSchedule(studentId: string, sessions: Partial<StudySes
 
   if (payloads.length === 0) return [];
 
-  const { data, error } = await supabase.from('study_sessions').insert(payloads as any).select('*');
+  const { data, error } = await db.from('study_sessions').insert(payloads as any).select('*');
   if (error) throw error;
   return data || [];
 }
@@ -236,15 +240,16 @@ export async function getStudyStreak(studentId: string, client?: StudentOSSupaba
  * Get recent study history (last 14 days) to avoid repetition in AI scheduling
  * Returns topics that were recently studied so AI can schedule spaced repetition
  */
-export async function getRecentStudyHistory(studentId: string, days = 14) {
+export async function getRecentStudyHistory(studentId: string, days = 14, client?: StudentOSSupabase) {
   if (!studentId) return { recentTopics: [], completedSessions: [], skippedCount: 0 };
 
   try {
+    const db = clientOrDefault(client);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const startISO = startDate.toISOString().split('T')[0];
 
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await db
       .from('study_sessions')
       .select('id, subject_id, topic, status, planned_for, duration_minutes, session_type')
       .eq('student_id', studentId)
@@ -293,15 +298,16 @@ export async function getRecentStudyHistory(studentId: string, days = 14) {
  * Get session completion stats for AI feedback loop
  * Tracks patterns in when sessions are completed vs skipped
  */
-export async function getSessionCompletionStats(studentId: string) {
+export async function getSessionCompletionStats(studentId: string, client?: StudentOSSupabase) {
   if (!studentId) return { completionRate: 0, byDayOfWeek: {}, byTimeOfDay: {}, insights: [] };
 
   try {
+    const db = clientOrDefault(client);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const startISO = thirtyDaysAgo.toISOString().split('T')[0];
 
-    const { data: sessions, error } = await supabase
+    const { data: sessions, error } = await db
       .from('study_sessions')
       .select('id, status, planned_for, session_type, duration_minutes, start_time')
       .eq('student_id', studentId)

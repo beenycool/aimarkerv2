@@ -43,7 +43,9 @@ export async function logQuestionAttemptSafe(row: Partial<QuestionAttempt>, clie
   }
 }
 
-export function weaknessCountsFromAttempts(attempts: QuestionAttempt[]): Record<string, number> {
+export function weaknessCountsFromAttempts(
+  attempts: { primary_flaw?: string | null }[]
+): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const a of attempts || []) {
     const key = (a.primary_flaw || '').trim();
@@ -116,7 +118,6 @@ export async function getTopicPerformance(studentId: string, client?: StudentOSS
       .select('subject_id, marks_awarded, marks_total, primary_flaw, question_type')
       .eq('student_id', studentId)
       .order('attempted_at', { ascending: false })
-      .limit(500)
       .returns<
         {
           subject_id: string | null;
@@ -179,7 +180,6 @@ export async function getSubjectPerformance(studentId: string, client?: StudentO
       .select('subject_id, marks_awarded, marks_total')
       .eq('student_id', studentId)
       .order('attempted_at', { ascending: false })
-      .limit(500)
       .returns<{ subject_id: string | null; marks_awarded: number | null; marks_total: number | null }[]>();
 
     if (error || !attempts?.length) return {};

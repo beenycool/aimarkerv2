@@ -38,7 +38,6 @@ import {
     getStudyStreak,
     getWeeklyAttemptStats,
 } from '../../services/studentOS';
-import type { QuestionAttempt } from '../../services/studentOS/types';
 import { generateDashboardInsights } from '../../services/AICoachService';
 
 interface AIInsights {
@@ -172,7 +171,7 @@ export default function DashboardClient({
     }, [subjectStats]);
 
     const topWeaknesses = useMemo(() => {
-        const counts = weaknessCountsFromAttempts(attempts as QuestionAttempt[]);
+        const counts = weaknessCountsFromAttempts(attempts);
         return pickTopWeaknesses(counts, 6);
     }, [attempts]);
 

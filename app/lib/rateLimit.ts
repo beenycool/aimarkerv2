@@ -16,18 +16,26 @@ const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 const upstashRedis =
     upstashUrl && upstashToken ? new Redis({ url: upstashUrl, token: upstashToken }) : null;
 
-const upstashLimiters = new Map<number, Ratelimit>();
+if (upstashRedis) {
+    console.info('[rateLimit] Upstash Redis rate limiting enabled');
+} else {
+    console.info('[rateLimit] Using in-memory rate limiting (no Upstash config)');
+}
 
-function getUpstashLimiter(limit: number): Ratelimit | null {
+const upstashLimiters = new Map<string, Ratelimit>();
+
+function getUpstashLimiter(namespace: string, limit: number): Ratelimit | null {
     if (!upstashRedis) return null;
-    let lim = upstashLimiters.get(limit);
+    const key = `${namespace}:${limit}`;
+    let lim = upstashLimiters.get(key);
     if (!lim) {
+        const safeNs = namespace.replace(/[^a-zA-Z0-9_-]/g, '_');
         lim = new Ratelimit({
             redis: upstashRedis,
             limiter: Ratelimit.slidingWindow(limit, '60 s'),
-            prefix: 'aimarker-rl',
+            prefix: `aimarker-rl:${safeNs}`,
         });
-        upstashLimiters.set(limit, lim);
+        upstashLimiters.set(key, lim);
     }
     return lim;
 }
@@ -80,12 +88,14 @@ function checkRateLimitInMemory(identifier: string, limit: number): { success: b
  */
 export async function checkRateLimit(
     identifier: string,
-    limit: number = 10
+    limit: number = 10,
+    namespace: string = 'global'
 ): Promise<{ success: boolean; limit: number; remaining: number }> {
-    const lim = getUpstashLimiter(limit);
+    const lim = getUpstashLimiter(namespace, limit);
     if (lim) {
         const res = await lim.limit(identifier);
         return { success: res.success, limit, remaining: res.remaining };
     }
-    return checkRateLimitInMemory(identifier, limit);
+    const namespacedId = `${namespace}:${identifier}`;
+    return checkRateLimitInMemory(namespacedId, limit);
 }
