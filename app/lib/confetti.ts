@@ -13,6 +13,10 @@ const defaults: Partial<Options> = {
  */
 export async function burstConfetti(overrides?: Partial<Options>): Promise<void> {
     if (typeof window === 'undefined') return;
-    const confetti = (await import('canvas-confetti')).default;
-    await confetti({ ...defaults, ...overrides });
+    try {
+        const confetti = (await import('canvas-confetti')).default;
+        await confetti({ ...defaults, ...overrides });
+    } catch (error) {
+        console.debug('burstConfetti failed:', error);
+    }
 }

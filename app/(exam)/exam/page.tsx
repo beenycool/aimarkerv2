@@ -769,14 +769,12 @@ export default function GCSEMarkerApp() {
     const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
     const togglePdfEmphasis = useCallback(() => {
-        setPdfEmphasized((prev) => {
-            const next = !prev;
-            queueMicrotask(() => {
-                pdfPanelRef.current?.resize(next ? '56%' : '50%');
-            });
-            return next;
-        });
-    }, [pdfPanelRef]);
+        setPdfEmphasized((prev) => !prev);
+    }, []);
+
+    useEffect(() => {
+        pdfPanelRef.current?.resize(pdfEmphasized ? '56%' : '50%');
+    }, [pdfEmphasized, pdfPanelRef]);
 
     const generateWeaknessPaper = useCallback(async () => {
         if (!studentId && !user) {
@@ -1071,7 +1069,7 @@ export default function GCSEMarkerApp() {
                 )}
 
                 <main className={`flex-1 flex overflow-hidden ${focusMode ? 'h-screen' : 'h-[calc(100vh-96px)]'}`}>
-                    <Group direction="horizontal" autoSaveId="exam-panels">
+                    <Group orientation="horizontal" autoSaveId="exam-panels">
                         {/* PDF Viewer */}
                         <Panel
                             panelRef={pdfPanelRef}
@@ -1188,6 +1186,7 @@ export default function GCSEMarkerApp() {
                                     value={exam.userAnswers[question.id]}
                                     onChange={onAnswerChange}
                                     graphFigure={question.type === 'graph_drawing' ? graphFigure : null}
+                                    onClearGraphFigure={() => setGraphFigure(null)}
                                     multipleChoiceLegend={question.type === 'multiple_choice' ? question.question : undefined}
                                 />
                             </div>

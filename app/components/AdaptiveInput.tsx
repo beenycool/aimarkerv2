@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useId, useEffect, memo, useCallback } from 'react';
+import React, { useState, useId, memo, useCallback, useMemo } from 'react';
 import { TableIcon, BarChart2 } from 'lucide-react';
 import MathKeyboard from './inputs/MathKeyboard';
 import GraphCanvas from './inputs/GraphCanvas';
@@ -37,6 +37,8 @@ interface AdaptiveInputProps {
     value: AdaptiveInputValue;
     onChange: (value: AdaptiveInputValue) => void;
     graphFigure?: string | null;
+    /** Called when the student clears the figure background (sync with parent state). */
+    onClearGraphFigure?: () => void;
     /** Shown as `<legend>` for multiple-choice groups (e.g. question stem) for screen readers. */
     multipleChoiceLegend?: string;
 }
@@ -70,11 +72,13 @@ const AdaptiveInput = memo(
         value,
         onChange,
         graphFigure,
+        onClearGraphFigure,
         multipleChoiceLegend,
     }: AdaptiveInputProps) => {
         const radioGroupId = useId();
         const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-        const [figureBackground, setFigureBackground] = useState<string | null>(null);
+
+        const normalizedGraph = useMemo(() => normalizeGraphValue(value), [value]);
 
         const handleSymbolInsert = useCallback(
             (symbol: string) => {
@@ -83,14 +87,6 @@ const AdaptiveInput = memo(
             },
             [value, onChange]
         );
-
-        useEffect(() => {
-            if (!graphFigure) {
-                setFigureBackground(null);
-                return;
-            }
-            setFigureBackground(graphFigure);
-        }, [graphFigure]);
 
         if (type === 'multiple_choice') {
             const legendText =
@@ -229,10 +225,10 @@ const AdaptiveInput = memo(
                     </div>
                     <GraphCanvas
                         config={graphConfig}
-                        value={normalizeGraphValue(value)}
+                        value={normalizedGraph}
                         onChange={(g) => onChange(g)}
-                        backgroundImage={figureBackground}
-                        onClearBackground={() => setFigureBackground(null)}
+                        backgroundImage={graphFigure ?? null}
+                        onClearBackground={onClearGraphFigure}
                     />
                 </div>
             );

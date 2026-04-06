@@ -139,7 +139,7 @@ export default function MemoryPage() {
         );
         return filtered.reduce(
             (acc, item) => {
-                const cat = item.category || 'preferences';
+                const cat = item.category || MEMORY_CATEGORIES.PREFERENCES;
                 if (!acc[cat]) acc[cat] = [];
                 acc[cat].push(item);
                 return acc;

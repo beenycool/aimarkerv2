@@ -119,11 +119,13 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
 
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
+        const yAxisX = xMin <= 0 && 0 <= xMax ? toCanvasX(0) : padding;
+        const xAxisY = yMin <= 0 && 0 <= yMax ? toCanvasY(0) : height - padding;
         ctx.beginPath();
-        ctx.moveTo(padding, padding);
-        ctx.lineTo(padding, height - padding);
-        ctx.moveTo(padding, height - padding);
-        ctx.lineTo(width - padding, height - padding);
+        ctx.moveTo(yAxisX, padding);
+        ctx.lineTo(yAxisX, height - padding);
+        ctx.moveTo(padding, xAxisY);
+        ctx.lineTo(width - padding, xAxisY);
         ctx.stroke();
 
         ctx.fillStyle = '#000';

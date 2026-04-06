@@ -112,25 +112,46 @@ ${sampleBlock}
 
 Generate the full practice paper Markdown now.`;
 
-        const hcRes = await fetch(HACKCLUB_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: 'qwen/qwen3-32b',
-                temperature: 0.35,
-                messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: userMsg },
-                ],
-            }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15_000);
+        let hcRes: Response;
+        try {
+            hcRes = await fetch(HACKCLUB_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: 'qwen/qwen2.5-32b',
+                    temperature: 0.35,
+                    messages: [
+                        { role: 'system', content: system },
+                        { role: 'user', content: userMsg },
+                    ],
+                }),
+                signal: controller.signal,
+            });
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err instanceof Error && err.name === 'AbortError') {
+                return NextResponse.json(
+                    { error: 'The AI service took too long to respond. Please try again.' },
+                    { status: 504 }
+                );
+            }
+            console.error('weakness-paper fetch failed:', err);
+            return NextResponse.json({ error: 'Could not reach the AI service. Please try again later.' }, { status: 502 });
+        }
+        clearTimeout(timeoutId);
 
         if (!hcRes.ok) {
             const errText = await hcRes.text();
-            return NextResponse.json({ error: `AI error: ${hcRes.status} ${errText}` }, { status: 502 });
+            console.error(`AI service error (${hcRes.status}):`, errText);
+            return NextResponse.json(
+                { error: 'The AI service failed to generate the paper. Please try again later.' },
+                { status: 502 }
+            );
         }
 
         const data = await hcRes.json();
@@ -143,7 +164,6 @@ Generate the full practice paper Markdown now.`;
         return NextResponse.json({ markdown });
     } catch (e) {
         console.error('weakness-paper route:', e);
-        const message = e instanceof Error ? e.message : 'Internal error';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

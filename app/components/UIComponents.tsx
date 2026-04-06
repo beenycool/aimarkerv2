@@ -391,7 +391,7 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         {/* Explanation Logic: If checklist exists, feedback.text IS the explanation. Otherwise use legacy explanation state. */}
                         {hasChecklist ? (
                             <details className="group">
-                                <summary className="list-none w-full py-2 bg-primary/5 text-primary border border-primary/10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors cursor-pointer select-none">
+                                <summary className="list-none w-full py-2 bg-primary/5 text-primary border border-primary/10 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                                     <Sparkles className="w-4 h-4" /> Explain This Result
                                 </summary>
                                  <div className="mt-3 coach-voice p-4 rounded-lg animate-in fade-in">
@@ -402,7 +402,7 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         ) : (
                     <>
                         {!explanation && (
-                            <button type="button" onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors">
+                            <button type="button" onClick={onExplain} disabled={explaining} className="w-full py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                                 {explaining ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                 {explaining ? "Preparing explanation..." : "Explain Why"}
                             </button>
@@ -440,8 +440,8 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                         </div>
                     )}
                     <div className="flex gap-2">
-                        <input type="text" aria-label="Follow-up question" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-                        <button type="button" aria-label="Send follow-up question" title="Send follow-up question" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50">
+                        <input type="text" aria-label="Follow-up question" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
+                        <button type="button" aria-label="Send follow-up question" title="Send follow-up question" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
                             {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         </button>
                     </div>

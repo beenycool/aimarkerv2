@@ -58,9 +58,12 @@ export function TechniqueModal({ isOpen, onClose, techniqueId, techniqueName }: 
     // Generate AI content for applicable techniques
     const handleGenerateContent = async () => {
         setIsGenerating(true);
-        const content = await generateAIContent(techniqueId);
-        setAiContent(content);
-        setIsGenerating(false);
+        try {
+            const content = await generateAIContent(techniqueId);
+            setAiContent(content);
+        } finally {
+            setIsGenerating(false);
+        }
     };
 
     const renderContent = () => {
@@ -316,7 +319,7 @@ function AIAssistedContent({
                         </div>
                     )}
 
-                    <Button variant="outline" onClick={onGenerate} className="w-full gap-2">
+                    <Button variant="outline" onClick={onGenerate} disabled={isGenerating} className="w-full gap-2">
                         <RefreshCcw className="h-4 w-4" />
                         Generate New Prompts
                     </Button>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, memo } from 'react';
+import React, { useRef, useState, useEffect, useCallback, memo } from 'react';
 import { RefreshCw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Pencil, Highlighter, Eraser, Move } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -65,17 +65,8 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
         setNumPages(numPages);
     }
 
-    function onPageLoadSuccess(page: any) {
-        if (annotationCanvasRef.current) {
-             const viewport = page.getViewport({ scale });
-             annotationCanvasRef.current.width = viewport.width;
-             annotationCanvasRef.current.height = viewport.height;
-             redrawAnnotations();
-        }
-    }
-
     // Redraw annotations
-    const redrawAnnotations = () => {
+    const redrawAnnotations = useCallback(() => {
         if (!annotationCanvasRef.current) return;
         const canvas = annotationCanvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -128,12 +119,24 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                  ctx.fillRect(x, y, width, height);
             }
         }
-    };
+    }, [pageNumber, annotations, annotationMode]);
+
+    const onPageLoadSuccess = useCallback(
+        (page: any) => {
+            if (annotationCanvasRef.current) {
+                const viewport = page.getViewport({ scale });
+                annotationCanvasRef.current.width = viewport.width;
+                annotationCanvasRef.current.height = viewport.height;
+                redrawAnnotations();
+            }
+        },
+        [redrawAnnotations, scale]
+    );
 
     // Effect to redraw when page or annotations change
     useEffect(() => {
         redrawAnnotations();
-    }, [pageNumber, annotations, scale]);
+    }, [redrawAnnotations, scale]);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!annotationMode) return;

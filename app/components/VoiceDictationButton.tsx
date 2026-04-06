@@ -10,6 +10,8 @@ export interface VoiceDictationButtonProps {
     onAppend: (text: string) => void;
     className?: string;
     disabled?: boolean;
+    /** BCP 47 language tag for speech recognition (default British English). */
+    lang?: string;
 }
 
 type WebSpeechRecognition = {
@@ -17,7 +19,7 @@ type WebSpeechRecognition = {
     interimResults: boolean;
     continuous: boolean;
     onresult: ((event: { resultIndex: number; results: SpeechRecognitionResultList }) => void) | null;
-    onerror: (() => void) | null;
+    onerror: ((event: Event & { error?: string }) => void) | null;
     onend: (() => void) | null;
     start: () => void;
     stop: () => void;
@@ -37,7 +39,12 @@ function getSpeechRecognitionCtor(): WebSpeechRecognitionCtor | undefined {
 /**
  * Web Speech API dictation (Chrome/Edge/Safari). Hidden when unsupported.
  */
-export function VoiceDictationButton({ onAppend, className, disabled }: VoiceDictationButtonProps) {
+export function VoiceDictationButton({
+    onAppend,
+    className,
+    disabled,
+    lang = 'en-GB',
+}: VoiceDictationButtonProps) {
     const [active, setActive] = useState(false);
     const [supported, setSupported] = useState(false);
     const recRef = useRef<WebSpeechRecognition | null>(null);
@@ -68,7 +75,7 @@ export function VoiceDictationButton({ onAppend, className, disabled }: VoiceDic
         if (!SR) return;
 
         const rec = new SR();
-        rec.lang = 'en-GB';
+        rec.lang = lang;
         rec.interimResults = false;
         rec.continuous = true;
 
@@ -80,7 +87,8 @@ export function VoiceDictationButton({ onAppend, className, disabled }: VoiceDic
             }
         };
 
-        rec.onerror = () => {
+        rec.onerror = (e) => {
+            console.warn('SpeechRecognition error:', (e as { error?: string }).error ?? e.type);
             setActive(false);
             recRef.current = null;
         };
@@ -97,7 +105,7 @@ export function VoiceDictationButton({ onAppend, className, disabled }: VoiceDic
         } catch {
             setActive(false);
         }
-    }, [active, disabled, onAppend, stop, supported]);
+    }, [active, disabled, lang, onAppend, stop, supported]);
 
     useEffect(() => () => stop(), [stop]);
 
