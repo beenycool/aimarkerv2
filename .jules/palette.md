@@ -86,4 +86,9 @@
 **Learning:** Conditionally disabling interactive UI elements (like a "Generate" button when fewer than the required inputs are selected) is good practice, but without context, it causes confusion and a poor user experience. Users and screen readers need to understand *why* the action is unavailable. Dynamic button text helps; visible helper text with `aria-describedby` is more reliable than relying on `title` alone for disabled controls because disabled buttons often use `pointer-events: none`, so native tooltips may not show on hover.
 
 **Action:** When adding `disabled={condition}` to a `<Button>`, explain every distinct disabled state (for example loading versus validation) using visible helper text tied with `aria-describedby`, and use the button label as a clear call to action when appropriate (e.g. "Select 2+ Subjects to Mix" instead of only "Get Combinations").
-\n## 2026-04-05 - Contextual Disabled States on Forms\n\n**Learning:** Relying solely on `disabled` state for form submit buttons without visual cues creates a poor experience, as users might not know what fields are missing.\n**Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate to users and screen readers why a form submit button is disabled.
+
+
+## 2026-04-05 - Contextual Disabled States on Forms
+
+**Learning:** Relying solely on `disabled` state for form submit buttons without visual cues creates a poor experience, as users might not know what fields are missing.
+**Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate to users and screen readers why a form submit button is disabled.

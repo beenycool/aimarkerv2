@@ -76,7 +76,7 @@ export function AddSubjectDialog({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const subjectName = name === "Other" ? customName : name;
+        const subjectName = name === "Other" ? customName.trim() : name;
         if (subjectName && examBoard && targetGrade) {
             onAdd({ name: subjectName, examBoard, targetGrade });
             resetForm();
@@ -88,7 +88,12 @@ export function AddSubjectDialog({
         (s) => !existingSubjects.includes(s)
     );
 
-    const isSubmitDisabled = (!name || (name === "Other" && !customName)) || !examBoard || !targetGrade;
+    const normalizedCustomName = customName.trim();
+    const isSubmitDisabled =
+        !name ||
+        (name === "Other" && !normalizedCustomName) ||
+        !examBoard ||
+        !targetGrade;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -162,13 +167,11 @@ export function AddSubjectDialog({
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-2">
-                        {isSubmitDisabled ? (
-                            <p id={hintId} className="text-xs text-muted-foreground order-last sm:order-first text-left mt-2 sm:mt-0">
+                    <DialogFooter className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                        {isSubmitDisabled && (
+                            <p id={hintId} className="text-xs text-muted-foreground order-last sm:order-first sm:mr-auto text-left mt-2 sm:mt-0">
                                 Please fill all fields to add a subject.
                             </p>
-                        ) : (
-                            <div className="order-last sm:order-first"></div>
                         )}
                         <div className="flex justify-end gap-2 w-full sm:w-auto">
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
