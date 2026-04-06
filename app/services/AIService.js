@@ -1193,11 +1193,11 @@ IMPORTANT:
         const subjectNames = (subjects || [])
             .map((subject) => (typeof subject === 'string' ? subject : subject?.name))
             .filter(Boolean);
-        const subjectContext = subjectNames.length
-            ? `ONLY include exams that match these subjects: ${subjectNames.join(', ')}.`
-            : 'Extract ALL exams from this document.';
+        const subjectHint = subjectNames.length
+            ? `\n\nWhen choosing the "subject" string for each exam, prefer wording consistent with these where it clearly matches (still list every exam on the timetable): ${subjectNames.join(', ')}.`
+            : '';
 
-        const prompt = `You are an exam schedule parser. ${subjectContext}
+        const prompt = `You are an exam schedule parser. Extract ALL exams from this document — do not omit any row or paper listed on the timetable.${subjectHint}
 
 For EACH exam found, extract the following information:
 - title: The exam name (e.g., "Chemistry Paper 1", "Mathematics Higher Paper 2")
@@ -1210,7 +1210,7 @@ For EACH exam found, extract the following information:
 - type: 'real' or 'mock'. Use context clues. If it says "Mock", "Practice", "Feb/March Mocks", or implies a non-official exam, it is 'mock'. If it looks like a final official exam (e.g. "GCSE", "A-Level", "May/June", "Official"), it is 'real'. Default to 'real' if unsure.
 
 IMPORTANT RULES:
-1. Only include exams that match the subject list when provided
+1. Include every exam on the document; the user will choose which subjects to keep afterward
 2. Dates MUST be in YYYY-MM-DD format (e.g., 2025-05-15)
 3. Times MUST be in HH:MM 24-hour format (e.g., 09:00, 14:30)
 4. If the year is not specified, assume 2025 for dates in May-June, otherwise use current year context

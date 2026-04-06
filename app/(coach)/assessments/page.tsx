@@ -98,6 +98,12 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const normalizeSubjectName = (value: string) =>
     value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
+/** Parsed timetable row with stable grouping key for subject pickers */
+type ScheduleParsedRow = UpcomingExam & {
+    subjectKey: string;
+    subjectLabel: string;
+};
+
 const paperTypes = [
     { label: 'Past Paper', value: 'past_paper' },
     { label: 'Mock Exam', value: 'mock' },
@@ -165,7 +171,8 @@ export default function AssessmentsPage() {
     const [addExamDialogOpen, setAddExamDialogOpen] = useState(false);
     const [importDialogOpen, setImportDialogOpen] = useState(false);
     const [isParsing, setIsParsing] = useState(false);
-    const [parsedExams, setParsedExams] = useState<UpcomingExam[]>([]);
+    const [importParsedRows, setImportParsedRows] = useState<ScheduleParsedRow[]>([]);
+    const [importSubjectSelected, setImportSubjectSelected] = useState<Record<string, boolean>>({});
     const [examToDelete, setExamToDelete] = useState<UpcomingExam | null>(null);
     const [examDeleteDialogOpen, setExamDeleteDialogOpen] = useState(false);
     const importFileInputRef = useRef<HTMLInputElement>(null);
@@ -235,7 +242,8 @@ export default function AssessmentsPage() {
     const handleImportSchedule = async (file: File) => {
         if (!studentId) return;
         setIsParsing(true);
-        setParsedExams([]);
+        setImportParsedRows([]);
+        setImportSubjectSelected({});
         try {
             const result = await AIService.parseExamSchedule(file, studentId, subjects);
             const subjectIndex = subjects
@@ -256,25 +264,39 @@ export default function AssessmentsPage() {
                 );
                 return partial?.id;
             };
-            const mappedExams: UpcomingExam[] = (result.exams || []).map((e: any, i: number) => {
-                const subjectCandidate = e.subject || e.title || '';
-                const subject_id = resolveSubjectId(subjectCandidate);
+            const mappedRows: ScheduleParsedRow[] = (result.exams || []).map((e: any) => {
+                const subjectCandidate = (e.subject || e.title || '').trim();
+                const normalized = normalizeSubjectName(subjectCandidate);
+                const subjectKey = normalized || '__other__';
+                const subjectLabel =
+                    (e.subject && String(e.subject).trim()) ||
+                    (subjectCandidate ? subjectCandidate : 'Unknown subject');
+                const subject_id = resolveSubjectId(subjectCandidate) ?? null;
                 return {
                     ...e,
-                    id: `temp-${i}`,
+                    student_id: studentId,
+                    topics: [],
+                    source: 'ai_parsed' as const,
+                    id: crypto.randomUUID(),
                     title: e.title || 'Untitled Exam',
                     exam_date: e.exam_date || e.date,
                     subject_id,
+                    subjectKey,
+                    subjectLabel,
                 };
             });
-            const filteredExams = subjectIndex.length > 0
-                ? mappedExams.filter((exam) => exam.subject_id)
-                : mappedExams;
-            setParsedExams(filteredExams);
-            const message = subjectIndex.length > 0 && filteredExams.length !== mappedExams.length
-                ? `Parsed ${mappedExams.length} exams, kept ${filteredExams.length} matching your subjects`
-                : `Parsed ${filteredExams.length} exams from schedule`;
-            toast.success(message);
+            setImportParsedRows(mappedRows);
+            const keys = [...new Set(mappedRows.map((r) => r.subjectKey))];
+            const initialSel: Record<string, boolean> = {};
+            for (const key of keys) {
+                const sample = mappedRows.find((r) => r.subjectKey === key);
+                initialSel[key] =
+                    subjectIndex.length === 0 ? true : Boolean(sample?.subject_id);
+            }
+            setImportSubjectSelected(initialSel);
+            toast.success(
+                `Parsed ${mappedRows.length} exam(s) in ${keys.length} subject group(s). Choose which to import.`
+            );
         } catch (error) {
             console.error('Failed to parse schedule:', error);
             toast.error('Failed to parse exam schedule. Please try again.');
@@ -283,15 +305,46 @@ export default function AssessmentsPage() {
         }
     };
 
+    const importExamsReady = useMemo(
+        () => importParsedRows.filter((row) => importSubjectSelected[row.subjectKey]),
+        [importParsedRows, importSubjectSelected]
+    );
+
+    const importSubjectGroups = useMemo(() => {
+        const map = new Map<
+            string,
+            { key: string; label: string; count: number; matchedProfile: boolean }
+        >();
+        for (const row of importParsedRows) {
+            const cur = map.get(row.subjectKey);
+            if (cur) {
+                cur.count += 1;
+                cur.matchedProfile = cur.matchedProfile || Boolean(row.subject_id);
+            } else {
+                map.set(row.subjectKey, {
+                    key: row.subjectKey,
+                    label: row.subjectLabel,
+                    count: 1,
+                    matchedProfile: Boolean(row.subject_id),
+                });
+            }
+        }
+        return [...map.values()].sort((a, b) => a.label.localeCompare(b.label));
+    }, [importParsedRows]);
+
     const handleConfirmImport = async () => {
-        if (!studentId || !parsedExams.length) return;
+        if (!studentId || importExamsReady.length === 0) return;
         try {
-            const imported = await bulkCreateUpcomingExams(studentId, parsedExams);
+            const payloads: UpcomingExam[] = importExamsReady.map(
+                ({ subjectKey: _k, subjectLabel: _l, ...exam }) => exam as UpcomingExam
+            );
+            const imported = await bulkCreateUpcomingExams(studentId, payloads);
             setUpcomingExams(prev => [...prev, ...imported].sort((a, b) =>
                 new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()
             ));
             setImportDialogOpen(false);
-            setParsedExams([]);
+            setImportParsedRows([]);
+            setImportSubjectSelected({});
             toast.success(`Imported ${imported.length} exams`);
         } catch (error) {
             console.error('Failed to import exams:', error);
@@ -1208,12 +1261,17 @@ export default function AssessmentsPage() {
             {/* Import Schedule Dialog */}
             <Dialog open={importDialogOpen} onOpenChange={(open) => {
                 setImportDialogOpen(open);
-                if (!open) setParsedExams([]);
+                if (!open) {
+                    setImportParsedRows([]);
+                    setImportSubjectSelected({});
+                }
             }}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Import Exam Schedule</DialogTitle>
-                        <DialogDescription>Upload a PDF of your exam timetable and AI will extract the exams.</DialogDescription>
+                        <DialogDescription>
+                            Upload a PDF of your exam timetable. AI extracts every exam; then choose which subjects you take.
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <input
@@ -1227,7 +1285,7 @@ export default function AssessmentsPage() {
                                 e.target.value = '';
                             }}
                         />
-                        {parsedExams.length === 0 ? (
+                        {importParsedRows.length === 0 ? (
                             <div
                                 className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/30 hover:bg-secondary/50 transition-colors"
                                 onClick={() => importFileInputRef.current?.click()}
@@ -1242,33 +1300,144 @@ export default function AssessmentsPage() {
                                     <>
                                         <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                                         <p className="font-medium">Click to upload exam schedule PDF</p>
-                                        <p className="text-sm text-muted-foreground">AI will extract all exams automatically</p>
+                                        <p className="text-sm text-muted-foreground">All papers are extracted first; you pick subjects next</p>
                                     </>
                                 )}
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                <p className="text-sm font-medium">Found {parsedExams.length} exams:</p>
-                                <div className="max-h-64 overflow-y-auto space-y-2">
-                                    {parsedExams.map((exam, i) => (
-                                        <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                                            <div>
-                                                <p className="font-medium text-sm">{exam.title}</p>
-                                                <p className="text-xs text-muted-foreground">{exam.exam_date} {exam.exam_time && `at ${exam.exam_time}`}</p>
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Subjects on this timetable</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Checked subjects are imported; unchecked are skipped. Subjects that match your profile are pre-checked.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 text-xs"
+                                            onClick={() =>
+                                                setImportSubjectSelected(
+                                                    Object.fromEntries(
+                                                        importSubjectGroups.map((g) => [g.key, true])
+                                                    )
+                                                )
+                                            }
+                                        >
+                                            Select all
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 text-xs"
+                                            onClick={() =>
+                                                setImportSubjectSelected(
+                                                    Object.fromEntries(
+                                                        importSubjectGroups.map((g) => [g.key, false])
+                                                    )
+                                                )
+                                            }
+                                        >
+                                            Deselect all
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 text-xs"
+                                            onClick={() => importFileInputRef.current?.click()}
+                                        >
+                                            Replace PDF
+                                        </Button>
+                                    </div>
+                                    <div className="max-h-36 overflow-y-auto rounded-md border border-border p-3 space-y-2">
+                                        {importSubjectGroups.map((g) => (
+                                            <label
+                                                key={g.key}
+                                                className="flex items-start gap-3 cursor-pointer text-sm leading-tight"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-input"
+                                                    checked={importSubjectSelected[g.key] ?? false}
+                                                    onChange={(e) =>
+                                                        setImportSubjectSelected((prev) => ({
+                                                            ...prev,
+                                                            [g.key]: e.target.checked,
+                                                        }))
+                                                    }
+                                                />
+                                                <span>
+                                                    <span className="font-medium">{g.label}</span>
+                                                    <span className="text-muted-foreground">
+                                                        {' '}
+                                                        ({g.count} exam{g.count === 1 ? '' : 's'})
+                                                    </span>
+                                                    {g.matchedProfile ? (
+                                                        <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
+                                                            Your subject
+                                                        </Badge>
+                                                    ) : null}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">
+                                        Preview ({importExamsReady.length} exam
+                                        {importExamsReady.length === 1 ? '' : 's'} selected)
+                                    </p>
+                                    <div className="max-h-48 overflow-y-auto space-y-2">
+                                        {importExamsReady.map((exam) => (
+                                            <div
+                                                key={exam.id}
+                                                className="flex items-center justify-between gap-2 p-3 rounded-lg bg-secondary/50"
+                                            >
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-sm truncate">{exam.title}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {exam.exam_date}
+                                                        {exam.exam_time ? ` at ${exam.exam_time}` : ''}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 shrink-0"
+                                                    onClick={() =>
+                                                        setImportParsedRows((prev) =>
+                                                            prev.filter((r) => r.id !== exam.id)
+                                                        )
+                                                    }
+                                                    aria-label="Remove exam from import"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setParsedExams(prev => prev.filter((_, idx) => idx !== i))}>
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setImportDialogOpen(false); setParsedExams([]); }}>Cancel</Button>
-                        {parsedExams.length > 0 && (
-                            <Button onClick={handleConfirmImport}>Import {parsedExams.length} Exams</Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setImportDialogOpen(false);
+                                setImportParsedRows([]);
+                                setImportSubjectSelected({});
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        {importParsedRows.length > 0 && (
+                            <Button onClick={handleConfirmImport} disabled={importExamsReady.length === 0}>
+                                Import {importExamsReady.length} exam{importExamsReady.length === 1 ? '' : 's'}
+                            </Button>
                         )}
                     </DialogFooter>
                 </DialogContent>
