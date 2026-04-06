@@ -139,4 +139,15 @@
   .inline-math {
     @apply px-0.5;
   }
+
+  /* Distinct “coach / AI voice” blocks (feedback, tutor replies) */
+  .coach-voice {
+    font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.09),
+      hsl(var(--accent) / 0.07)
+    );
+    border: 1px solid hsl(var(--primary) / 0.22);
+  }
 }

@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Button } from '@/app/components/ui/button';
+import { burstConfetti } from '@/app/lib/confetti';
 import {
     Pause,
     Play,
@@ -24,6 +25,30 @@ export function PomodoroContent({
     onPause,
     onReset
 }: PomodoroContentProps) {
+    const prevPhase = useRef<{ sessionsCompleted: number; isBreak: boolean } | null>(null);
+
+    useEffect(() => {
+        if (prevPhase.current === null) {
+            prevPhase.current = {
+                sessionsCompleted: timerState.sessionsCompleted,
+                isBreak: timerState.isBreak,
+            };
+            return;
+        }
+        const p = prevPhase.current;
+        if (
+            timerState.sessionsCompleted > p.sessionsCompleted &&
+            timerState.isBreak &&
+            !p.isBreak
+        ) {
+            void burstConfetti({ particleCount: 85, spread: 68 });
+        }
+        prevPhase.current = {
+            sessionsCompleted: timerState.sessionsCompleted,
+            isBreak: timerState.isBreak,
+        };
+    }, [timerState.sessionsCompleted, timerState.isBreak]);
+
     const timeString = `${timerState.minutes.toString().padStart(2, '0')}:${timerState.seconds.toString().padStart(2, '0')}`;
     const isLongBreak = timerState.isBreak && timerState.sessionsCompleted > 0 && timerState.sessionsCompleted % 4 === 0;
     const totalSeconds = timerState.isBreak ? (isLongBreak ? 15 * 60 : 5 * 60) : 25 * 60;
@@ -105,17 +130,17 @@ export function PomodoroContent({
             {/* Controls */}
             <div className="flex justify-center gap-3">
                 {timerState.isRunning ? (
-                    <Button type="button" onClick={onPause} variant="outline" size="lg" className="gap-2">
+                    <Button onClick={onPause} variant="outline" size="lg" className="gap-2">
                         <Pause className="h-5 w-5" />
                         Pause
                     </Button>
                 ) : (
-                    <Button type="button" onClick={onStart} size="lg" className="gap-2">
+                    <Button onClick={onStart} size="lg" className="gap-2">
                         <Play className="h-5 w-5" />
                         {timerState.isPaused ? 'Resume' : 'Start'}
                     </Button>
                 )}
-                <Button type="button" onClick={() => onReset(false)} variant="outline" size="lg" className="gap-2">
+                <Button onClick={() => onReset(false)} variant="outline" size="lg" className="gap-2">
                     <RotateCcw className="h-5 w-5" />
                     Reset
                 </Button>

@@ -25,6 +25,7 @@ import {
     getOrCreateTodayDailySession,
     completeSession
 } from '../../services/studentOS';
+import { burstConfetti } from '@/app/lib/confetti';
 
 interface DailyItem {
     id: string;
@@ -105,6 +106,7 @@ export default function DailyPage() {
                 items_completed: completedCount,
                 total_items: totalCount,
             });
+            void burstConfetti({ particleCount: 110, spread: 75, origin: { y: 0.55 } });
             toast.success('Session completed! Great work! 🎉');
         } catch (error) {
             console.error('Failed to complete session:', error);

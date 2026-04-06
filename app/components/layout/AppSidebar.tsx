@@ -99,6 +99,7 @@ export function AppSidebar() {
                                 <Link
                                     key={item.path}
                                     href={item.path}
+                                    aria-current={isActive ? "page" : undefined}
                                     onClick={() => setIsOpen(false)}
                                     className={cn(
                                         "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",

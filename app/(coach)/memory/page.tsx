@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -130,21 +130,33 @@ export default function MemoryPage() {
         setEditContent('');
     };
 
-    const filteredItems = items.filter(item =>
-        item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (CATEGORY_LABELS[item.category] || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const groupedItems = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        const filtered = items.filter(
+            (item) =>
+                item.content.toLowerCase().includes(q) ||
+                (CATEGORY_LABELS[item.category] || '').toLowerCase().includes(q)
+        );
+        return filtered.reduce(
+            (acc, item) => {
+                const cat = item.category || MEMORY_CATEGORIES.PREFERENCES;
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(item);
+                return acc;
+            },
+            {} as Record<string, MemoryItem[]>
+        );
+    }, [items, searchQuery]);
 
-    // Group items by category
-    const groupedItems = filteredItems.reduce((acc, item) => {
-        const cat = item.category || 'preferences';
-        if (!acc[cat]) acc[cat] = [];
-        acc[cat].push(item);
-        return acc;
-    }, {} as Record<string, MemoryItem[]>);
-
-    const userItemCount = items.filter(i => i.source === 'user').length;
-    const aiItemCount = items.filter(i => i.source === 'ai').length;
+    const { userItemCount, aiItemCount } = useMemo(() => {
+        let user = 0;
+        let ai = 0;
+        for (const i of items) {
+            if (i.source === 'user') user += 1;
+            else if (i.source === 'ai') ai += 1;
+        }
+        return { userItemCount: user, aiItemCount: ai };
+    }, [items]);
 
     return (
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
