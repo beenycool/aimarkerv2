@@ -34,7 +34,27 @@ import { PaperStorage } from '../../services/PaperStorage';
 import { useAuth, useStudentId } from '../../components/AuthProvider';
 import { ensureSubjectForStudent, logQuestionAttemptSafe } from '../../services/studentOS';
 
+/** Set ?examDebug=1 on /exam for verbose console logs; in development they also run without the query param. */
+function useExamDebug() {
+    const [examDebug, setExamDebug] = useState(false);
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setExamDebug(new URLSearchParams(window.location.search).get('examDebug') === '1');
+    }, []);
+    const examLog = useCallback(
+        (...args) => {
+            const dev = process.env.NODE_ENV === 'development';
+            if (!examDebug && !dev) return;
+            console.log('[exam]', new Date().toISOString(), ...args);
+        },
+        [examDebug]
+    );
+    return { examDebug, examLog };
+}
+
 export default function GCSEMarkerApp() {
+    const { examDebug, examLog } = useExamDebug();
+
     // Phase management
     const [phase, setPhase] = useState('upload');
     const [files, setFiles] = useState({ paper: null, scheme: null, insert: null });
@@ -80,6 +100,26 @@ export default function GCSEMarkerApp() {
     const currentQuestion = exam.currentQuestion;
     const handleAnswerChange = exam.handleAnswerChange;
 
+    useEffect(() => {
+        examLog('snapshot', {
+            phase,
+            activeQuestionCount: exam.activeQuestions.length,
+            currentQIndex: exam.currentQIndex,
+            hasCurrentQuestion: !!exam.currentQuestion,
+            currentQuestionId: exam.currentQuestion?.id ?? null,
+            hasPaperFile: !!files.paper,
+            hasSavedSession,
+        });
+    }, [
+        phase,
+        exam.activeQuestions.length,
+        exam.currentQIndex,
+        exam.currentQuestion?.id,
+        files.paper,
+        hasSavedSession,
+        examLog,
+    ]);
+
     // Load API keys from localStorage, check server keys
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -97,6 +137,11 @@ export default function GCSEMarkerApp() {
     // Auto-restore session on mount
     useEffect(() => {
         const restored = exam.restoreSession();
+        examLog('restoreSession (mount)', {
+            restored: !!restored,
+            questionCount: restored?.activeQuestions?.length ?? 0,
+            currentQIndex: restored?.currentQIndex,
+        });
         if (restored) {
             setHasSavedSession(true);
             setPhase('exam');
@@ -126,7 +171,8 @@ export default function GCSEMarkerApp() {
 
                         setFiles({ paper: p, scheme: s, insert: i });
                     } catch (e) {
-                        console.error("Failed to restore paper files:", e);
+                        console.error('[exam] Failed to restore paper files:', e);
+                        examLog('restore paper files error', e);
                     } finally {
                         setParsingStatus("");
                     }
@@ -134,7 +180,7 @@ export default function GCSEMarkerApp() {
                 fetchFiles();
             }
         }
-    }, [exam.restoreSession]);
+    }, [exam.restoreSession, examLog]);
 
     // Persist session on changes
     useEffect(() => {
@@ -1381,5 +1427,79 @@ export default function GCSEMarkerApp() {
         );
     }
 
-    return null;
+    if (phase === 'exam' && !exam.currentQuestion) {
+        const debugPayload = {
+            phase,
+            currentQIndex: exam.currentQIndex,
+            activeQuestionCount: exam.activeQuestions.length,
+            hasPaperFile: !!files.paper,
+        };
+        console.warn(
+            '[exam] Exam phase but no current question (empty list or index out of range after restore).',
+            debugPayload
+        );
+        examLog('blocked render: exam phase without currentQuestion', debugPayload);
+
+        return (
+            <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+                <Card className="max-w-lg w-full p-6 space-y-4 card-shadow border-destructive/20">
+                    <div className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-5 h-5 shrink-0" />
+                        <h2 className="font-semibold text-lg">Exam UI could not load</h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        Saved session is in exam mode, but there is no question to show. This usually means the stored
+                        question list is empty or the saved question index is invalid.
+                    </p>
+                    {examDebug && (
+                        <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto whitespace-pre-wrap break-all">
+                            {JSON.stringify(debugPayload, null, 2)}
+                        </pre>
+                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button
+                            variant="default"
+                            className="gap-2"
+                            onClick={() => {
+                                exam.setCurrentQIndex(0);
+                                if (exam.activeQuestions.length === 0) setPhase('upload');
+                            }}
+                        >
+                            Reset question index
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => {
+                                clearSaveData();
+                            }}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Clear session & reload
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPhase('upload')}>
+                            Back to upload
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Add <code className="rounded bg-muted px-1">?examDebug=1</code> to the URL for verbose{' '}
+                        <code className="rounded bg-muted px-1">[exam]</code> logs in the console (always on in
+                        development).
+                    </p>
+                </Card>
+            </div>
+        );
+    }
+
+    console.warn('[exam] Unhandled render branch', { phase });
+    examLog('unhandled branch', { phase });
+    return (
+        <div className="min-h-screen bg-background p-6 flex items-center justify-center text-foreground">
+            <Card className="max-w-md w-full p-6 card-shadow">
+                <p className="font-medium mb-2">Unexpected state</p>
+                <p className="text-sm text-muted-foreground mb-4">phase={String(phase)}</p>
+                <Button onClick={() => setPhase('upload')}>Back to upload</Button>
+            </Card>
+        </div>
+    );
 }
