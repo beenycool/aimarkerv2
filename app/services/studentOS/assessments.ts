@@ -78,6 +78,22 @@ export async function deleteAssessment(studentId: string, assessmentId: string, 
   if (error) throw error;
 }
 
+export async function deleteAllAssessments(studentId: string, client?: StudentOSSupabase): Promise<void> {
+  if (!studentId) throw new Error('studentId required');
+  const supabase = clientOrDefault(client);
+  const rows = await listAssessments(studentId, client);
+  const paths = rows.flatMap((a) =>
+    (a.attachments || [])
+      .map((item) => (typeof item === 'string' ? item : item?.path))
+      .filter(Boolean) as string[],
+  );
+  if (paths.length) {
+    await deleteAssessmentFiles(paths, client);
+  }
+  const { error } = await supabase.from('assessments').delete().eq('student_id', studentId);
+  if (error) throw error;
+}
+
 /**
  * Get upcoming assessments (within next 30 days)
  */

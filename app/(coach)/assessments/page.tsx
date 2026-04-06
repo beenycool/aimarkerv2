@@ -61,6 +61,7 @@ import {
     listAssessments,
     createAssessment,
     deleteAssessment,
+    deleteAllAssessments,
     uploadAssessmentFile,
     deleteAssessmentFiles,
     listSubjects,
@@ -153,6 +154,8 @@ export default function AssessmentsPage() {
     const subjectMap = useMemo(() => new Map(subjects.map((s) => [s.id, s.name])), [subjects]);
     const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+    const [isDeletingAll, setIsDeletingAll] = useState(false);
 
     // Tab state
     const [activeTab, setActiveTab] = useState('future');
@@ -616,6 +619,22 @@ export default function AssessmentsPage() {
         }
     };
 
+    const handleConfirmDeleteAll = async () => {
+        if (!studentId || assessments.length === 0) return;
+        setIsDeletingAll(true);
+        try {
+            await deleteAllAssessments(studentId);
+            setAssessments([]);
+            setDeleteAllDialogOpen(false);
+            toast.success(`Deleted ${assessments.length} assessment${assessments.length === 1 ? '' : 's'}.`);
+        } catch (error) {
+            console.error('Failed to delete assessments:', error);
+            toast.error('Failed to delete all assessments.');
+        } finally {
+            setIsDeletingAll(false);
+        }
+    };
+
     const cleanupUploadedPaths = async (paths: string[]) => {
         if (!paths.length) return;
         try {
@@ -692,10 +711,22 @@ export default function AssessmentsPage() {
                             </Button>
                         </>
                     ) : (
-                        <Button onClick={() => setDialogOpen(true)} className="gap-2">
-                            <Plus className="h-4 w-4" />
-                            Add Assessment
-                        </Button>
+                        <>
+                            {assessments.length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => setDeleteAllDialogOpen(true)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete all
+                                </Button>
+                            )}
+                            <Button onClick={() => setDialogOpen(true)} className="gap-2">
+                                <Plus className="h-4 w-4" />
+                                Add Assessment
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>
@@ -1558,6 +1589,36 @@ export default function AssessmentsPage() {
                             disabled={isDeleting}
                         >
                             {isDeleting ? 'Deleting...' : 'Delete'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog
+                open={deleteAllDialogOpen}
+                onOpenChange={(open) => {
+                    setDeleteAllDialogOpen(open);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete all assessments</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently remove all {assessments.length} assessment
+                            {assessments.length === 1 ? '' : 's'} and any attached files. This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(event) => {
+                                event.preventDefault();
+                                void handleConfirmDeleteAll();
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isDeletingAll}
+                        >
+                            {isDeletingAll ? 'Deleting...' : 'Delete all'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
