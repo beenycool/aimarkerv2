@@ -1,0 +1,59 @@
+
+> aimarker@0.1.0 dev /app
+> next dev
+
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 565ms
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+⨯ Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at middleware (middleware.ts:9:40)
+   7 |     });
+   8 |
+>  9 |     const supabase = createServerClient(
+     |                                        ^
+  10 |         process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  11 |         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  12 |         {
+ GET / 404 in 1839ms (next.js: -244665µs, proxy.ts: 1815ms, application-code: 269ms)
+[browser] Uncaught Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
+    at middleware (middleware.ts:9:40)
+   7 |     });
+   8 |
+>  9 |     const supabase = createServerClient(
+     |                                        ^
+  10 |         process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  11 |         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  12 |         {
+○ Compiling /_not-found/page ...
+  Reload env: .env.local
+✓ Compiled in 26ms
+ GET / 307 in 1074ms (next.js: 800ms, proxy.ts: 49ms, application-code: 225ms)
+ GET /dashboard 307 in 2.2s (next.js: 1583ms, proxy.ts: 7ms, application-code: 638ms)
+ GET /login 200 in 1437ms (next.js: 1224ms, proxy.ts: 7ms, application-code: 206ms)
+ GET / 307 in 221ms (next.js: 9ms, proxy.ts: 11ms, application-code: 201ms)
+ GET /dashboard 307 in 215ms (next.js: 4ms, proxy.ts: 8ms, application-code: 202ms)
+ GET /login 200 in 93ms (next.js: 5ms, proxy.ts: 5ms, application-code: 83ms)
+ GET /dashboard 200 in 93ms (next.js: 14ms, proxy.ts: 11ms, application-code: 68ms)
+ GET /login 200 in 106ms (next.js: 10ms, proxy.ts: 8ms, application-code: 88ms)
+ GET /login 200 in 54ms (next.js: 9ms, proxy.ts: 8ms, application-code: 36ms)

@@ -1,0 +1,119 @@
+<<<<<<< SEARCH
+    const icons: Record<string, React.ReactNode> = {
+        'active-recall': <Brain className="h-6 w-6 text-accent" />,
+        'elaboration': <BookOpen className="h-6 w-6 text-warning" />,
+        'practice-testing': <Target className="h-6 w-6 text-primary" />
+    };
+
+    const descriptions: Record<string, string> = {
+        'active-recall': 'Test your memory by recalling information without looking at notes.',
+        'elaboration': 'Deepen your understanding by explaining concepts and making connections.',
+        'practice-testing': 'Quick-fire questions to test your knowledge on weak areas.'
+    };
+
+    return (
+        <div className="space-y-4">
+            {/* Description */}
+            <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+=======
+    const icons: Record<string, React.ReactNode> = {
+        'active-recall': <Brain className="h-6 w-6 text-accent" />,
+        'elaboration': <BookOpen className="h-6 w-6 text-warning" />,
+        'practice-testing': <Target className="h-6 w-6 text-primary" />
+    };
+
+    const descriptions: Record<string, string> = {
+        'active-recall': 'Test your memory by recalling information without looking at notes.',
+        'elaboration': 'Deepen your understanding by explaining concepts and making connections.',
+        'practice-testing': 'Quick-fire questions to test your knowledge on weak areas.'
+    };
+
+    const generateHintId = React.useId();
+
+    return (
+        <div className="space-y-4">
+            {/* Description */}
+            <div className="flex items-center gap-3 p-4 bg-secondary/30 rounded-lg">
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+            {/* Generate Button */}
+            {!aiContent && (
+                <Button
+                    onClick={onGenerate}
+                    disabled={isGenerating}
+                    className="w-full gap-2"
+                    size="lg"
+                >
+                    {isGenerating ? (
+                        <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Generating prompts...
+                        </>
+                    ) : (
+                        <>
+                            <Sparkles className="h-5 w-5" />
+                            Generate AI Prompts
+                        </>
+                    )}
+                </Button>
+            )}
+
+            {/* AI Content */}
+=======
+            {/* Generate Button */}
+            {!aiContent && (
+                <div className="space-y-2">
+                    <Button
+                        type="button"
+                        onClick={onGenerate}
+                        disabled={isGenerating}
+                        className="w-full gap-2"
+                        size="lg"
+                        aria-describedby={isGenerating ? generateHintId : undefined}
+                    >
+                        {isGenerating ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                Generating prompts...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="h-5 w-5" />
+                                Generate AI Prompts
+                            </>
+                        )}
+                    </Button>
+                    {isGenerating && (
+                        <p id={generateHintId} className="text-xs text-muted-foreground text-center">
+                            Please wait while we generate your customized AI prompts.
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* AI Content */}
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                    <Button variant="outline" onClick={onGenerate} disabled={isGenerating} className="w-full gap-2">
+                        <RefreshCcw className="h-4 w-4" />
+                        Generate New Prompts
+                    </Button>
+                </div>
+            )}
+        </div>
+=======
+                    <div className="space-y-2">
+                        <Button type="button" variant="outline" onClick={onGenerate} disabled={isGenerating} className="w-full gap-2" aria-describedby={isGenerating ? `${generateHintId}-new` : undefined}>
+                            <RefreshCcw className="h-4 w-4" />
+                            Generate New Prompts
+                        </Button>
+                        {isGenerating && (
+                            <p id={`${generateHintId}-new`} className="text-xs text-muted-foreground text-center">
+                                Please wait while we generate your new AI prompts.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+>>>>>>> REPLACE
