@@ -61,6 +61,8 @@ export function SessionDialog({
         start_time: '',
     });
 
+    const hintId = useId();
+
     useEffect(() => {
         if (session) {
             setFormData({
@@ -278,48 +280,44 @@ required
                         />
                     </div>
 
-                    <DialogFooter className="flex gap-2 pt-4">
-                        {isEditing && onDelete && (
+                    <DialogFooter className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-4">
+                        {!formData.planned_for && (
+                            <p id={hintId} className="text-xs text-muted-foreground order-last sm:order-first sm:mr-auto text-left mt-2 sm:mt-0">
+                                Please select a date to schedule this session.
+                            </p>
+                        )}
+                        <div className="flex justify-end gap-2 w-full sm:w-auto">
+                            {isEditing && onDelete && (
+                                <Button
+                                    type="button"
+                                    variant={deleteConfirm ? 'destructive' : 'outline'}
+                                    onClick={handleDelete}
+                                    disabled={loading}
+                                    className="mr-auto sm:mr-0"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    {deleteConfirm ? 'Confirm Delete' : 'Delete'}
+                                </Button>
+                            )}
                             <Button
                                 type="button"
-                                variant={deleteConfirm ? 'destructive' : 'outline'}
-                                onClick={handleDelete}
+                                variant="outline"
+                                onClick={() => onOpenChange(false)}
                                 disabled={loading}
-                                className="mr-auto"
                             >
-                                <Trash2 className="h-4 w-4 mr-1" />
-                                {deleteConfirm ? 'Confirm Delete' : 'Delete'}
+                                Cancel
                             </Button>
-                        )}
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                            disabled={loading}
-                        >
-                            Cancel
-                        </Button>
-<Button
-type="submit"
-disabled={loading}
-aria-disabled={!formData.planned_for && !loading}
-aria-describedby={!formData.planned_for && !loading ? submitHintId : undefined}
-className={!formData.planned_for && !loading ? 'opacity-50' : ''}
->
-                            <Clock className="h-4 w-4 mr-1" />
-                            {loading ? 'Saving...' : isEditing ? 'Update' : 'Create'}
-                        </Button>
-                    </DialogFooter>
-                    {!formData.planned_for && !loading && (
-<p
-id={submitHintId}
-aria-live="polite"
-className="text-xs text-muted-foreground mt-2 text-right"
->
-Please select a date to schedule this session.
-</p>
-                    )}
-                </form>
+ <Button
+ type="submit"
+ disabled={loading || !formData.planned_for}
+ aria-describedby={!formData.planned_for ? hintId : undefined}
+ >
+ <Clock className="h-4 w-4 mr-1" />
+ {loading ? 'Saving...' : isEditing ? 'Update' : 'Create'}
+ </Button>
+ </div>
+</DialogFooter>
+</form>
             </DialogContent>
         </Dialog>
     );
