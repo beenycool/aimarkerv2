@@ -5,6 +5,7 @@ import { RefreshCw, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Pencil, Highligh
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 // Configure worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -258,6 +259,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
 
 
     return (
+        <TooltipProvider>
         <div 
             className="bg-muted/30 flex flex-col hidden md:flex h-full w-full"
         >
@@ -292,42 +294,61 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
             
             <div className="p-2 flex gap-2 items-center">
                 <span className="text-xs text-muted-foreground mr-2">Annotations:</span>
-                <button 
-                    type="button"
-                    aria-label="Draw"
-                    onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
-className={`p-2 rounded transition-colors ${focusVisibleClasses} ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-          title="Draw"
-        >
-                    <Pencil className="w-4 h-4" />
-                </button>
-                <button 
-                    type="button"
-                    aria-label="Highlight"
-                    onClick={() => setAnnotationMode(annotationMode === 'highlight' ? null : 'highlight')}
-className={`p-2 rounded transition-colors ${focusVisibleClasses} ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-          title="Highlight"
-                >
-                    <Highlighter className="w-4 h-4" />
-                </button>
-                <button 
-                    type="button"
-                    aria-label="Clear annotations on this page"
-                    onClick={clearAnnotationsOnPage}
-className={`p-2 rounded hover:bg-muted ${focusVisibleClasses}`}
-          title="Clear annotations on this page"
-        >
-                    <Eraser className="w-4 h-4" />
-                </button>
-                <button 
-                    type="button"
-                    aria-label="Pan mode"
-                    onClick={() => setAnnotationMode(null)}
-className={`p-2 rounded transition-colors ${focusVisibleClasses} ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-          title="Pan mode"
-        >
-                    <Move className="w-4 h-4" />
-                </button>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-label="Draw"
+                            onClick={() => setAnnotationMode(annotationMode === 'draw' ? null : 'draw')}
+                            className={`p-2 rounded transition-colors ${focusVisibleClasses} ${annotationMode === 'draw' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                        >
+                            <Pencil className="w-4 h-4" />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Draw</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-label="Highlight"
+                            onClick={() => setAnnotationMode(annotationMode === 'highlight' ? null : 'highlight')}
+                            className={`p-2 rounded transition-colors ${focusVisibleClasses} ${annotationMode === 'highlight' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                        >
+                            <Highlighter className="w-4 h-4" />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Highlight</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-label="Clear annotations on this page"
+                            onClick={clearAnnotationsOnPage}
+                            className={`p-2 rounded hover:bg-muted ${focusVisibleClasses}`}
+                        >
+                            <Eraser className="w-4 h-4" />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear annotations on this page</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-label="Pan mode"
+                            onClick={() => setAnnotationMode(null)}
+                            className={`p-2 rounded transition-colors ${focusVisibleClasses} ${!annotationMode ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
+                        >
+                            <Move className="w-4 h-4" />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Pan mode</TooltipContent>
+                </Tooltip>
             </div>
             </div>
             
@@ -366,19 +387,40 @@ className={`p-2 rounded transition-colors ${focusVisibleClasses} ${!annotationMo
             <div className="bg-card p-3 flex justify-between items-center border-t border-border">
                 <div className="flex gap-2">
                 <div className="flex gap-2">
-                    <button type="button" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Previous page"><ChevronLeft className="w-5 h-5" /></button>
-                    <button type="button" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Next page"><ChevronRight className="w-5 h-5" /></button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button type="button" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Previous page"><ChevronLeft className="w-5 h-5" /></button>
+                        </TooltipTrigger>
+                        <TooltipContent>Previous page</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button type="button" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Next page"><ChevronRight className="w-5 h-5" /></button>
+                        </TooltipTrigger>
+                        <TooltipContent>Next page</TooltipContent>
+                    </Tooltip>
                 </div>
                 <span className="text-foreground font-mono font-bold text-sm">Page {pageNumber} {numPages ? `/ ${numPages}` : ''}</span>
                 <div className="flex gap-2">
-                    <button type="button" onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className={`p-2 text-foreground hover:bg-muted rounded ${focusVisibleClasses}`} aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
-                    <button type="button" onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className={`p-2 text-foreground hover:bg-muted rounded ${focusVisibleClasses}`} aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button type="button" onClick={() => onScaleChange(Math.max(0.5, scale - 0.2))} className={`p-2 text-foreground hover:bg-muted rounded ${focusVisibleClasses}`} aria-label="Zoom out"><ZoomOut className="w-5 h-5" /></button>
+                        </TooltipTrigger>
+                        <TooltipContent>Zoom out</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button type="button" onClick={() => onScaleChange(Math.min(3.0, scale + 0.2))} className={`p-2 text-foreground hover:bg-muted rounded ${focusVisibleClasses}`} aria-label="Zoom in"><ZoomIn className="w-5 h-5" /></button>
+                        </TooltipTrigger>
+                        <TooltipContent>Zoom in</TooltipContent>
+                    </Tooltip>
                 </div>
                 </div>
             </div>
             
 
         </div>
+        </TooltipProvider>
     );
 }, (prev, next) => prev.file === next.file && prev.pageNumber === next.pageNumber && prev.scale === next.scale && prev.activePdfTab === next.activePdfTab && prev.hasInsert === next.hasInsert);
 
