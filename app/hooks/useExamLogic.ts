@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useExamSessionState } from './useExamSessionState';
 import { useExamSessionPersistence } from './useExamSessionPersistence';
 
@@ -90,7 +90,10 @@ const useExamLogic = () => {
     const currentAnswer = currentQuestion ? state.userAnswers[currentQuestion.id] : null;
     const hasCurrentFeedback = currentQuestion ? !!state.feedbacks[currentQuestion.id] : false;
 
-    const getSummaryStats = useCallback(() => {
+    // ⚡ Bolt: Converted getSummaryStats useCallback to useMemo property.
+    // This fixes a bug where the callback was accessed without invocation and caches
+    // the O(N) reductions on activeQuestions and feedbacks, preventing unnecessary recalculations per render.
+    const summaryStats = useMemo(() => {
         const totalScore = Object.values(state.feedbacks).reduce((acc: number, curr: any) => acc + (curr?.score || 0), 0);
         const totalPossible = state.activeQuestions.reduce((acc: number, curr) => acc + (curr?.marks || 0), 0);
         const percentage = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
@@ -152,7 +155,7 @@ const useExamLogic = () => {
         insertQuoteIntoAnswer,
         clearFeedbackForQuestion,
         jumpToQuestion,
-        getSummaryStats,
+        summaryStats,
 
         // Session management
         saveSession: persistence.saveSession,
