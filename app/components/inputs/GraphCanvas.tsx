@@ -327,10 +327,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
             <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
                 <button
                     type="button"
+                    aria-pressed={tool === 'point'}
                     aria-label="Add Point tool"
                     title="Add Point"
                     onClick={() => setTool('point')}
-                    className={`p-2 rounded ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
                 >
                     <div className="flex items-center gap-1 text-xs font-bold">
                         <span className="text-lg">×</span> Point
@@ -338,10 +339,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 </button>
                 <button
                     type="button"
+                    aria-pressed={tool === 'line'}
                     aria-label="Add Line tool"
                     title="Add Line"
                     onClick={() => setTool('line')}
-                    className={`p-2 rounded ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
                 >
                     <div className="flex items-center gap-1 text-xs font-bold">
                         <PenTool className="w-4 h-4" /> Line
@@ -349,10 +351,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 </button>
                 <button
                     type="button"
+                    aria-pressed={tool === 'sketch'}
                     aria-label="Sketch tool"
                     title="Freehand Sketch"
                     onClick={() => setTool('sketch')}
-                    className={`p-2 rounded ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
                 >
                     <div className="flex items-center gap-1 text-xs font-bold">
                         <Pencil className="w-4 h-4" /> Sketch
@@ -360,10 +363,11 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                 </button>
                 <button
                     type="button"
+                    aria-pressed={tool === 'label'}
                     aria-label="Add Label tool"
                     title="Add Text Label"
                     onClick={() => setTool('label')}
-                    className={`p-2 rounded ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
                 >
                     <div className="flex items-center gap-1 text-xs font-bold">
                         <Type className="w-4 h-4" /> Label
@@ -386,7 +390,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                         type="button"
                         aria-label="Remove background image"
                         onClick={onClearBackground}
-                        className="p-2 rounded hover:bg-muted text-muted-foreground"
+                        className="p-2 rounded hover:bg-muted text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         title="Remove figure background"
                     >
                         <ImageOff className="w-4 h-4" />
@@ -397,7 +401,7 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                     aria-label="Clear all canvas contents"
                     title="Clear Canvas"
                     onClick={() => onChange(emptyState)}
-                    className="p-2 rounded hover:bg-destructive/10 text-destructive"
+                    className="p-2 rounded hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                     <Trash2 className="w-4 h-4" />
                 </button>
