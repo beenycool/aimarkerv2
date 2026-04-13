@@ -40,3 +40,6 @@
 
 **Learning:** Nested array iterations like `.filter()` and `.reduce()` inside a `.map()` create a significant bottleneck (O(N*M)) for relational data aggregation, such as calculating stats per subject across large attempt histories.
 **Action:** Always pre-aggregate relational data using a single-pass `Map` (O(N)) before the main `.map()` loop (O(M)), reducing overall time complexity to O(N+M) and reducing redundant memory allocations.
+## 2026-04-12 - Missing invoke in useCallback property
+**Learning:** Found a bug where `const stats = exam.getSummaryStats;` was missing parens (it should be `exam.getSummaryStats()`), which meant `stats.weaknessCounts` was undefined, throwing errors later or silently failing.
+**Action:** Transformed parameter-less `useCallback` read-only hooks returning derived values into `useMemo` hooks. This ensures immediate execution of the calculation upon dependencies change, removes the need to remember parens and inherently caches the calculations avoiding repetitive processing per render cycle.
