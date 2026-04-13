@@ -287,9 +287,15 @@ function AIAssistedContent({
                         )}
                     </Button>
                     {isGenerating && (
-                        <p id={generateHintId} className="text-xs text-muted-foreground text-center">
-                            Please wait while we generate your customized AI prompts.
-                        </p>
+<p
+ id={generateHintId}
+ role="status"
+ aria-live="polite"
+ aria-atomic="true"
+ className="text-xs text-muted-foreground text-center"
+ >
+ Please wait while we generate your customized AI prompts.
+ </p>
                     )}
                 </div>
             )}
@@ -336,9 +342,15 @@ function AIAssistedContent({
                             Generate New Prompts
                         </Button>
                         {isGenerating && (
-                            <p id={`${generateHintId}-new`} className="text-xs text-muted-foreground text-center">
-                                Please wait while we generate your new AI prompts.
-                            </p>
+<p
+ id={`${generateHintId}-new`}
+ role="status"
+ aria-live="polite"
+ aria-atomic="true"
+ className="text-xs text-muted-foreground text-center"
+ >
+ Please wait while we generate your new AI prompts.
+ </p>
                         )}
                     </div>
                 </div>
