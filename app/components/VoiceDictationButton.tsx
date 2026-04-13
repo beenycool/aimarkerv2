@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mic, MicOff } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
 
 export interface VoiceDictationButtonProps {
     /** Called with each finalized phrase; parent should append to their field. */
@@ -112,18 +113,26 @@ export function VoiceDictationButton({
     if (!supported) return null;
 
     return (
-        <Button
-            type="button"
-            variant={active ? 'secondary' : 'outline'}
-            size="icon"
-            className={cn('shrink-0', className)}
-            disabled={disabled}
-            onClick={toggle}
-            aria-pressed={active}
-            aria-label={active ? 'Stop voice input' : 'Speak your answer (microphone)'}
-            title={active ? 'Stop recording' : 'Speak your answer — works best in Chrome / Edge'}
-        >
-            {active ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
-        </Button>
+        <TooltipProvider>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        type="button"
+                        variant={active ? 'secondary' : 'outline'}
+                        size="icon"
+                        className={cn('shrink-0', className)}
+                        disabled={disabled}
+                        onClick={toggle}
+                        aria-pressed={active}
+                        aria-label={active ? 'Stop voice input' : 'Speak your answer (microphone)'}
+                    >
+                        {active ? <MicOff className="h-4 w-4 text-destructive" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    <p>{active ? 'Stop recording' : 'Speak your answer — works best in Chrome / Edge'}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 }
