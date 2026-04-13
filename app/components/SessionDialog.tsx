@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useId } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -50,6 +50,7 @@ export function SessionDialog({
     const isEditing = !!session?.id;
     const [loading, setLoading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(false);
+    const submitHintId = useId();
 
     const [formData, setFormData] = useState<Partial<StudySession>>({
         subject_id: '',
@@ -178,15 +179,17 @@ export function SessionDialog({
                     {/* Date */}
                     <div className="space-y-2">
                         <Label htmlFor="date">Date</Label>
-                        <Input
-                            id="date"
-                            type="date"
-                            value={formData.planned_for || ''}
-                            onChange={(e) =>
-                                setFormData({ ...formData, planned_for: e.target.value })
-                            }
-                            required
-                        />
+<Input
+id="date"
+type="date"
+value={formData.planned_for || ''}
+onChange={(e) =>
+setFormData({ ...formData, planned_for: e.target.value })
+}
+aria-invalid={!formData.planned_for}
+aria-describedby={!formData.planned_for ? submitHintId : undefined}
+required
+/>
                     </div>
 
                     {/* Start Time */}
@@ -296,11 +299,26 @@ export function SessionDialog({
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={loading || !formData.planned_for}>
+<Button
+type="submit"
+disabled={loading}
+aria-disabled={!formData.planned_for && !loading}
+aria-describedby={!formData.planned_for && !loading ? submitHintId : undefined}
+className={!formData.planned_for && !loading ? 'opacity-50' : ''}
+>
                             <Clock className="h-4 w-4 mr-1" />
                             {loading ? 'Saving...' : isEditing ? 'Update' : 'Create'}
                         </Button>
                     </DialogFooter>
+                    {!formData.planned_for && !loading && (
+<p
+id={submitHintId}
+aria-live="polite"
+className="text-xs text-muted-foreground mt-2 text-right"
+>
+Please select a date to schedule this session.
+</p>
+                    )}
                 </form>
             </DialogContent>
         </Dialog>
