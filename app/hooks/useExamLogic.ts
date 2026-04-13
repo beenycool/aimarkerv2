@@ -90,12 +90,23 @@ const useExamLogic = () => {
     const currentAnswer = currentQuestion ? state.userAnswers[currentQuestion.id] : null;
     const hasCurrentFeedback = currentQuestion ? !!state.feedbacks[currentQuestion.id] : false;
 
-    // ⚡ Bolt: Converted getSummaryStats useCallback to useMemo property.
-    // This fixes a bug where the callback was accessed without invocation and caches
-    // the O(N) reductions on activeQuestions and feedbacks, preventing unnecessary recalculations per render.
     const summaryStats = useMemo(() => {
-        const totalScore = Object.values(state.feedbacks).reduce((acc: number, curr: any) => acc + (curr?.score || 0), 0);
-        const totalPossible = state.activeQuestions.reduce((acc: number, curr) => acc + (curr?.marks || 0), 0);
+        let totalScore = 0;
+        let totalPossible = 0;
+        const weaknessCounts: Record<string, number> = {};
+
+        for (const key in state.feedbacks) {
+            const fb = state.feedbacks[key];
+            totalScore += fb?.score || 0;
+            if (fb?.primaryFlaw) {
+                weaknessCounts[fb.primaryFlaw] = (weaknessCounts[fb.primaryFlaw] || 0) + 1;
+            }
+        }
+
+        for (const q of state.activeQuestions) {
+            totalPossible += q?.marks || 0;
+        }
+
         const percentage = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
 
         let grade = 'U';
@@ -104,11 +115,6 @@ const useExamLogic = () => {
         else if (percentage >= 70) grade = '7';
         else if (percentage >= 50) grade = '5';
         else if (percentage >= 40) grade = '4';
-
-        const weaknessCounts: Record<string, number> = Object.values(state.feedbacks).reduce((acc: Record<string, number>, fb: any) => {
-            if (fb?.primaryFlaw) acc[fb.primaryFlaw] = (acc[fb.primaryFlaw] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
 
         return { totalScore, totalPossible, percentage, grade, weaknessCounts };
     }, [state.feedbacks, state.activeQuestions]);
@@ -131,6 +137,7 @@ const useExamLogic = () => {
         currentQuestion,
         currentAnswer,
         hasCurrentFeedback,
+        summaryStats,
 
         // Setters
         setActiveQuestions: state.setActiveQuestions,
@@ -155,7 +162,10 @@ const useExamLogic = () => {
         insertQuoteIntoAnswer,
         clearFeedbackForQuestion,
         jumpToQuestion,
+<<<<<<< HEAD
         summaryStats,
+=======
+>>>>>>> 30053d8 (⚡ Bolt: [performance improvement] Convert useExamLogic getSummaryStats to useMemo properties)
 
         // Session management
         saveSession: persistence.saveSession,
