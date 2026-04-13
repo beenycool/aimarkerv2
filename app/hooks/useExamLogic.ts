@@ -160,14 +160,10 @@ const useExamLogic = () => {
         addFollowUpMessage,
         updateQuoteDraft,
         insertQuoteIntoAnswer,
-        clearFeedbackForQuestion,
-        jumpToQuestion,
-<<<<<<< HEAD
-        summaryStats,
-=======
->>>>>>> 30053d8 (⚡ Bolt: [performance improvement] Convert useExamLogic getSummaryStats to useMemo properties)
+clearFeedbackForQuestion,
+  jumpToQuestion,
 
-        // Session management
+  // Session management
         saveSession: persistence.saveSession,
         restoreSession: persistence.restoreSession,
         clearSession: persistence.clearSession,
