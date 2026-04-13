@@ -113,7 +113,7 @@ export function VoiceDictationButton({
     if (!supported) return null;
 
     return (
-        <TooltipProvider>
+        <TooltipProvider delayDuration={0}>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button
