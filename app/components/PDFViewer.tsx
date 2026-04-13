@@ -259,7 +259,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
 
 
     return (
-        <TooltipProvider>
+        <TooltipProvider delayDuration={0}>
         <div 
             className="bg-muted/30 flex flex-col hidden md:flex h-full w-full"
         >
@@ -305,7 +305,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                             <Pencil className="w-4 h-4" />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>Draw</TooltipContent>
+                    <TooltipContent side="bottom">Draw</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -319,7 +319,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                             <Highlighter className="w-4 h-4" />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>Highlight</TooltipContent>
+                    <TooltipContent side="bottom">Highlight</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -333,7 +333,7 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                             <Eraser className="w-4 h-4" />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>Clear annotations on this page</TooltipContent>
+                    <TooltipContent side="bottom">Clear annotations</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -389,13 +389,17 @@ const PDFViewer = memo(({ file, pageNumber, scale, onPageChange, onScaleChange, 
                 <div className="flex gap-2">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <button type="button" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Previous page"><ChevronLeft className="w-5 h-5" /></button>
+                            <span className="inline-block">
+                                <button type="button" onClick={() => onPageChange(Math.max(1, pageNumber - 1))} disabled={pageNumber <= 1} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Previous page"><ChevronLeft className="w-5 h-5" /></button>
+                            </span>
                         </TooltipTrigger>
                         <TooltipContent>Previous page</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <button type="button" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Next page"><ChevronRight className="w-5 h-5" /></button>
+                            <span className="inline-block">
+                                <button type="button" onClick={() => onPageChange(numPages ? Math.min(numPages, pageNumber + 1) : pageNumber + 1)} disabled={numPages ? pageNumber >= numPages : false} className={`p-2 text-foreground hover:bg-muted rounded disabled:opacity-30 ${focusVisibleClasses}`} aria-label="Next page"><ChevronRight className="w-5 h-5" /></button>
+                            </span>
                         </TooltipTrigger>
                         <TooltipContent>Next page</TooltipContent>
                     </Tooltip>

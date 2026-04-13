@@ -92,6 +92,7 @@
 
 **Learning:** Relying solely on `disabled` state for form submit buttons without visual cues creates a poor experience, as users might not know what fields are missing.
 **Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate to users and screen readers why a form submit button is disabled.
+
 ## 2026-04-12 - Tooltips on Icon-Only Buttons
 **Learning:** Icon-only buttons often lack accessible tooltips or rely on native `title` attributes which are styled inconsistently and lack robust accessibility. Upgrading these to custom Radix UI `Tooltip` components ensures a cohesive visual design and better accessibility support.
 **Action:** When creating or maintaining icon-only buttons in toolbars (like in PDFViewer), wrap them in `Tooltip`, `TooltipTrigger`, and `TooltipContent` from the project's UI library to provide immediate, styled context.
