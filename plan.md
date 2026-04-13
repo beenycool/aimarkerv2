@@ -1,3 +1,5 @@
+# Plan: summaryStats migration
+
 1. **Change `getSummaryStats` to `summaryStats` property**
    - Modify `app/hooks/useExamLogic.ts` to rename `getSummaryStats` function (which currently is missing `()` invocation across the codebase causing incorrect statistics logic) to `summaryStats` object property by changing `useCallback` to `useMemo`.
    - Update `app/(exam)/exam/page.tsx` references from `exam.getSummaryStats` to `exam.summaryStats`.
