@@ -244,6 +244,8 @@ function AIAssistedContent({
         'practice-testing': 'Quick-fire questions to test your knowledge on weak areas.'
     };
 
+    const generateHintId = React.useId();
+
     return (
         <div className="space-y-4">
             {/* Description */}
@@ -263,24 +265,39 @@ function AIAssistedContent({
 
             {/* Generate Button */}
             {!aiContent && (
-                <Button
-                    onClick={onGenerate}
-                    disabled={isGenerating}
-                    className="w-full gap-2"
-                    size="lg"
-                >
-                    {isGenerating ? (
-                        <>
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                            Generating prompts...
-                        </>
-                    ) : (
-                        <>
-                            <Sparkles className="h-5 w-5" />
-                            Generate AI Prompts
-                        </>
+                <div className="space-y-2">
+                    <Button
+                        type="button"
+                        onClick={onGenerate}
+                        disabled={isGenerating}
+                        className="w-full gap-2"
+                        size="lg"
+                        aria-describedby={isGenerating ? generateHintId : undefined}
+                    >
+                        {isGenerating ? (
+                            <>
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                Generating prompts...
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="h-5 w-5" />
+                                Generate AI Prompts
+                            </>
+                        )}
+                    </Button>
+                    {isGenerating && (
+<p
+ id={generateHintId}
+ role="status"
+ aria-live="polite"
+ aria-atomic="true"
+ className="text-xs text-muted-foreground text-center"
+ >
+ Please wait while we generate your customized AI prompts.
+ </p>
                     )}
-                </Button>
+                </div>
             )}
 
             {/* AI Content */}
@@ -319,10 +336,23 @@ function AIAssistedContent({
                         </div>
                     )}
 
-                    <Button variant="outline" onClick={onGenerate} disabled={isGenerating} className="w-full gap-2">
-                        <RefreshCcw className="h-4 w-4" />
-                        Generate New Prompts
-                    </Button>
+                    <div className="space-y-2">
+                        <Button type="button" variant="outline" onClick={onGenerate} disabled={isGenerating} className="w-full gap-2" aria-describedby={isGenerating ? `${generateHintId}-new` : undefined}>
+                            <RefreshCcw className="h-4 w-4" />
+                            Generate New Prompts
+                        </Button>
+                        {isGenerating && (
+<p
+ id={`${generateHintId}-new`}
+ role="status"
+ aria-live="polite"
+ aria-atomic="true"
+ className="text-xs text-muted-foreground text-center"
+ >
+ Please wait while we generate your new AI prompts.
+ </p>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
