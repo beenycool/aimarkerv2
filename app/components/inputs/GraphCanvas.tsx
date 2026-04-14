@@ -1,6 +1,7 @@
 import React, { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { PenTool, Pencil, Type, ImageOff, Trash2 } from 'lucide-react';
 import type { GraphDrawingValue, GraphLineSeg, GraphPoint } from './graphDrawingTypes';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 
 type GraphConfig = {
     xMin?: number;
@@ -322,89 +323,117 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         paint(null, null);
     };
 
-    return (
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
-                <button
-                    type="button"
-                    aria-pressed={tool === 'point'}
-                    aria-label="Add Point tool"
-                    title="Add Point"
-                    onClick={() => setTool('point')}
-                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
-                >
-                    <div className="flex items-center gap-1 text-xs font-bold">
-                        <span className="text-lg">×</span> Point
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    aria-pressed={tool === 'line'}
-                    aria-label="Add Line tool"
-                    title="Add Line"
-                    onClick={() => setTool('line')}
-                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
-                >
-                    <div className="flex items-center gap-1 text-xs font-bold">
-                        <PenTool className="w-4 h-4" /> Line
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    aria-pressed={tool === 'sketch'}
-                    aria-label="Sketch tool"
-                    title="Freehand Sketch"
-                    onClick={() => setTool('sketch')}
-                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
-                >
-                    <div className="flex items-center gap-1 text-xs font-bold">
-                        <Pencil className="w-4 h-4" /> Sketch
-                    </div>
-                </button>
-                <button
-                    type="button"
-                    aria-pressed={tool === 'label'}
-                    aria-label="Add Label tool"
-                    title="Add Text Label"
-                    onClick={() => setTool('label')}
-                    className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
-                >
-                    <div className="flex items-center gap-1 text-xs font-bold">
-                        <Type className="w-4 h-4" /> Label
-                    </div>
-                </button>
-                {tool === 'label' && (
-                    <input
-                        type="text"
-                        aria-label="Label text input"
-                        title="Text for label"
-                        value={labelText}
-                        onChange={(e) => setLabelText(e.target.value)}
-                        placeholder="Label text"
-                        className="h-8 w-32 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                )}
+return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-pressed={tool === 'point'}
+                            aria-label="Add Point tool"
+                            onClick={() => setTool('point')}
+                            className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'point' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                        >
+                            <div className="flex items-center gap-1 text-xs font-bold">
+                                <span className="text-lg">×</span> Point
+                            </div>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Add Point</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-pressed={tool === 'line'}
+                            aria-label="Add Line tool"
+                            onClick={() => setTool('line')}
+                            className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'line' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                        >
+                            <div className="flex items-center gap-1 text-xs font-bold">
+                                <PenTool className="w-4 h-4" /> Line
+                            </div>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Add Line</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-pressed={tool === 'sketch'}
+                            aria-label="Sketch tool"
+                            onClick={() => setTool('sketch')}
+                            className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'sketch' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                        >
+                            <div className="flex items-center gap-1 text-xs font-bold">
+                                <Pencil className="w-4 h-4" /> Sketch
+                            </div>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Freehand Sketch</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-pressed={tool === 'label'}
+                            aria-label="Add Label tool"
+                            onClick={() => setTool('label')}
+                            className={`p-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${tool === 'label' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-muted-foreground'}`}
+                        >
+                            <div className="flex items-center gap-1 text-xs font-bold">
+                                <Type className="w-4 h-4" /> Label
+                            </div>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Add Text Label</TooltipContent>
+                </Tooltip>
+
+{tool === 'label' && (
+          <input
+            type="text"
+            aria-label="Label text input"
+            value={labelText}
+            onChange={(e) => setLabelText(e.target.value)}
+            placeholder="Label text"
+            className="h-8 w-32 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        )}
                 <div className="h-6 w-px bg-border mx-2"></div>
                 {backgroundImage && onClearBackground && (
-                    <button
-                        type="button"
-                        aria-label="Remove background image"
-                        onClick={onClearBackground}
-                        className="p-2 rounded hover:bg-muted text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        title="Remove figure background"
-                    >
-                        <ImageOff className="w-4 h-4" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label="Remove background image"
+                                onClick={onClearBackground}
+                                className="p-2 rounded hover:bg-muted text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            >
+                                <ImageOff className="w-4 h-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove figure background</TooltipContent>
+                    </Tooltip>
                 )}
-                <button
-                    type="button"
-                    aria-label="Clear all canvas contents"
-                    title="Clear Canvas"
-                    onClick={() => onChange(emptyState)}
-                    className="p-2 rounded hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                    <Trash2 className="w-4 h-4" />
-                </button>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-label="Clear all canvas contents"
+                            onClick={() => onChange(emptyState)}
+                            className="p-2 rounded hover:bg-destructive/10 text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear Canvas</TooltipContent>
+                </Tooltip>
             </div>
             <div className="border border-border rounded-lg overflow-hidden shadow-inner bg-white self-start">
                 <canvas
@@ -419,10 +448,10 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
                     className="cursor-crosshair block"
-                />
-            </div>
+/>
         </div>
-    );
+      </div>
+  );
 });
 GraphCanvas.displayName = 'GraphCanvas';
 
