@@ -180,13 +180,13 @@ export default function SubjectDetailPage() {
   }, [studentId, subjectId]);
 
   const stats = useMemo(() => {
-    // ⚡ Bolt: Consolidated O(2N) sequential .reduce() calls into a single O(N) pass loop.
-    let earned = 0;
-    let total = 0;
-    for (let i = 0; i < attempts.length; i++) {
-      earned += Number(attempts[i].marks_awarded || 0);
-      total += Number(attempts[i].marks_total || 0);
-    }
+// ⚡ Bolt: Consolidated O(2N) sequential .reduce() calls into a single O(N) pass loop.
+ let earned = 0;
+ let total = 0;
+ for (const attempt of attempts) {
+ earned += Number(attempt.marks_awarded || 0);
+ total += Number(attempt.marks_total || 0);
+ }
     const percent = pct(earned, total);
     return {
       earned,

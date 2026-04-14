@@ -45,7 +45,8 @@
 **Learning:** Parameter-less `useCallback` hooks that solely calculate and return derived state (like aggregating lists into summary statistics) can lead to runtime bugs if consumers forget to invoke the callback (e.g., `const stats = exam.getSummaryStats;` was missing parens, which meant `stats.weaknessCounts` was undefined). They also miss out on inherent caching for expensive operations.
 
 **Action:** Always refactor these derived state `useCallback` getters into `useMemo` properties. This inherently caches O(N) calculations, avoids unnecessary recalculations per render, and prevents the 'accessing callback without invocation' bug.
+
 ## 2026-05-28 - Consolidate Sequential Array Reductions
 
 **Learning:** When calculating multiple derived metrics (like total earned marks and total possible marks) from the same list of data, executing multiple `.reduce()` calls sequentially causes redundant O(N) iterations. This anti-pattern is easy to overlook when iterating on logic inside `useMemo`.
-**Action:** Consolidate isolated sequential `.reduce()` calls into a single loop over the array (e.g. `for` loop). This processes the array in one O(N) pass, saving memory allocations and lowering total computation overhead per render.
+**Action:** Consolidate isolated sequential `.reduce()` calls into a single pass over the array (e.g., using a for...of loop or a single `.reduce()` that returns an object). This processes the data in one O(N) pass, saving memory allocations and lowering total computation overhead per render.
