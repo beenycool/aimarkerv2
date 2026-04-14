@@ -729,12 +729,28 @@ export default function AssessmentsPage() {
         return paperTypeLabels[kind] || kind.replace(/_/g, ' ');
     };
 
-    const completedAssessments = assessments.filter(a => a.score != null);
-    const pendingCount = assessments.filter(a => a.score == null).length;
-    const completedCount = completedAssessments.length;
-    const avgScore = completedCount > 0
-        ? Math.round(completedAssessments.reduce((acc, a) => acc + (a.score ?? 0), 0) / completedCount)
-        : 0;
+// ⚡ Bolt: Replaced O(N) chained .filter() and .reduce() with a single O(N) pass in useMemo
+ const { pendingCount, completedCount, avgScore } = useMemo(() => {
+ let pending = 0;
+ let completed = 0;
+ let scoreSum = 0;
+
+ for (let i = 0; i < assessments.length; i++) {
+ const a = assessments[i];
+ if (a.score != null) {
+ completed++;
+ scoreSum += a.score;
+ } else {
+ pending++;
+ }
+ }
+
+ return {
+ pendingCount: pending,
+ completedCount: completed,
+ avgScore: completed > 0 ? Math.round(scoreSum / completed) : 0,
+ };
+ }, [assessments]);
     const isUploading = uploadedFiles.some((file) => file.status === 'uploading');
     const hasUploadErrors = uploadedFiles.some((file) => file.status === 'error');
 

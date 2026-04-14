@@ -56,3 +56,8 @@
 **Learning:** When calculating multiple derived metrics (like total earned marks and total possible marks) from the same list of data, executing multiple `.reduce()` calls sequentially causes redundant O(N) iterations. This anti-pattern is easy to overlook when iterating on logic inside `useMemo`.
 
 **Action:** Consolidate isolated sequential `.reduce()` calls into a single pass over the array (e.g., using a for...of loop or a single `.reduce()` that returns an object). This processes the data in one O(N) pass, saving memory allocations and lowering total computation overhead per render.
+
+## 2025-02-28 - Redundant Array Traversal in React Renders
+
+**Learning:** Declaring chained declarative array methods (e.g., `assessments.filter().reduce()`) directly inside a component render function forces multiple O(N) allocations and traversals for identical underlying data, which becomes a bottleneck.
+**Action:** Replace sequential declarative array methods with a single O(N) imperative pass (`for` loop tracking multiple accumulators) wrapped inside a `useMemo` hook to combine derivations and reduce rendering overhead.
