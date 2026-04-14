@@ -107,3 +107,6 @@
 
 **Learning:** When async generation buttons (like "Generate AI Prompts") are disabled during a loading state, users and screen readers might not understand why the button is unresponsive. Providing visual loading text inside the button isn't always enough context for screen readers if the button is disabled.
 **Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate the loading state when standard interactive generator buttons are disabled.
+## 2024-05-24 - [Replace native titles with Radix Tooltips for icon buttons]
+**Learning:** Icon-only buttons relying on native `title` attributes lack good keyboard accessibility, styling consistency, and responsiveness. Replacing them with the design system Tooltips (like Radix UI) improves accessibility and micro-UX significantly.
+**Action:** Always use accessible Tooltip components from the UI library instead of native `title` tags for icon-only interactive elements.
