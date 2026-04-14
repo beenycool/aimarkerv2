@@ -1,6 +1,6 @@
 import React, { memo, useEffect, useId, useRef } from 'react';
 import { Calculator } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 
 interface MathKeyboardProps {
   onInsert: (char: string) => void;
@@ -68,9 +68,8 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }: MathKeyboardProps) 
     );
   }
 
-  return (
-    <TooltipProvider delayDuration={300}>
-    <div id={panelId} className="mt-2 animate-in slide-in-from-top-2">
+return (
+      <div id={panelId} className="mt-2 animate-in slide-in-from-top-2">
       <div className="flex justify-between items-center mb-1">
         <span className="text-xs font-bold text-muted-foreground uppercase">Scientific Symbols</span>
         <button
@@ -100,10 +99,9 @@ const MathKeyboard = memo(({ onInsert, isOpen, toggleOpen }: MathKeyboardProps) 
               <p>{(symbolLabels as Record<string, string>)[s]}</p>
             </TooltipContent>
           </Tooltip>
-        ))}
+))}
+        </div>
       </div>
-    </div>
-    </TooltipProvider>
   );
 });
 MathKeyboard.displayName = 'MathKeyboard';

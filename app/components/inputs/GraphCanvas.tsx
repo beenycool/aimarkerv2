@@ -1,7 +1,7 @@
 import React, { memo, useRef, useState, useEffect, useCallback } from 'react';
 import { PenTool, Pencil, Type, ImageOff, Trash2 } from 'lucide-react';
 import type { GraphDrawingValue, GraphLineSeg, GraphPoint } from './graphDrawingTypes';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 
 type GraphConfig = {
     xMin?: number;
@@ -323,10 +323,9 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
         paint(null, null);
     };
 
-    return (
-        <TooltipProvider delayDuration={300}>
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
+return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2 bg-muted/50 p-2 rounded-lg border border-border">
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button
@@ -395,21 +394,16 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                     <TooltipContent>Add Text Label</TooltipContent>
                 </Tooltip>
 
-                {tool === 'label' && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <input
-                                type="text"
-                                aria-label="Label text input"
-                                value={labelText}
-                                onChange={(e) => setLabelText(e.target.value)}
-                                placeholder="Label text"
-                                className="h-8 w-32 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                            />
-                        </TooltipTrigger>
-                        <TooltipContent>Text for label</TooltipContent>
-                    </Tooltip>
-                )}
+{tool === 'label' && (
+          <input
+            type="text"
+            aria-label="Label text input"
+            value={labelText}
+            onChange={(e) => setLabelText(e.target.value)}
+            placeholder="Label text"
+            className="h-8 w-32 rounded border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        )}
                 <div className="h-6 w-px bg-border mx-2"></div>
                 {backgroundImage && onClearBackground && (
                     <Tooltip>
@@ -454,11 +448,10 @@ const GraphCanvas = memo(({ config, value, onChange, backgroundImage, onClearBac
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseLeave}
                     className="cursor-crosshair block"
-                />
-            </div>
+/>
         </div>
-        </TooltipProvider>
-    );
+      </div>
+  );
 });
 GraphCanvas.displayName = 'GraphCanvas';
 
