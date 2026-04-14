@@ -40,6 +40,11 @@
 
 **Learning:** Nested array iterations like `.filter()` and `.reduce()` inside a `.map()` create a significant bottleneck (O(N*M)) for relational data aggregation, such as calculating stats per subject across large attempt histories.
 **Action:** Always pre-aggregate relational data using a single-pass `Map` (O(N)) before the main `.map()` loop (O(M)), reducing overall time complexity to O(N+M) and reducing redundant memory allocations.
+## 2024-05-18 - Optimize Exam Stats Aggregation
+
+**Learning:** React hooks like `useExamLogic` often perform redundant nested array iterations (e.g. `Object.values().reduce()` alongside `array.reduce()`) when summarizing state (e.g. calculating percentage, scores, flaws). Constructing intermediate arrays using `Object.values()` multiple times on every render or stat summary causes significant memory overhead and impacts frontend performance.
+**Action:** Replace multiple isolated `.reduce()` chains handling related state with a single-pass `for` loop that aggregates all required metrics simultaneously, significantly reducing computation overhead and garbage collection cycles.
+
 ## 2026-04-12 - Missing invoke in useCallback property / React Derived State useCallback vs useMemo
 
 **Learning:** Parameter-less `useCallback` hooks that solely calculate and return derived state (like aggregating lists into summary statistics) can lead to runtime bugs if consumers forget to invoke the callback (e.g., `const stats = exam.getSummaryStats;` was missing parens, which meant `stats.weaknessCounts` was undefined). They also miss out on inherent caching for expensive operations.
@@ -49,4 +54,5 @@
 ## 2026-05-28 - Consolidate Sequential Array Reductions
 
 **Learning:** When calculating multiple derived metrics (like total earned marks and total possible marks) from the same list of data, executing multiple `.reduce()` calls sequentially causes redundant O(N) iterations. This anti-pattern is easy to overlook when iterating on logic inside `useMemo`.
+
 **Action:** Consolidate isolated sequential `.reduce()` calls into a single pass over the array (e.g., using a for...of loop or a single `.reduce()` that returns an object). This processes the data in one O(N) pass, saving memory allocations and lowering total computation overhead per render.

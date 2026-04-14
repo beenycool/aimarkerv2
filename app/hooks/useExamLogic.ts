@@ -90,23 +90,25 @@ const useExamLogic = () => {
     const currentAnswer = currentQuestion ? state.userAnswers[currentQuestion.id] : null;
     const hasCurrentFeedback = currentQuestion ? !!state.feedbacks[currentQuestion.id] : false;
 
-    const summaryStats = useMemo(() => {
+const getSummaryStats = useCallback(() => {
+	// ⚡ Bolt: Replaced multiple O(N) array aggregations and object value extractions with a single-pass loop.
+	// Reduces overhead by avoiding intermediate array allocations.
         let totalScore = 0;
         let totalPossible = 0;
         const weaknessCounts: Record<string, number> = {};
 
-        for (const key in state.feedbacks) {
-            const fb = state.feedbacks[key];
-            totalScore += fb?.score || 0;
-            if (fb?.primaryFlaw) {
-                weaknessCounts[fb.primaryFlaw] = (weaknessCounts[fb.primaryFlaw] || 0) + 1;
-            }
-        }
+for (const question of state.activeQuestions) {
+		if (!question) continue;
+		totalPossible += (question.marks || 0);
 
-        for (const q of state.activeQuestions) {
-            totalPossible += q?.marks || 0;
-        }
-
+		const fb = state.feedbacks[question.id];
+		if (fb) {
+			totalScore += (fb.score || 0);
+			if (fb.primaryFlaw) {
+				weaknessCounts[fb.primaryFlaw] = (weaknessCounts[fb.primaryFlaw] || 0) + 1;
+			}
+		}
+	}
         const percentage = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
 
         let grade = 'U';
