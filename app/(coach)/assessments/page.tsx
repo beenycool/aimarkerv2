@@ -729,29 +729,28 @@ export default function AssessmentsPage() {
         return paperTypeLabels[kind] || kind.replace(/_/g, ' ');
     };
 
-    // ⚡ Bolt: Replaced O(N) chained .filter() and .reduce() with a single O(N) pass in useMemo
-    const { completedAssessments, pendingCount, completedCount, avgScore } = useMemo(() => {
-        let pending = 0;
-        let scoreSum = 0;
-        const completed: Assessment[] = [];
+// ⚡ Bolt: Replaced O(N) chained .filter() and .reduce() with a single O(N) pass in useMemo
+ const { pendingCount, completedCount, avgScore } = useMemo(() => {
+ let pending = 0;
+ let completed = 0;
+ let scoreSum = 0;
 
-        for (let i = 0; i < assessments.length; i++) {
-            const a = assessments[i];
-            if (a.score != null) {
-                completed.push(a);
-                scoreSum += a.score;
-            } else {
-                pending++;
-            }
-        }
+ for (let i = 0; i < assessments.length; i++) {
+ const a = assessments[i];
+ if (a.score != null) {
+ completed++;
+ scoreSum += a.score;
+ } else {
+ pending++;
+ }
+ }
 
-        return {
-            completedAssessments: completed,
-            pendingCount: pending,
-            completedCount: completed.length,
-            avgScore: completed.length > 0 ? Math.round(scoreSum / completed.length) : 0,
-        };
-    }, [assessments]);
+ return {
+ pendingCount: pending,
+ completedCount: completed,
+ avgScore: completed > 0 ? Math.round(scoreSum / completed) : 0,
+ };
+ }, [assessments]);
     const isUploading = uploadedFiles.some((file) => file.status === 'uploading');
     const hasUploadErrors = uploadedFiles.some((file) => file.status === 'error');
 
