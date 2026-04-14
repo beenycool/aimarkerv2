@@ -107,6 +107,12 @@
 
 **Learning:** When async generation buttons (like "Generate AI Prompts") are disabled during a loading state, users and screen readers might not understand why the button is unresponsive. Providing visual loading text inside the button isn't always enough context for screen readers if the button is disabled.
 **Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate the loading state when standard interactive generator buttons are disabled.
+
+## 2026-04-10 - Accessible Tooltips for Icon-Only Buttons
+
+**Learning:** Native `title` attributes on icon-only buttons (like in `PDFViewer.tsx`) are visually inconsistent, lack reliable keyboard accessibility, and have delayed appearance times. Replacing them with Radix UI-based `Tooltip` components ensures immediate, styled, and accessible context for screen readers and keyboard users.
+**Action:** When adding or auditing toolbars with icon-only controls, always import and wrap the buttons in `<TooltipProvider>` -> `<Tooltip>` -> `<TooltipTrigger asChild>` and `<TooltipContent>` instead of relying on the native `title` attribute.
+
 ## 2024-05-24 - [Replace native titles with Radix Tooltips for icon buttons]
 **Learning:** Icon-only buttons relying on native `title` attributes lack good keyboard accessibility, styling consistency, and responsiveness. Replacing them with the design system Tooltips (like Radix UI) improves accessibility and micro-UX significantly.
 **Action:** Always use accessible Tooltip components from the UI library instead of native `title` tags for icon-only interactive elements.
