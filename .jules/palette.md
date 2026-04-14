@@ -93,7 +93,6 @@
 **Learning:** Relying solely on `disabled` state for form submit buttons without visual cues creates a poor experience, as users might not know what fields are missing.
 **Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate to users and screen readers why a form submit button is disabled.
 
-<<<<<<< HEAD
 ## 2026-04-11 - Graph Canvas Button Accessibility
 
 **Learning:** Custom UI tools with visual state (like active selection tools in `GraphCanvas`) lacked screen-reader visibility for their toggled state and required a combination of `aria-pressed` and `focus-visible` styles.
@@ -108,4 +107,3 @@
 
 **Learning:** When async generation buttons (like "Generate AI Prompts") are disabled during a loading state, users and screen readers might not understand why the button is unresponsive. Providing visual loading text inside the button isn't always enough context for screen readers if the button is disabled.
 **Action:** Add descriptive helper text combined with `aria-describedby` to explicitly communicate the loading state when standard interactive generator buttons are disabled.
->>>>>>> 6600647 (Apply reviewer suggestions for PR #163)
