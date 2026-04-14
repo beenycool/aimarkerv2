@@ -50,9 +50,7 @@ export function SessionDialog({
     const isEditing = !!session?.id;
     const [loading, setLoading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState(false);
-    const submitHintId = useId();
-
-    const [formData, setFormData] = useState<Partial<StudySession>>({
+const [formData, setFormData] = useState<Partial<StudySession>>({
         subject_id: '',
         planned_for: '',
         duration_minutes: 30,
@@ -182,16 +180,16 @@ export function SessionDialog({
                     <div className="space-y-2">
                         <Label htmlFor="date">Date</Label>
 <Input
-id="date"
-type="date"
-value={formData.planned_for || ''}
-onChange={(e) =>
-setFormData({ ...formData, planned_for: e.target.value })
-}
-aria-invalid={!formData.planned_for}
-aria-describedby={!formData.planned_for ? submitHintId : undefined}
-required
-/>
+ id="date"
+ type="date"
+ value={formData.planned_for || ''}
+ onChange={(e) =>
+ setFormData({ ...formData, planned_for: e.target.value })
+ }
+ aria-describedby={!formData.planned_for ? hintId : undefined}
+ aria-invalid={!formData.planned_for}
+ required
+ />
                     </div>
 
                     {/* Start Time */}
@@ -307,17 +305,16 @@ required
                             >
                                 Cancel
                             </Button>
- <Button
+<Button
  type="submit"
  disabled={loading || !formData.planned_for}
- aria-describedby={!formData.planned_for ? hintId : undefined}
  >
- <Clock className="h-4 w-4 mr-1" />
- {loading ? 'Saving...' : isEditing ? 'Update' : 'Create'}
- </Button>
- </div>
-</DialogFooter>
-</form>
+                                <Clock className="h-4 w-4 mr-1" />
+                                {loading ? 'Saving...' : isEditing ? 'Update' : 'Create'}
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
