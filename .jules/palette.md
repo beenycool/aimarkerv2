@@ -116,3 +116,6 @@
 ## 2024-05-24 - [Replace native titles with Radix Tooltips for icon buttons]
 **Learning:** Icon-only buttons relying on native `title` attributes lack good keyboard accessibility, styling consistency, and responsiveness. Replacing them with the design system Tooltips (like Radix UI) improves accessibility and micro-UX significantly.
 **Action:** Always use accessible Tooltip components from the UI library instead of native `title` tags for icon-only interactive elements.
+## 2026-04-17 - Added Tooltips to Exam Header Buttons
+**Learning:** Even simple utility buttons like 'Trash' or 'Pin' in headers lack built-in context when they are icon-only. Applying `Tooltip` and `TooltipTrigger asChild` effectively bridges this gap without breaking standard layout.
+**Action:** Always wrap utility icon buttons with Tooltip components for context.

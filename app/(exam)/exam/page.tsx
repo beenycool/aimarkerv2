@@ -17,6 +17,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Progress } from '@/app/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 
@@ -1076,23 +1077,46 @@ export default function GCSEMarkerApp() {
                                     <span className="text-sm font-medium text-muted-foreground">Q</span>
                                     <span className="text-sm font-bold text-foreground">{exam.currentQIndex + 1}/{exam.activeQuestions.length}</span>
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={togglePdfEmphasis}
-                                    className="gap-2 hidden md:flex"
-                                    aria-pressed={pdfEmphasized}
-                                    title="Give more horizontal space to the PDF"
-                                >
-                                    {pdfEmphasized ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                                    {pdfEmphasized ? 'Balance panels' : 'More PDF space'}
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={() => setFocusMode(true)} className="gap-2">
-                                    <Maximize className="w-4 h-4" /> Focus mode
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={clearSaveData} className="text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={togglePdfEmphasis}
+                                                className="gap-2 hidden md:flex"
+                                                aria-pressed={pdfEmphasized}
+                                            >
+                                                {pdfEmphasized ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                                                {pdfEmphasized ? 'Balance panels' : 'More PDF space'}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Give more horizontal space to the PDF
+                                        </TooltipContent>
+                                    </Tooltip>
+
+                                    <Button variant="outline" size="sm" onClick={() => setFocusMode(true)} className="gap-2">
+                                        <Maximize className="w-4 h-4" /> Focus mode
+                                    </Button>
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={clearSaveData}
+                                                className="text-muted-foreground hover:text-destructive"
+                                                aria-label="Clear session and reload"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            Clear session & reload
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
                         </header>
                         {/* Progress bar */}
