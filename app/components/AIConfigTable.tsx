@@ -403,7 +403,7 @@ export default function AIConfigTable({
                                     type="button"
                                     key={key}
                                     onClick={() => applyProfile(key, profile.config)}
-                                    className={`relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}
+                                    className={`relative p-3 rounded-lg border-2 text-left transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${isActive ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/50'}`}
                                     aria-label={`Select profile ${profile.name}. Description: ${profile.description}`}
                                 >
                                     {profile.badge && <Badge variant="secondary" className="absolute -top-2 -right-2 text-[10px] px-1.5">{profile.badge}</Badge>}
@@ -432,7 +432,7 @@ export default function AIConfigTable({
                                                 type="button"
                                                 aria-label={`Select custom profile ${profile.name}`}
                                                 onClick={() => applyProfile(profileKey, profile.config)}
-                                                className="w-full text-left"
+                                                className="w-full text-left rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                             >
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <User className="h-4 w-4 text-purple-500" />
@@ -446,7 +446,7 @@ export default function AIConfigTable({
                                             {onDeleteProfile && (
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
-                                                        <button type="button" aria-label={`Delete profile ${profile.name}`} onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile.name); }} className="absolute top-2 right-2 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
+                                                        <button type="button" aria-label={`Delete profile ${profile.name}`} onClick={(e) => { e.stopPropagation(); handleDeleteProfile(profile.name); }} className="absolute top-2 right-2 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2">
                                                             <Trash2 className="h-3 w-3" />
                                                         </button>
                                                     </TooltipTrigger>

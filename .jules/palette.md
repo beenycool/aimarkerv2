@@ -116,3 +116,6 @@
 ## 2024-05-24 - [Replace native titles with Radix Tooltips for icon buttons]
 **Learning:** Icon-only buttons relying on native `title` attributes lack good keyboard accessibility, styling consistency, and responsiveness. Replacing them with the design system Tooltips (like Radix UI) improves accessibility and micro-UX significantly.
 **Action:** Always use accessible Tooltip components from the UI library instead of native `title` tags for icon-only interactive elements.
+## 2026-04-18 - Focus Ring Consistency
+**Learning:** Custom interactive elements (like the clickable profile cards in AIConfigTable) often lack standard focus rings, creating an inconsistent and less accessible keyboard navigation experience compared to standard `<Button>` components.
+**Action:** Ensure custom buttons and interactive `div` wrappers are styled with standard focus-visible utilities (e.g., `focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2`) to maintain keyboard accessibility parity across the application.
