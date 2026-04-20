@@ -19,6 +19,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Progress } from '@/app/components/ui/progress';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
 
 // Import modular components
 import AdaptiveInput from '../../components/AdaptiveInput';
@@ -1090,9 +1091,18 @@ export default function GCSEMarkerApp() {
                                 <Button variant="outline" size="sm" onClick={() => setFocusMode(true)} className="gap-2">
                                     <Maximize className="w-4 h-4" /> Focus mode
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={clearSaveData} className="text-muted-foreground hover:text-destructive">
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" aria-label="Clear saved data" onClick={clearSaveData} className="text-muted-foreground hover:text-destructive">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Clear saved data</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
                         </header>
                         {/* Progress bar */}
