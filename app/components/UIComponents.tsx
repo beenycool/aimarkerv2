@@ -4,7 +4,7 @@ import React, { useState, memo, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { Upload, CheckCircle, Brain, ChevronRight, RefreshCw, Sparkles, Send, RotateCcw, X, Check } from 'lucide-react';
 import katex from 'katex';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
 
 let dompurifyAnchorRelHookRegistered = false;
 function ensureDompurifyAnchorRelHook() {
@@ -442,16 +442,18 @@ export const FeedbackBlock = memo(({ feedback, onNext, explanation, onExplain, e
                     )}
 <div className="flex gap-2">
         <input type="text" aria-label="Follow-up question" value={followUpText} onChange={(e) => setFollowUpText(e.target.value)} placeholder="e.g., Why was my answer wrong?" className="flex-1 text-sm bg-background border border-input text-foreground rounded-lg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 placeholder:text-muted-foreground" onKeyDown={(e) => e.key === 'Enter' && handleSend()} />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" aria-label="Send follow-up question (Enter)" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
-              {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Send follow-up question</p>
-          </TooltipContent>
-        </Tooltip>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" aria-label="Send follow-up question (Enter)" onClick={handleSend} disabled={sendingFollowUp || !followUpText.trim()} className="bg-primary text-primary-foreground p-2 rounded-lg hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                {sendingFollowUp ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Send follow-up question</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
                 </div>
 
