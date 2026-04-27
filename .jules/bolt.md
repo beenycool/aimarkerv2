@@ -61,3 +61,7 @@
 
 **Learning:** Declaring chained declarative array methods (e.g., `assessments.filter().reduce()`) directly inside a component render function forces multiple O(N) allocations and traversals for identical underlying data, which becomes a bottleneck.
 **Action:** Replace sequential declarative array methods with a single O(N) imperative pass (`for` loop tracking multiple accumulators) wrapped inside a `useMemo` hook to combine derivations and reduce rendering overhead.
+
+## 2026-05-30 - O(N) Array Operations Inside O(M) Map Loop
+**Learning:** Chaining array operations like `.filter().slice().map().join()` inside a larger loop (like `.map()` over subjects) forces unnecessary full array allocations and iterations. In `generateWeeklySchedule`, calculating `weaknessesForSubject` caused an O(N*M) bottleneck due to iterating over all `weaknesses` multiple times.
+**Action:** Replace chained declarative array methods with a single imperative `for...in` loop and an early `break` when the required number of elements is found. This reduces time complexity and memory allocations.
