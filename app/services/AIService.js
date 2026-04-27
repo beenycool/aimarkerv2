@@ -937,7 +937,18 @@ You must return your assessment in the exact JSON format below. Do not output an
         const subjectSummary = subjects.map(s => {
             const perf = subjectPerformance[s.id];
             const grade = perf?.percentage ?? 'No data';
-            const weaknessesForSubject = Object.entries(weaknesses).filter(([k]) => k.toLowerCase().includes(s.name.toLowerCase())).slice(0, 3).map(([k, v]) => `${k} (${v}x)`).join(', ');
+
+            // ⚡ Bolt: Replaced O(N) chained array methods with a single imperative loop and early break to reduce allocations and array churn inside the map loop.
+            const parts = [];
+            const sNameLower = s.name.toLowerCase();
+            for (const key in weaknesses) {
+                if (key.toLowerCase().includes(sNameLower)) {
+                    parts.push(`${key} (${weaknesses[key]}x)`);
+                    if (parts.length >= 3) break;
+                }
+            }
+            const weaknessesForSubject = parts.join(', ');
+
             return `- ${s.name}: Grade ${grade}%${weaknessesForSubject ? `, Weaknesses: ${weaknessesForSubject}` : ''}`;
         }).join('\n');
 
