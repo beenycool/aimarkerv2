@@ -61,3 +61,4 @@
 
 **Learning:** Declaring chained declarative array methods (e.g., `assessments.filter().reduce()`) directly inside a component render function forces multiple O(N) allocations and traversals for identical underlying data, which becomes a bottleneck.
 **Action:** Replace sequential declarative array methods with a single O(N) imperative pass (`for` loop tracking multiple accumulators) wrapped inside a `useMemo` hook to combine derivations and reduce rendering overhead.
+## 2026-04-28 - Uint8Array to Hex string conversion\n**Learning:** Declarative chains like `Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('')` allocate multiple intermediate arrays and cause performance overhead. \n**Action:** Use a pre-computed 256-element lookup table and an imperative `for` loop to significantly speed up byte-to-hex string conversions and avoid memory bloat.
