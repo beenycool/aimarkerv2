@@ -23,6 +23,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ANONYMOUS_STORAGE_KEY = 'gcse_student_id_v1';
 
+// Pre-computed lookup table for fast hex string conversion
+const HEX_TABLE = new Array(256);
+for (let i = 0; i < 256; i++) {
+    HEX_TABLE[i] = i.toString(16).padStart(2, '0');
+}
+
 /**
  * Get or create an anonymous student ID from localStorage.
  * Used as fallback when user is not authenticated.
@@ -36,9 +42,11 @@ function getOrCreateAnonymousId(): string | null {
             // Generate a cryptographically secure random value
             const array = new Uint8Array(16);
             window.crypto.getRandomValues(array);
-            const hex = Array.from(array)
-                .map((b) => b.toString(16).padStart(2, '0'))
-                .join('');
+            // ⚡ Bolt: Replaced declarative Array.from().map().join() chain with a faster pre-computed lookup table and imperative loop
+            let hex = '';
+            for (let i = 0; i < array.length; i++) {
+                hex += HEX_TABLE[array[i]];
+            }
             id = `${Date.now()}-${hex}`;
         } else {
             // Insecure fallback for very old browsers
