@@ -9,6 +9,11 @@ async function requireAuthenticatedUser() {
     return data?.user || null;
 }
 
+const HEX_TABLE = new Array(256);
+for (let i = 0; i < 256; i++) {
+    HEX_TABLE[i] = i.toString(16).padStart(2, '0');
+}
+
 export const PaperStorage = {
     /**
      * Calculate SHA-256 hash of a file
@@ -16,8 +21,11 @@ export const PaperStorage = {
     async calculateFileHash(file) {
         const buffer = await file.arrayBuffer();
         const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        const hashArray = new Uint8Array(hashBuffer);
+        let hashHex = '';
+        for (let i = 0; i < hashArray.length; i++) {
+            hashHex += HEX_TABLE[hashArray[i]];
+        }
         return hashHex;
     },
 
