@@ -61,3 +61,7 @@
 
 **Learning:** Declaring chained declarative array methods (e.g., `assessments.filter().reduce()`) directly inside a component render function forces multiple O(N) allocations and traversals for identical underlying data, which becomes a bottleneck.
 **Action:** Replace sequential declarative array methods with a single O(N) imperative pass (`for` loop tracking multiple accumulators) wrapped inside a `useMemo` hook to combine derivations and reduce rendering overhead.
+
+## 2026-05-01 - Optimize Hex String Conversion
+**Learning:** In hot paths (like calculating SHA-256 hashes), imperative string concatenation with a pre-computed hex lookup table is ~3x faster than chaining `Array.from().map().join('')`.
+**Action:** Use pre-computed lookup tables and imperative loops for buffer-to-hex conversions to reduce intermediate array allocations.
