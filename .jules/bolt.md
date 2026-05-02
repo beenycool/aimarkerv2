@@ -61,3 +61,6 @@
 
 **Learning:** Declaring chained declarative array methods (e.g., `assessments.filter().reduce()`) directly inside a component render function forces multiple O(N) allocations and traversals for identical underlying data, which becomes a bottleneck.
 **Action:** Replace sequential declarative array methods with a single O(N) imperative pass (`for` loop tracking multiple accumulators) wrapped inside a `useMemo` hook to combine derivations and reduce rendering overhead.
+## 2024-03-24 - Optimize Uint8Array to Hex string conversion
+**Learning:** Declarative array chains like `Array.from(new Uint8Array(buffer)).map(...).join('')` are extremely slow and cause significant memory allocations in hot paths like hashing large files or generating IDs.
+**Action:** Replace them with an imperative `for` loop combined with a pre-computed lookup array of 256 hexadecimal strings. Always use `crypto.randomUUID()` when generating standard UUIDs if supported, falling back to the optimized table loop for `getRandomValues(new Uint8Array())`.
