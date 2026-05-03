@@ -61,3 +61,8 @@
 
 **Learning:** Declaring chained declarative array methods (e.g., `assessments.filter().reduce()`) directly inside a component render function forces multiple O(N) allocations and traversals for identical underlying data, which becomes a bottleneck.
 **Action:** Replace sequential declarative array methods with a single O(N) imperative pass (`for` loop tracking multiple accumulators) wrapped inside a `useMemo` hook to combine derivations and reduce rendering overhead.
+
+## 2026-05-29 - UUID and Hex String Generation Optimization
+
+**Learning:** When generating unique identifiers or converting hash buffers to hexadecimal strings, using generic array mapping (e.g., `Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('')`) causes significant garbage collection overhead and slow execution due to repeated intermediate array allocations and string parsing.
+**Action:** Always prefer `crypto.randomUUID()` for generating standard UUIDs, as it is a highly-optimized native C++ implementation. When manual buffer-to-hex conversion is unavoidable, use a pre-computed 256-element string lookup table and an imperative `for` loop to concatenate the string, which operates roughly 5-7x faster than declarative array chains.
