@@ -90,9 +90,10 @@ const useExamLogic = () => {
     const currentAnswer = currentQuestion ? state.userAnswers[currentQuestion.id] : null;
     const hasCurrentFeedback = currentQuestion ? !!state.feedbacks[currentQuestion.id] : false;
 
-const getSummaryStats = useCallback(() => {
+const summaryStats = useMemo(() => {
 	// ⚡ Bolt: Replaced multiple O(N) array aggregations and object value extractions with a single-pass loop.
 	// Reduces overhead by avoiding intermediate array allocations.
+	// Converted from useCallback to useMemo so derived state is cached instead of evaluated inline, preventing unnecessary recalculation.
         let totalScore = 0;
         let totalPossible = 0;
         const weaknessCounts: Record<string, number> = {};
